@@ -1,0 +1,247 @@
+# Executable case definitions for family: transactions_read
+# Paired with: tests/qa/features/03_transactions_read.feature
+
+family: transactions_read
+
+cases:
+
+  # ---------------------------------------------------------------------------
+  # List transactions — structure
+  # ---------------------------------------------------------------------------
+
+  - id: QA-TXN-001
+    title: "List transactions returns transactions array with required fields"
+    method: GET
+    path: /budgets/{{plan_id}}/transactions
+    params:
+      since_date: "2025-01-01"
+    expected_status: 200
+    assertions:
+      - type: status
+        value: 200
+      - type: json_has_key
+        path: data.transactions
+      - type: json_key_is_array
+        path: data.transactions
+      - type: json_array_items_have_key
+        path: data.transactions
+        key: id
+      - type: json_array_items_have_key
+        path: data.transactions
+        key: date
+      - type: json_array_items_have_key
+        path: data.transactions
+        key: amount
+    tags: [smoke, read]
+    notes: "since_date limits the result set to avoid large responses in CI."
+
+  - id: QA-TXN-002
+    title: "List transactions response includes server_knowledge integer"
+    method: GET
+    path: /budgets/{{plan_id}}/transactions
+    params:
+      since_date: "2025-01-01"
+    expected_status: 200
+    assertions:
+      - type: status
+        value: 200
+      - type: json_has_key
+        path: data.server_knowledge
+      - type: json_key_is_integer
+        path: data.server_knowledge
+    tags: [read]
+
+  - id: QA-TXN-003
+    title: "Transaction amounts are integers (milliunits, not floats)"
+    method: GET
+    path: /budgets/{{plan_id}}/transactions
+    params:
+      since_date: "2025-01-01"
+    expected_status: 200
+    assertions:
+      - type: status
+        value: 200
+      - type: custom
+        description: "Sample the first 10 transactions and assert amounts are integers"
+        script: |
+          const json = pm.response.json();
+          const txns = (json.data.transactions || []).slice(0, 10);
+          txns.forEach(function(t, i) {
+              pm.test("[QA-TXN-003] Transaction " + i + " amount is integer", function() {
+                  pm.expect(typeof t.amount).to.equal('number');
+                  pm.expect(Number.isInteger(t.amount)).to.be.true;
+              });
+          });
+    tags: [read]
+    notes: "Floats in amount indicate a YNAB API contract change. Critical invariant for milliunit parsing."
+
+  # ---------------------------------------------------------------------------
+  # Filtering
+  # ---------------------------------------------------------------------------
+
+  - id: QA-TXN-004
+    title: "Filter by type=uncategorized returns only uncategorized transactions"
+    method: GET
+    path: /budgets/{{plan_id}}/transactions
+    params:
+      type: uncategorized
+    expected_status: 200
+    assertions:
+      - type: status
+        value: 200
+      - type: json_has_key
+        path: data.transactions
+      - type: custom
+        description: "All returned transactions have null category_id"
+        script: |
+          const json = pm.response.json();
+          const txns = json.data.transactions || [];
+          txns.forEach(function(t, i) {
+              pm.test("[QA-TXN-004] Transaction " + i + " has null category_id", function() {
+                  pm.expect(t.category_id).to.be.null;
+              });
+          });
+    tags: [read]
+
+  - id: QA-TXN-005
+    title: "Filter by type=unapproved returns only unapproved transactions"
+    method: GET
+    path: /budgets/{{plan_id}}/transactions
+    params:
+      type: unapproved
+    expected_status: 200
+    assertions:
+      - type: status
+        value: 200
+      - type: json_has_key
+        path: data.transactions
+      - type: custom
+        description: "All returned transactions have approved = false"
+        script: |
+          const json = pm.response.json();
+          const txns = json.data.transactions || [];
+          txns.forEach(function(t, i) {
+              pm.test("[QA-TXN-005] Transaction " + i + " is not approved", function() {
+                  pm.expect(t.approved).to.equal(false);
+              });
+          });
+    tags: [read]
+
+  - id: QA-TXN-006
+    title: "Filter by since_date returns only on-or-after transactions"
+    method: GET
+    path: /budgets/{{plan_id}}/transactions
+    params:
+      since_date: "2025-04-01"
+    expected_status: 200
+    assertions:
+      - type: status
+        value: 200
+      - type: custom
+        description: "All returned transactions have date >= 2025-04-01"
+        script: |
+          const json = pm.response.json();
+          const txns = json.data.transactions || [];
+          const cutoff = "2025-04-01";
+          txns.forEach(function(t, i) {
+              pm.test("[QA-TXN-006] Transaction " + i + " date >= " + cutoff, function() {
+                  pm.expect(t.date >= cutoff).to.be.true;
+              });
+          });
+    tags: [read]
+
+  # ---------------------------------------------------------------------------
+  # Get single transaction
+  # ---------------------------------------------------------------------------
+
+  - id: QA-TXN-007
+    title: "Get non-existent transaction returns 404 with error shape"
+    method: GET
+    path: /budgets/{{plan_id}}/transactions/00000000-0000-0000-0000-000000000000
+    params: {}
+    expected_status: 404
+    assertions:
+      - type: status
+        value: 404
+      - type: json_has_key
+        path: data.error
+    tags: [error]
+
+  # ---------------------------------------------------------------------------
+  # Scheduled transactions
+  # ---------------------------------------------------------------------------
+
+  - id: QA-SCHED-001
+    title: "List scheduled transactions returns scheduled_transactions array"
+    method: GET
+    path: /budgets/{{plan_id}}/scheduled_transactions
+    params: {}
+    expected_status: 200
+    assertions:
+      - type: status
+        value: 200
+      - type: json_has_key
+        path: data.scheduled_transactions
+      - type: json_key_is_array
+        path: data.scheduled_transactions
+    tags: [smoke, read]
+
+  - id: QA-SCHED-002
+    title: "Scheduled transaction entries have date_next and frequency fields"
+    method: GET
+    path: /budgets/{{plan_id}}/scheduled_transactions
+    params: {}
+    expected_status: 200
+    assertions:
+      - type: status
+        value: 200
+      - type: custom
+        description: "Non-empty list has date_next and frequency on first entry"
+        script: |
+          const json = pm.response.json();
+          const items = json.data.scheduled_transactions || [];
+          if (items.length > 0) {
+              pm.test("[QA-SCHED-002] First entry has date_next (string)", function() {
+                  pm.expect(items[0].date_next).to.be.a('string');
+              });
+              pm.test("[QA-SCHED-002] First entry has frequency (string)", function() {
+                  pm.expect(items[0].frequency).to.be.a('string');
+              });
+          } else {
+              pm.test("[QA-SCHED-002] Skipped — no scheduled transactions in this budget", function() {
+                  pm.expect(true).to.be.true;
+              });
+          }
+    tags: [read]
+
+  # ---------------------------------------------------------------------------
+  # Payees
+  # ---------------------------------------------------------------------------
+
+  - id: QA-PAYEE-001
+    title: "List payees returns payees array"
+    method: GET
+    path: /budgets/{{plan_id}}/payees
+    params: {}
+    expected_status: 200
+    assertions:
+      - type: status
+        value: 200
+      - type: json_has_key
+        path: data.payees
+      - type: json_key_is_array
+        path: data.payees
+    tags: [smoke, read]
+
+  - id: QA-PAYEE-002
+    title: "Get non-existent payee returns 404"
+    method: GET
+    path: /budgets/{{plan_id}}/payees/00000000-0000-0000-0000-000000000000
+    params: {}
+    expected_status: 404
+    assertions:
+      - type: status
+        value: 404
+      - type: json_has_key
+        path: data.error
+    tags: [error]

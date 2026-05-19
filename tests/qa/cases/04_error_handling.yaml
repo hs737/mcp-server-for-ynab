@@ -1,0 +1,89 @@
+# Executable case definitions for family: error_handling
+# Paired with: tests/qa/features/04_error_handling.feature
+
+family: error_handling
+
+cases:
+
+  - id: QA-ERR-001
+    title: "401 error response has expected error structure"
+    method: GET
+    path: /user
+    params: {}
+    headers:
+      Authorization: "Bearer invalid-token-qa-err-001"
+    expected_status: 401
+    assertions:
+      - type: status
+        value: 401
+      - type: json_has_key
+        path: data.error
+      - type: json_key_is_string
+        path: data.error.name
+      - type: json_key_is_string
+        path: data.error.detail
+    tags: [smoke, error]
+
+  - id: QA-ERR-002
+    title: "404 error response has expected error structure"
+    method: GET
+    path: /budgets/00000000-0000-0000-0000-000000000000
+    params: {}
+    expected_status: 404
+    assertions:
+      - type: status
+        value: 404
+      - type: json_has_key
+        path: data.error
+      - type: json_key_is_string
+        path: data.error.name
+      - type: json_key_is_string
+        path: data.error.id
+    tags: [smoke, error]
+
+  - id: QA-ERR-003
+    title: "Request with invalid budget id returns 404 not 500"
+    method: GET
+    path: /budgets/00000000-dead-beef-0000-000000000000/accounts
+    params: {}
+    expected_status: 404
+    assertions:
+      - type: status
+        value: 404
+    tags: [error]
+
+  - id: QA-ERR-004
+    title: "POST transaction with missing required field returns 422"
+    method: POST
+    path: /budgets/{{plan_id}}/transactions
+    params: {}
+    body_fixture: transaction_create_invalid.json
+    expected_status: 422
+    assertions:
+      - type: status
+        value: 422
+      - type: json_has_key
+        path: data.error
+    tags: [error]
+    notes: "Uses a minimal body missing account_id and date, which are required by YNAB."
+
+  - id: QA-ERR-005
+    title: "Error response data.error.id is always a string"
+    method: GET
+    path: /budgets/00000000-0000-0000-0000-000000000000
+    params: {}
+    expected_status: 404
+    assertions:
+      - type: status
+        value: 404
+      - type: custom
+        description: "data.error.id is a string, not an integer"
+        script: |
+          const json = pm.response.json();
+          pm.test("[QA-ERR-005] data.error.id is a string", function() {
+              pm.expect(json.data.error.id).to.be.a('string');
+          });
+    tags: [error]
+    notes: |
+      YnabMcpError.from_ynab_response reads error_id as a string.
+      If YNAB ever changes this to an integer, the model must be updated.

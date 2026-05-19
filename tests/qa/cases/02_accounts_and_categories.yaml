@@ -1,0 +1,175 @@
+# Executable case definitions for family: accounts_and_categories
+# Paired with: tests/qa/features/02_accounts_and_categories.feature
+
+family: accounts_and_categories
+
+cases:
+
+  # ---------------------------------------------------------------------------
+  # Accounts
+  # ---------------------------------------------------------------------------
+
+  - id: QA-ACCT-001
+    title: "List accounts returns accounts array with required fields"
+    method: GET
+    path: /budgets/{{plan_id}}/accounts
+    params: {}
+    expected_status: 200
+    assertions:
+      - type: status
+        value: 200
+      - type: json_has_key
+        path: data.accounts
+      - type: json_key_is_array
+        path: data.accounts
+      - type: json_array_not_empty
+        path: data.accounts
+      - type: json_array_items_have_key
+        path: data.accounts
+        key: id
+      - type: json_array_items_have_key
+        path: data.accounts
+        key: balance
+    tags: [smoke, read]
+    preconditions:
+      - "api_key and plan_id must be set"
+
+  - id: QA-ACCT-002
+    title: "List accounts response contains server_knowledge for delta sync"
+    method: GET
+    path: /budgets/{{plan_id}}/accounts
+    params: {}
+    expected_status: 200
+    assertions:
+      - type: status
+        value: 200
+      - type: json_has_key
+        path: data.server_knowledge
+      - type: json_key_is_integer
+        path: data.server_knowledge
+    tags: [read]
+
+  - id: QA-ACCT-003
+    title: "Get non-existent account returns 404 with error shape"
+    method: GET
+    path: /budgets/{{plan_id}}/accounts/00000000-0000-0000-0000-000000000000
+    params: {}
+    expected_status: 404
+    assertions:
+      - type: status
+        value: 404
+      - type: json_has_key
+        path: data.error
+    tags: [error]
+
+  # ---------------------------------------------------------------------------
+  # Categories
+  # ---------------------------------------------------------------------------
+
+  - id: QA-CAT-001
+    title: "List categories returns category_groups array with nested categories"
+    method: GET
+    path: /budgets/{{plan_id}}/categories
+    params: {}
+    expected_status: 200
+    assertions:
+      - type: status
+        value: 200
+      - type: json_has_key
+        path: data.category_groups
+      - type: json_key_is_array
+        path: data.category_groups
+      - type: json_array_not_empty
+        path: data.category_groups
+      - type: json_array_items_have_key
+        path: data.category_groups
+        key: categories
+    tags: [smoke, read]
+
+  - id: QA-CAT-002
+    title: "List categories response includes budgeted activity and balance per category"
+    method: GET
+    path: /budgets/{{plan_id}}/categories
+    params: {}
+    expected_status: 200
+    assertions:
+      - type: status
+        value: 200
+      - type: custom
+        description: "At least one non-hidden category has budgeted, activity, and balance as integers"
+        script: |
+          const json = pm.response.json();
+          const cats = json.data.category_groups.flatMap(g => g.categories || []);
+          const visible = cats.filter(c => !c.hidden && !c.deleted);
+          pm.test("[QA-CAT-002] Has at least one visible category", function() {
+              pm.expect(visible.length).to.be.greaterThan(0);
+          });
+          if (visible.length > 0) {
+              const c = visible[0];
+              pm.test("[QA-CAT-002] Category has integer budgeted", function() {
+                  pm.expect(c.budgeted).to.be.a('number');
+                  pm.expect(Number.isInteger(c.budgeted)).to.be.true;
+              });
+              pm.test("[QA-CAT-002] Category has integer activity", function() {
+                  pm.expect(c.activity).to.be.a('number');
+                  pm.expect(Number.isInteger(c.activity)).to.be.true;
+              });
+              pm.test("[QA-CAT-002] Category has integer balance", function() {
+                  pm.expect(c.balance).to.be.a('number');
+                  pm.expect(Number.isInteger(c.balance)).to.be.true;
+              });
+          }
+    tags: [read]
+    notes: "Custom script because we need to traverse the nested structure."
+
+  - id: QA-CAT-003
+    title: "Get non-existent category returns 404 with error shape"
+    method: GET
+    path: /budgets/{{plan_id}}/categories/00000000-0000-0000-0000-000000000000
+    params: {}
+    expected_status: 404
+    assertions:
+      - type: status
+        value: 404
+      - type: json_has_key
+        path: data.error
+    tags: [error]
+
+  - id: QA-CAT-004
+    title: "Get current month returns month object with categories"
+    method: GET
+    path: /budgets/{{plan_id}}/months/current
+    params: {}
+    expected_status: 200
+    assertions:
+      - type: status
+        value: 200
+      - type: json_has_key
+        path: data.month
+      - type: json_key_is_string
+        path: data.month.month
+      - type: json_has_key
+        path: data.month.categories
+      - type: json_key_is_array
+        path: data.month.categories
+    tags: [read]
+
+  - id: QA-CAT-005
+    title: "List months returns months array ordered by date"
+    method: GET
+    path: /budgets/{{plan_id}}/months
+    params: {}
+    expected_status: 200
+    assertions:
+      - type: status
+        value: 200
+      - type: json_has_key
+        path: data.months
+      - type: json_key_is_array
+        path: data.months
+      - type: json_array_not_empty
+        path: data.months
+      - type: json_array_items_have_key
+        path: data.months
+        key: month
+    tags: [read]

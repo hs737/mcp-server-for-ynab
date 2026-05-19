@@ -1,0 +1,164 @@
+# Executable case definitions for family: auth_and_plans
+# Paired with: tests/qa/features/01_auth_and_plans.feature
+#
+# Each case maps to exactly one @QA-* tag in the feature file.
+# Fields:
+#   id          — must match the @QA-* tag in the feature file exactly
+#   title       — human-readable intent (copied from Scenario title)
+#   method      — HTTP method
+#   path        — URL path; {{variables}} are Postman-style
+#   params      — query string params (key: value)
+#   headers     — override or supplement default auth header
+#   body_fixture— filename in tests/fixtures/ (relative, no path prefix)
+#   expected_status — integer HTTP status code
+#   assertions  — list of structural checks
+#   tags        — propagated to Postman request tags
+#   preconditions — human-readable; not executed by generator
+#   notes       — additional context for maintainers
+
+family: auth_and_plans
+
+cases:
+
+  # ---------------------------------------------------------------------------
+  # Authentication
+  # ---------------------------------------------------------------------------
+
+  - id: QA-AUTH-001
+    title: "Valid PAT returns authenticated user object"
+    method: GET
+    path: /user
+    params: {}
+    expected_status: 200
+    assertions:
+      - type: status
+        value: 200
+      - type: json_has_key
+        path: data
+      - type: json_has_key
+        path: data.user
+      - type: json_key_is_string
+        path: data.user.id
+    tags: [smoke, read]
+    preconditions:
+      - "api_key env var must be set to a valid YNAB PAT"
+
+  - id: QA-AUTH-002
+    title: "Missing Authorization header returns 401 with error shape"
+    method: GET
+    path: /user
+    params: {}
+    headers:
+      Authorization: ""
+    expected_status: 401
+    assertions:
+      - type: status
+        value: 401
+      - type: json_has_key
+        path: data.error
+      - type: json_key_is_string
+        path: data.error.name
+      - type: json_key_is_string
+        path: data.error.detail
+    tags: [smoke, error]
+    preconditions:
+      - "This request intentionally omits the Authorization header"
+    notes: "Uses a pre-request script to remove the Authorization header for this request only."
+
+  - id: QA-AUTH-003
+    title: "Invalid PAT returns 401 with error shape"
+    method: GET
+    path: /user
+    params: {}
+    headers:
+      Authorization: "Bearer invalid-token-qa-test-do-not-use"
+    expected_status: 401
+    assertions:
+      - type: status
+        value: 401
+      - type: json_has_key
+        path: data.error
+      - type: json_key_is_string
+        path: data.error.id
+    tags: [error]
+
+  # ---------------------------------------------------------------------------
+  # Plans
+  # ---------------------------------------------------------------------------
+
+  - id: QA-PLANS-001
+    title: "List plans returns non-empty budgets array"
+    method: GET
+    path: /budgets
+    params: {}
+    expected_status: 200
+    assertions:
+      - type: status
+        value: 200
+      - type: json_has_key
+        path: data.budgets
+      - type: json_key_is_array
+        path: data.budgets
+      - type: json_array_not_empty
+        path: data.budgets
+    tags: [smoke, read]
+    preconditions:
+      - "api_key must be a valid PAT for an account with at least one budget"
+
+  - id: QA-PLANS-002
+    title: "Get plan returns budget with required top-level fields"
+    method: GET
+    path: /budgets/{{plan_id}}
+    params: {}
+    expected_status: 200
+    assertions:
+      - type: status
+        value: 200
+      - type: json_has_key
+        path: data.budget
+      - type: json_key_is_string
+        path: data.budget.id
+      - type: json_key_is_string
+        path: data.budget.name
+      - type: json_has_key
+        path: data.server_knowledge
+      - type: json_key_is_integer
+        path: data.server_knowledge
+    tags: [smoke, read]
+    preconditions:
+      - "plan_id must be set to a valid budget ID"
+
+  - id: QA-PLANS-003
+    title: "Get plan settings returns currency format object"
+    method: GET
+    path: /budgets/{{plan_id}}/settings
+    params: {}
+    expected_status: 200
+    assertions:
+      - type: status
+        value: 200
+      - type: json_has_key
+        path: data.settings
+      - type: json_has_key
+        path: data.settings.currency_format
+      - type: json_key_is_string
+        path: data.settings.currency_format.iso_code
+    tags: [read]
+    preconditions:
+      - "plan_id must be set"
+
+  - id: QA-PLANS-004
+    title: "Get non-existent plan returns 404 with error shape"
+    method: GET
+    path: /budgets/00000000-0000-0000-0000-000000000000
+    params: {}
+    expected_status: 404
+    assertions:
+      - type: status
+        value: 404
+      - type: json_has_key
+        path: data.error
+      - type: json_key_is_string
+        path: data.error.name
+    tags: [error]
+    notes: "Uses a nil UUID that cannot exist in YNAB."

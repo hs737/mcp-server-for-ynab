@@ -1,0 +1,23 @@
+{
+  "transaction": {
+    "account_id": "{{account_id}}",
+    "date": "2025-05-15",
+    "amount": -50000,
+    "payee_name": "Target",
+    "memo": "QA split test — safe to delete",
+    "cleared": "cleared",
+    "approved": true,
+    "subtransactions": [
+      {
+        "amount": -30000,
+        "category_id": "{{category_id}}",
+        "memo": "Groceries portion"
+      },
+      {
+        "amount": -20000,
+        "category_id": "{{category_id_2}}",
+        "memo": "Household portion"
+      }
+    ]
+  }
+}

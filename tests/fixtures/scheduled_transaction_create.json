@@ -1,0 +1,11 @@
+{
+  "scheduled_transaction": {
+    "account_id": "{{account_id}}",
+    "date_first": "2025-06-01",
+    "frequency": "monthly",
+    "amount": -120000,
+    "payee_name": "QA Recurring Test — safe to delete",
+    "category_id": "{{category_id}}",
+    "memo": "QA test scheduled transaction"
+  }
+}

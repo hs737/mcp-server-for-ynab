@@ -1,0 +1,12 @@
+{
+  "transaction": {
+    "account_id": "{{account_id}}",
+    "date": "2025-05-15",
+    "amount": -25000,
+    "payee_name": "Whole Foods Market",
+    "category_id": "{{category_id}}",
+    "memo": "QA test transaction — safe to delete",
+    "cleared": "cleared",
+    "approved": true
+  }
+}
