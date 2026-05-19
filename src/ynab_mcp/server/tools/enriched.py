@@ -21,6 +21,7 @@ from ynab_mcp.enriched.triage import triage_summary, triage_unapproved, triage_u
 from ynab_mcp.server.app import mcp
 from ynab_mcp.server.context import get_app_context
 from ynab_mcp.server.registry import tool_registry
+from ynab_mcp.server.tools.boundary import tool_handler
 
 
 def _reg(name: str, family: str, summary: str) -> None:
@@ -66,6 +67,7 @@ _reg(
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
+@tool_handler
 async def overview_available_tools(plan_id: str | None = None) -> dict[str, Any]:
     by_family = tool_registry.by_family()
     families = {
@@ -97,6 +99,7 @@ async def overview_available_tools(plan_id: str | None = None) -> dict[str, Any]
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
+@tool_handler
 async def overview_budget_snapshot_tool(plan_id: str | None = None) -> dict[str, Any]:
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)
@@ -113,6 +116,7 @@ async def overview_budget_snapshot_tool(plan_id: str | None = None) -> dict[str,
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
+@tool_handler
 async def overview_month_health_tool(
     plan_id: str | None = None,
     month: str | None = None,
@@ -131,6 +135,7 @@ async def overview_month_health_tool(
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
+@tool_handler
 async def overview_cash_position_tool(plan_id: str | None = None) -> dict[str, Any]:
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)
@@ -145,6 +150,7 @@ async def overview_cash_position_tool(plan_id: str | None = None) -> dict[str, A
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
+@tool_handler
 async def triage_summary_tool(plan_id: str | None = None) -> dict[str, Any]:
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)
@@ -159,6 +165,7 @@ async def triage_summary_tool(plan_id: str | None = None) -> dict[str, Any]:
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
+@tool_handler
 async def triage_uncategorized_tool(plan_id: str | None = None) -> dict[str, Any]:
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)
@@ -173,6 +180,7 @@ async def triage_uncategorized_tool(plan_id: str | None = None) -> dict[str, Any
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
+@tool_handler
 async def triage_unapproved_tool(plan_id: str | None = None) -> dict[str, Any]:
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)
@@ -188,6 +196,7 @@ async def triage_unapproved_tool(plan_id: str | None = None) -> dict[str, Any]:
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
+@tool_handler
 async def bookkeeping_categorization_suggestions_tool(plan_id: str | None = None) -> dict[str, Any]:
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)
@@ -203,6 +212,7 @@ async def bookkeeping_categorization_suggestions_tool(plan_id: str | None = None
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
+@tool_handler
 async def bookkeeping_memo_annotation_suggestions_tool(
     plan_id: str | None = None,
     since_date: str | None = None,
@@ -222,6 +232,7 @@ async def bookkeeping_memo_annotation_suggestions_tool(
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
+@tool_handler
 async def bookkeeping_transaction_history_tool(
     plan_id: str | None = None,
     since_date: str | None = None,
@@ -250,6 +261,7 @@ async def bookkeeping_transaction_history_tool(
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
+@tool_handler
 async def analysis_overspent_categories_tool(
     plan_id: str | None = None,
     month: str | None = None,
@@ -268,6 +280,7 @@ async def analysis_overspent_categories_tool(
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
+@tool_handler
 async def analysis_target_funding_gaps_tool(
     plan_id: str | None = None,
     month: str | None = None,
@@ -286,6 +299,7 @@ async def analysis_target_funding_gaps_tool(
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
+@tool_handler
 async def analysis_upcoming_scheduled_risks_tool(
     plan_id: str | None = None,
     lookahead_days: int = 30,

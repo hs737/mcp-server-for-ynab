@@ -10,6 +10,7 @@ from ynab_mcp.models.ynab.payees import SavePayee, SavePayeeWrapper
 from ynab_mcp.server.app import mcp
 from ynab_mcp.server.context import get_app_context
 from ynab_mcp.server.registry import tool_registry
+from ynab_mcp.server.tools.boundary import tool_handler
 
 
 def _reg(name: str, classification: str, summary: str, priority: str = "standard") -> None:
@@ -35,6 +36,7 @@ _reg(
     description=("[READ] List all payees for a plan. Supports delta sync via last_knowledge_of_server."),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
+@tool_handler
 async def payees_list(
     plan_id: str | None = None,
     last_knowledge_of_server: int | None = None,
@@ -50,6 +52,7 @@ async def payees_list(
     description="[READ] Get a single payee by ID.",
     annotations=ToolAnnotations(readOnlyHint=True),
 )
+@tool_handler
 async def payees_get(payee_id: str, plan_id: str | None = None) -> dict[str, Any]:
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)
@@ -66,6 +69,7 @@ async def payees_get(payee_id: str, plan_id: str | None = None) -> dict[str, Any
     ),
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False),
 )
+@tool_handler
 async def payees_create(name: str, plan_id: str | None = None) -> dict[str, Any]:
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)
@@ -79,6 +83,7 @@ async def payees_create(name: str, plan_id: str | None = None) -> dict[str, Any]
     description="[WRITE] Update a payee's name.",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False),
 )
+@tool_handler
 async def payees_update(payee_id: str, name: str, plan_id: str | None = None) -> dict[str, Any]:
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)
@@ -100,6 +105,7 @@ async def payees_update(payee_id: str, name: str, plan_id: str | None = None) ->
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
+@tool_handler
 async def payee_locations_list(plan_id: str | None = None) -> dict[str, Any]:
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)
@@ -115,6 +121,7 @@ async def payee_locations_list(plan_id: str | None = None) -> dict[str, Any]:
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
+@tool_handler
 async def payee_locations_get(payee_location_id: str, plan_id: str | None = None) -> dict[str, Any]:
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)
@@ -130,6 +137,7 @@ async def payee_locations_get(payee_location_id: str, plan_id: str | None = None
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
+@tool_handler
 async def payee_locations_list_for_payee(payee_id: str, plan_id: str | None = None) -> dict[str, Any]:
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)

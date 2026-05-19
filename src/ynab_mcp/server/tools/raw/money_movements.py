@@ -9,6 +9,7 @@ from mcp.types import ToolAnnotations
 from ynab_mcp.server.app import mcp
 from ynab_mcp.server.context import get_app_context
 from ynab_mcp.server.registry import tool_registry
+from ynab_mcp.server.tools.boundary import tool_handler
 
 
 def _reg(name: str, summary: str) -> None:
@@ -30,6 +31,7 @@ _reg("money_movement_groups_list_by_month", "List money movement groups for a sp
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
+@tool_handler
 async def money_movements_list(
     plan_id: str | None = None,
     last_knowledge_of_server: int | None = None,
@@ -49,6 +51,7 @@ async def money_movements_list(
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
+@tool_handler
 async def money_movements_list_by_month(
     month: str,
     plan_id: str | None = None,
@@ -69,6 +72,7 @@ async def money_movements_list_by_month(
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
+@tool_handler
 async def money_movement_groups_list(
     plan_id: str | None = None,
     last_knowledge_of_server: int | None = None,
@@ -88,6 +92,7 @@ async def money_movement_groups_list(
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
+@tool_handler
 async def money_movement_groups_list_by_month(
     month: str,
     plan_id: str | None = None,

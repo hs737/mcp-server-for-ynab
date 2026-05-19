@@ -2,6 +2,10 @@
 
 Creates the single FastMCP instance and registers all tools against it.
 Imported by the CLI entrypoint and by integration tests.
+
+SDK note: FastMCP ships inside the official Anthropic `mcp` package (>=1.0).
+The import path `mcp.server.fastmcp` is the correct, locked path — this is NOT
+the standalone `fastmcp` PyPI package. pyproject.toml pins `mcp>=1.27.1`.
 """
 
 from __future__ import annotations

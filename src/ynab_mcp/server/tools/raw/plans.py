@@ -9,6 +9,7 @@ from mcp.types import ToolAnnotations
 from ynab_mcp.server.app import mcp
 from ynab_mcp.server.context import get_app_context
 from ynab_mcp.server.registry import tool_registry
+from ynab_mcp.server.tools.boundary import tool_handler
 
 
 def _reg(name: str, classification: str, summary: str) -> None:
@@ -25,6 +26,7 @@ _reg("plans_get_settings", "read", "Get plan settings (currency/date format). Na
     description="[READ] List all YNAB plans (budgets) available to the authenticated user.",
     annotations=ToolAnnotations(readOnlyHint=True),
 )
+@tool_handler
 async def plans_list() -> dict[str, Any]:
     ctx = get_app_context()
     result = await ctx.plans.list()
@@ -40,6 +42,7 @@ async def plans_list() -> dict[str, Any]:
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
+@tool_handler
 async def plans_get(
     plan_id: str | None = None,
     last_knowledge_of_server: int | None = None,
@@ -59,6 +62,7 @@ async def plans_get(
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
+@tool_handler
 async def plans_get_settings(plan_id: str | None = None) -> dict[str, Any]:
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)

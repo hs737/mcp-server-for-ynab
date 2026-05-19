@@ -10,6 +10,7 @@ from ynab_mcp.models.ynab.accounts import AccountType, SaveAccount, SaveAccountW
 from ynab_mcp.server.app import mcp
 from ynab_mcp.server.context import get_app_context
 from ynab_mcp.server.registry import tool_registry
+from ynab_mcp.server.tools.boundary import tool_handler
 
 
 def _reg(name: str, classification: str, summary: str) -> None:
@@ -30,6 +31,7 @@ _reg("accounts_create", "write", "Create a new account. [WRITE]")
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
+@tool_handler
 async def accounts_list(
     plan_id: str | None = None,
     last_knowledge_of_server: int | None = None,
@@ -45,6 +47,7 @@ async def accounts_list(
     description="[READ] Get a single account by ID. Balance is in milliunits (1000 = $1.00).",
     annotations=ToolAnnotations(readOnlyHint=True),
 )
+@tool_handler
 async def accounts_get(account_id: str, plan_id: str | None = None) -> dict[str, Any]:
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)
@@ -63,6 +66,7 @@ async def accounts_get(account_id: str, plan_id: str | None = None) -> dict[str,
     ),
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False),
 )
+@tool_handler
 async def accounts_create(
     name: str,
     type: str,

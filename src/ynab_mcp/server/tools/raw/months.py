@@ -9,6 +9,7 @@ from mcp.types import ToolAnnotations
 from ynab_mcp.server.app import mcp
 from ynab_mcp.server.context import get_app_context
 from ynab_mcp.server.registry import tool_registry
+from ynab_mcp.server.tools.boundary import tool_handler
 
 
 def _reg(name: str, summary: str) -> None:
@@ -28,6 +29,7 @@ _reg("months_get", "Get full month data including all categories.")
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
+@tool_handler
 async def months_list(
     plan_id: str | None = None,
     last_knowledge_of_server: int | None = None,
@@ -48,6 +50,7 @@ async def months_list(
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
+@tool_handler
 async def months_get(month: str, plan_id: str | None = None) -> dict[str, Any]:
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)

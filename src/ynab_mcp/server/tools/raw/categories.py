@@ -15,6 +15,7 @@ from ynab_mcp.models.ynab.categories import (
 from ynab_mcp.server.app import mcp
 from ynab_mcp.server.context import get_app_context
 from ynab_mcp.server.registry import tool_registry
+from ynab_mcp.server.tools.boundary import tool_handler
 
 
 def _reg(name: str, classification: str, summary: str) -> None:
@@ -45,6 +46,7 @@ _reg("category_groups_update", "write", "Update a category group. [WRITE]")
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
+@tool_handler
 async def categories_list(
     plan_id: str | None = None,
     last_knowledge_of_server: int | None = None,
@@ -60,6 +62,7 @@ async def categories_list(
     description="[READ] Get a single category by ID. Amounts are in milliunits (1000 = $1.00).",
     annotations=ToolAnnotations(readOnlyHint=True),
 )
+@tool_handler
 async def categories_get(category_id: str, plan_id: str | None = None) -> dict[str, Any]:
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)
@@ -76,6 +79,7 @@ async def categories_get(category_id: str, plan_id: str | None = None) -> dict[s
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
+@tool_handler
 async def categories_get_for_month(
     month: str,
     category_id: str,
@@ -92,6 +96,7 @@ async def categories_get_for_month(
     description="[WRITE] Create a new category. budgeted amount is in milliunits (1000 = $1.00).",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False),
 )
+@tool_handler
 async def categories_create(
     name: str,
     plan_id: str | None = None,
@@ -111,6 +116,7 @@ async def categories_create(
     ),
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False),
 )
+@tool_handler
 async def categories_update(
     category_id: str,
     plan_id: str | None = None,
@@ -134,6 +140,7 @@ async def categories_update(
     ),
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False),
 )
+@tool_handler
 async def categories_update_for_month(
     month: str,
     category_id: str,
@@ -152,6 +159,7 @@ async def categories_update_for_month(
     description="[WRITE] Create a new category group.",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False),
 )
+@tool_handler
 async def category_groups_create(name: str, plan_id: str | None = None) -> dict[str, Any]:
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)
@@ -165,6 +173,7 @@ async def category_groups_create(name: str, plan_id: str | None = None) -> dict[
     description=("[WRITE] Update a category group. Note: YNAB does not support deleting category groups via the API."),
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False),
 )
+@tool_handler
 async def category_groups_update(
     category_group_id: str,
     name: str,

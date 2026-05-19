@@ -17,6 +17,7 @@ from ynab_mcp.models.ynab.transactions import (
 from ynab_mcp.server.app import mcp
 from ynab_mcp.server.context import get_app_context
 from ynab_mcp.server.registry import tool_registry
+from ynab_mcp.server.tools.boundary import tool_handler
 
 
 def _reg(name: str, classification: str, summary: str) -> None:
@@ -48,6 +49,7 @@ _reg("transactions_trigger_import", "write", "Trigger YNAB import from linked ac
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
+@tool_handler
 async def transactions_list(
     plan_id: str | None = None,
     since_date: str | None = None,
@@ -70,6 +72,7 @@ async def transactions_list(
     description=("[READ] List transactions for a specific account. Amounts are in milliunits. Supports delta sync."),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
+@tool_handler
 async def transactions_list_by_account(
     account_id: str,
     plan_id: str | None = None,
@@ -94,6 +97,7 @@ async def transactions_list_by_account(
     description="[READ] List transactions for a specific category. Amounts in milliunits.",
     annotations=ToolAnnotations(readOnlyHint=True),
 )
+@tool_handler
 async def transactions_list_by_category(
     category_id: str,
     plan_id: str | None = None,
@@ -118,6 +122,7 @@ async def transactions_list_by_category(
     description="[READ] List transactions for a specific payee. Amounts in milliunits.",
     annotations=ToolAnnotations(readOnlyHint=True),
 )
+@tool_handler
 async def transactions_list_by_payee(
     payee_id: str,
     plan_id: str | None = None,
@@ -146,6 +151,7 @@ async def transactions_list_by_payee(
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
+@tool_handler
 async def transactions_list_by_month(
     month: str,
     plan_id: str | None = None,
@@ -175,6 +181,7 @@ async def transactions_list_by_month(
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
+@tool_handler
 async def transactions_get(transaction_id: str, plan_id: str | None = None) -> dict[str, Any]:
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)
@@ -193,6 +200,7 @@ async def transactions_get(transaction_id: str, plan_id: str | None = None) -> d
     ),
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False),
 )
+@tool_handler
 async def transactions_create(
     account_id: str,
     date: str,
@@ -237,6 +245,7 @@ async def transactions_create(
     ),
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False),
 )
+@tool_handler
 async def transactions_update(
     transaction_id: str,
     account_id: str,
@@ -282,6 +291,7 @@ async def transactions_update(
     ),
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False),
 )
+@tool_handler
 async def transactions_bulk_update(
     transactions: list[dict[str, Any]],
     plan_id: str | None = None,
@@ -303,6 +313,7 @@ async def transactions_bulk_update(
     ),
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True),
 )
+@tool_handler
 async def transactions_delete(transaction_id: str, plan_id: str | None = None) -> dict[str, Any]:
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)
@@ -320,6 +331,7 @@ async def transactions_delete(transaction_id: str, plan_id: str | None = None) -
     ),
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False),
 )
+@tool_handler
 async def transactions_trigger_import(plan_id: str | None = None) -> dict[str, Any]:
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)

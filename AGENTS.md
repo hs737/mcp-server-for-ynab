@@ -63,6 +63,12 @@ Every registered tool carries:
 - If you add a tool that involves amounts, document the milliunit requirement explicitly in the tool description.
 - Any future convenience dollar-input mode must be opt-in, clearly named, and routed through `models.amounts.dollars_to_milliunits()`.
 
+## MCP SDK
+
+FastMCP ships inside the official Anthropic `mcp` package. The import path
+`from mcp.server.fastmcp import FastMCP` is correct — this is **not** the
+standalone `fastmcp` PyPI package. `pyproject.toml` pins `mcp>=1.27.1`.
+
 ## Shared error shape
 
 All tool failures return a consistent structure. Never invent a different top-level error contract.
@@ -82,6 +88,23 @@ class YnabMcpError(BaseModel):
 `conflict`, `transport_error`, `ynab_api_error`, `internal_error`
 
 For 429 responses, always set `retry_after` when the YNAB API provides it.
+
+### Error boundary
+
+Every tool handler is wrapped with `@tool_handler` from `server/tools/boundary.py`.
+This decorator catches `YnabMcpException` (from the HTTP client), `ConfigError`
+(from missing plan_id / bad config), and any unexpected exception, converting all
+of them to `{"error": YnabMcpError.model_dump()}` before returning to the MCP layer.
+AI agents therefore always receive a dict — never a raw exception.
+
+Decoration order (outer-to-inner):
+
+```python
+@mcp.tool(name="...", ...)
+@tool_handler
+async def some_tool(...) -> dict[str, Any]:
+    ...
+```
 
 ## Default plan behavior
 

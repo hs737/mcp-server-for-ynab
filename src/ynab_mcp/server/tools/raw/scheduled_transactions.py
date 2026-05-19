@@ -15,6 +15,7 @@ from ynab_mcp.models.ynab.transactions import FlagColor
 from ynab_mcp.server.app import mcp
 from ynab_mcp.server.context import get_app_context
 from ynab_mcp.server.registry import tool_registry
+from ynab_mcp.server.tools.boundary import tool_handler
 
 
 def _reg(name: str, classification: str, summary: str) -> None:
@@ -38,6 +39,7 @@ _reg("scheduled_transactions_delete", "write", "Delete a scheduled transaction. 
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
+@tool_handler
 async def scheduled_transactions_list(
     plan_id: str | None = None,
     last_knowledge_of_server: int | None = None,
@@ -53,6 +55,7 @@ async def scheduled_transactions_list(
     description=("[READ] Get a single scheduled transaction by ID. Amount is in milliunits (1000 = $1.00)."),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
+@tool_handler
 async def scheduled_transactions_get(scheduled_transaction_id: str, plan_id: str | None = None) -> dict[str, Any]:
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)
@@ -71,6 +74,7 @@ async def scheduled_transactions_get(scheduled_transaction_id: str, plan_id: str
     ),
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False),
 )
+@tool_handler
 async def scheduled_transactions_create(
     account_id: str,
     date: str,
@@ -107,6 +111,7 @@ async def scheduled_transactions_create(
     description=("[WRITE] Update a scheduled transaction. amount: milliunits (1000 = $1.00)."),
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False),
 )
+@tool_handler
 async def scheduled_transactions_update(
     scheduled_transaction_id: str,
     account_id: str,
@@ -144,6 +149,7 @@ async def scheduled_transactions_update(
     description="[WRITE] Delete a scheduled transaction.",
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True),
 )
+@tool_handler
 async def scheduled_transactions_delete(scheduled_transaction_id: str, plan_id: str | None = None) -> dict[str, Any]:
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)
