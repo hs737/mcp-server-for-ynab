@@ -11,9 +11,7 @@ from ynab_mcp.ynab_client.base import BaseClient
 
 
 class PayeesClient(BaseClient):
-    async def list(
-        self, plan_id: str, *, last_knowledge_of_server: int | None = None
-    ) -> PayeesResponse:
+    async def list(self, plan_id: str, *, last_knowledge_of_server: int | None = None) -> PayeesResponse:
         """GET /budgets/{id}/payees — [READ] List all payees."""
         params = {}
         if last_knowledge_of_server is not None:
@@ -38,9 +36,7 @@ class PayeesClient(BaseClient):
         )
         return PayeeResponse.model_validate(data)
 
-    async def update(
-        self, plan_id: str, payee_id: str, payload: SavePayeeWrapper
-    ) -> PayeeResponse:
+    async def update(self, plan_id: str, payee_id: str, payload: SavePayeeWrapper) -> PayeeResponse:
         """PATCH /budgets/{id}/payees/{payee_id} — [WRITE] Update a payee."""
         data = await self._http.patch(
             f"/budgets/{plan_id}/payees/{payee_id}",
@@ -63,20 +59,14 @@ class PayeesClient(BaseClient):
 
     async def get_location(self, plan_id: str, payee_location_id: str) -> PayeeLocationResponse:
         """GET /budgets/{id}/payee_locations/{id} — [READ] Get a single payee location."""
-        data = await self._http.get(
-            f"/budgets/{plan_id}/payee_locations/{payee_location_id}"
-        )
+        data = await self._http.get(f"/budgets/{plan_id}/payee_locations/{payee_location_id}")
         return PayeeLocationResponse.model_validate(data)
 
-    async def list_locations_for_payee(
-        self, plan_id: str, payee_id: str
-    ) -> PayeeLocationsResponse:
+    async def list_locations_for_payee(self, plan_id: str, payee_id: str) -> PayeeLocationsResponse:
         """GET /budgets/{id}/payees/{payee_id}/payee_locations — [READ]
 
         List all locations for a specific payee.
         Low priority: location data is geographic (lat/lon) from bank imports.
         """
-        data = await self._http.get(
-            f"/budgets/{plan_id}/payees/{payee_id}/payee_locations"
-        )
+        data = await self._http.get(f"/budgets/{plan_id}/payees/{payee_id}/payee_locations")
         return PayeeLocationsResponse.model_validate(data)

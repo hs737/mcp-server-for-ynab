@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel
 
 
-class ErrorType(str, Enum):
+class ErrorType(StrEnum):
     AUTH_FAILURE = "auth_failure"
     RATE_LIMITED = "rate_limited"
     NOT_FOUND = "not_found"
@@ -34,11 +34,11 @@ class YnabMcpError(BaseModel):
     ynab_error_id: str | None = None
 
     @classmethod
-    def auth_failure(cls, message: str = "Authentication failed.") -> "YnabMcpError":
+    def auth_failure(cls, message: str = "Authentication failed.") -> YnabMcpError:
         return cls(error_type=ErrorType.AUTH_FAILURE, message=message, status_code=401)
 
     @classmethod
-    def rate_limited(cls, retry_after: int | None = None) -> "YnabMcpError":
+    def rate_limited(cls, retry_after: int | None = None) -> YnabMcpError:
         return cls(
             error_type=ErrorType.RATE_LIMITED,
             message="YNAB API rate limit reached. Retry after the indicated delay.",
@@ -47,7 +47,7 @@ class YnabMcpError(BaseModel):
         )
 
     @classmethod
-    def not_found(cls, resource: str = "resource") -> "YnabMcpError":
+    def not_found(cls, resource: str = "resource") -> YnabMcpError:
         return cls(
             error_type=ErrorType.NOT_FOUND,
             message=f"The requested {resource} was not found.",
@@ -55,7 +55,7 @@ class YnabMcpError(BaseModel):
         )
 
     @classmethod
-    def validation_error(cls, message: str) -> "YnabMcpError":
+    def validation_error(cls, message: str) -> YnabMcpError:
         return cls(error_type=ErrorType.VALIDATION_ERROR, message=message)
 
     @classmethod
@@ -66,7 +66,7 @@ class YnabMcpError(BaseModel):
         error_id: str | None = None,
         detail: str | None = None,
         retry_after: int | None = None,
-    ) -> "YnabMcpError":
+    ) -> YnabMcpError:
         """Map a YNAB API error response to the shared error shape."""
         if status_code == 401:
             error_type = ErrorType.AUTH_FAILURE
@@ -92,3 +92,15 @@ class YnabMcpError(BaseModel):
             ynab_error_name=error_name,
             ynab_error_id=error_id,
         )
+
+
+class YnabMcpException(Exception):
+    """Raised by the HTTP client and ynab_client layer on API failures.
+
+    Carries a structured YnabMcpError payload so tool handlers can either
+    propagate the exception or serialize error.model_dump() back to the agent.
+    """
+
+    def __init__(self, error: YnabMcpError) -> None:
+        self.error = error
+        super().__init__(error.message)

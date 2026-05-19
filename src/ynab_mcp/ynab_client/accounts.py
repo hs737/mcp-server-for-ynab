@@ -10,9 +10,7 @@ from ynab_mcp.ynab_client.base import BaseClient
 
 
 class AccountsClient(BaseClient):
-    async def list(
-        self, plan_id: str, *, last_knowledge_of_server: int | None = None
-    ) -> AccountsResponse:
+    async def list(self, plan_id: str, *, last_knowledge_of_server: int | None = None) -> AccountsResponse:
         """GET /budgets/{id}/accounts — [READ] List all accounts for a plan."""
         params = {}
         if last_knowledge_of_server is not None:

@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 from ynab_mcp.models.ynab.common import YnabBaseModel
 from ynab_mcp.models.ynab.transactions import FlagColor, SubTransaction
 
 
-class Frequency(str, Enum):
+class Frequency(StrEnum):
     NEVER = "never"
     DAILY = "daily"
     WEEKLY = "weekly"
@@ -39,7 +39,7 @@ class ScheduledTransaction(YnabBaseModel):
     category_name: str | None = None
     transfer_account_id: str | None = None
     deleted: bool
-    subtransactions: list[SubTransaction] = []
+    subtransactions: list[SubTransaction] = []  # noqa: RUF012
 
 
 class ScheduledTransactionsResponse(YnabBaseModel):

@@ -1,17 +1,17 @@
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 from ynab_mcp.models.ynab.common import YnabBaseModel
 
 
-class ClearedStatus(str, Enum):
+class ClearedStatus(StrEnum):
     CLEARED = "cleared"
     UNCLEARED = "uncleared"
     RECONCILED = "reconciled"
 
 
-class FlagColor(str, Enum):
+class FlagColor(StrEnum):
     RED = "red"
     ORANGE = "orange"
     YELLOW = "yellow"
@@ -64,7 +64,7 @@ class TransactionBase(YnabBaseModel):
 class Transaction(TransactionBase):
     """Full transaction detail, including subtransactions."""
 
-    subtransactions: list[SubTransaction] = []
+    subtransactions: list[SubTransaction] = []  # noqa: RUF012
 
 
 class TransactionSummary(TransactionBase):

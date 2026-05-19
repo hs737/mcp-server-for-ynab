@@ -5,9 +5,7 @@ from ynab_mcp.ynab_client.base import BaseClient
 
 
 class MonthsClient(BaseClient):
-    async def list(
-        self, plan_id: str, *, last_knowledge_of_server: int | None = None
-    ) -> MonthsResponse:
+    async def list(self, plan_id: str, *, last_knowledge_of_server: int | None = None) -> MonthsResponse:
         """GET /budgets/{id}/months — [READ] List all budget months (summaries)."""
         params = {}
         if last_knowledge_of_server is not None:

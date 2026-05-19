@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ynab_mcp.models.ynab.plans import PlanResponse, PlansResponse, PlanSettingsResponse
+from ynab_mcp.models.ynab.plans import PlanResponse, PlanSettingsResponse, PlansResponse
 from ynab_mcp.ynab_client.base import BaseClient
 
 

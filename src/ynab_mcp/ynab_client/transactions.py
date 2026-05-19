@@ -3,8 +3,8 @@ from __future__ import annotations
 from ynab_mcp.models.ynab.transactions import (
     BulkTransactionResponse,
     ImportResponse,
-    SaveTransactionWrapper,
     SaveTransactionsWrapper,
+    SaveTransactionWrapper,
     TransactionResponse,
     TransactionsResponse,
     UpdateTransactionsWrapper,
@@ -137,9 +137,7 @@ class TransactionsClient(BaseClient):
         data = await self._http.get(f"/budgets/{plan_id}/transactions/{transaction_id}")
         return TransactionResponse.model_validate(data)
 
-    async def create(
-        self, plan_id: str, payload: SaveTransactionWrapper
-    ) -> TransactionResponse:
+    async def create(self, plan_id: str, payload: SaveTransactionWrapper) -> TransactionResponse:
         """POST /budgets/{id}/transactions — [WRITE] Create a single transaction.
 
         All amounts must be in milliunits (1000 = $1.00).
@@ -152,9 +150,7 @@ class TransactionsClient(BaseClient):
         )
         return TransactionResponse.model_validate(data)
 
-    async def create_many(
-        self, plan_id: str, payload: SaveTransactionsWrapper
-    ) -> BulkTransactionResponse:
+    async def create_many(self, plan_id: str, payload: SaveTransactionsWrapper) -> BulkTransactionResponse:
         """POST /budgets/{id}/transactions (multiple) — [WRITE] Create multiple transactions.
 
         IMPORTANT: This operation is NOT atomic. Check duplicate_import_ids in the
@@ -166,9 +162,7 @@ class TransactionsClient(BaseClient):
         )
         return BulkTransactionResponse.model_validate(data)
 
-    async def update(
-        self, plan_id: str, transaction_id: str, payload: SaveTransactionWrapper
-    ) -> TransactionResponse:
+    async def update(self, plan_id: str, transaction_id: str, payload: SaveTransactionWrapper) -> TransactionResponse:
         """PUT /budgets/{id}/transactions/{transaction_id} — [WRITE] Update a transaction.
 
         All amounts must be in milliunits.
@@ -179,9 +173,7 @@ class TransactionsClient(BaseClient):
         )
         return TransactionResponse.model_validate(data)
 
-    async def bulk_update(
-        self, plan_id: str, payload: UpdateTransactionsWrapper
-    ) -> BulkTransactionResponse:
+    async def bulk_update(self, plan_id: str, payload: UpdateTransactionsWrapper) -> BulkTransactionResponse:
         """PATCH /budgets/{id}/transactions — [WRITE] Update multiple transactions.
 
         IMPORTANT: Bulk update is NOT atomic. The response contains transaction_ids

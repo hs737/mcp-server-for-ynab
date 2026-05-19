@@ -17,7 +17,7 @@ from typing import Any
 import httpx
 
 from ynab_mcp.auth.base import AuthProvider
-from ynab_mcp.models.errors import YnabMcpError
+from ynab_mcp.models.errors import ErrorType, YnabMcpError, YnabMcpException
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +87,7 @@ class YnabHttpClient:
             except httpx.TransportError as exc:
                 last_error = exc
                 if attempt < _MAX_RETRIES:
-                    wait = _BACKOFF_BASE * (2 ** attempt)
+                    wait = _BACKOFF_BASE * (2**attempt)
                     logger.warning(
                         "Transport error on %s %s (attempt %d/%d), retrying in %.1fs: %s",
                         method,
@@ -99,9 +99,11 @@ class YnabHttpClient:
                     )
                     await asyncio.sleep(wait)
                     continue
-                raise YnabMcpError(
-                    error_type="transport_error",
-                    message=f"Network error communicating with YNAB API: {exc}",
+                raise YnabMcpException(
+                    YnabMcpError(
+                        error_type=ErrorType.TRANSPORT_ERROR,
+                        message=f"Network error communicating with YNAB API: {exc}",
+                    )
                 ) from exc
 
             logger.debug(
@@ -120,12 +122,12 @@ class YnabHttpClient:
                         retry_after = int(raw_retry)
                     except ValueError:
                         pass
-                raise YnabMcpError.rate_limited(retry_after=retry_after)
+                raise YnabMcpException(YnabMcpError.rate_limited(retry_after=retry_after))
 
             if response.status_code in _RETRYABLE_STATUS_CODES:
                 last_error = Exception(f"HTTP {response.status_code}")
                 if attempt < _MAX_RETRIES:
-                    wait = _BACKOFF_BASE * (2 ** attempt)
+                    wait = _BACKOFF_BASE * (2**attempt)
                     logger.warning(
                         "Retryable error %d on %s %s (attempt %d/%d), retrying in %.1fs",
                         response.status_code,
@@ -145,18 +147,22 @@ class YnabHttpClient:
                 except Exception:
                     pass
                 error_detail = error_body.get("error", {})
-                raise YnabMcpError.from_ynab_response(
-                    status_code=response.status_code,
-                    error_name=error_detail.get("name") if isinstance(error_detail, dict) else None,
-                    error_id=error_detail.get("id") if isinstance(error_detail, dict) else None,
-                    detail=error_detail.get("detail") if isinstance(error_detail, dict) else None,
+                raise YnabMcpException(
+                    YnabMcpError.from_ynab_response(
+                        status_code=response.status_code,
+                        error_name=error_detail.get("name") if isinstance(error_detail, dict) else None,
+                        error_id=error_detail.get("id") if isinstance(error_detail, dict) else None,
+                        detail=error_detail.get("detail") if isinstance(error_detail, dict) else None,
+                    )
                 )
 
-            return response.json()
+            return response.json()  # type: ignore[no-any-return]
 
-        raise YnabMcpError(
-            error_type="transport_error",
-            message=f"Request failed after {_MAX_RETRIES} retries: {last_error}",
+        raise YnabMcpException(
+            YnabMcpError(
+                error_type=ErrorType.TRANSPORT_ERROR,
+                message=f"Request failed after {_MAX_RETRIES} retries: {last_error}",
+            )
         )
 
     async def get(self, path: str, *, params: dict[str, Any] | None = None) -> dict[str, Any]:

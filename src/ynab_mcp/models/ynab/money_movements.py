@@ -17,7 +17,7 @@ class MoneyMovementGroup(YnabBaseModel):
     id: str
     name: str
     amount: int  # milliunits
-    money_movements: list[MoneyMovement] = []
+    money_movements: list[MoneyMovement] = []  # noqa: RUF012
 
 
 class MoneyMovementsResponse(YnabBaseModel):

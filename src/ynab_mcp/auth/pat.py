@@ -13,9 +13,7 @@ class PatAuthProvider:
 
     def __init__(self, settings: Settings) -> None:
         if not settings.ynab_api_key:
-            raise ConfigError(
-                "YNAB_API_KEY is required for PAT auth but is not set."
-            )
+            raise ConfigError("YNAB_API_KEY is required for PAT auth but is not set.")
         self._token = settings.ynab_api_key
 
     async def get_access_token(self) -> str:

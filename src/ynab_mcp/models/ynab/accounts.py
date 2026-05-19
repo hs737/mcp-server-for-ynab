@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 from ynab_mcp.models.ynab.common import YnabBaseModel
 
 
-class AccountType(str, Enum):
+class AccountType(StrEnum):
     CHECKING = "checking"
     SAVINGS = "savings"
     CASH = "cash"

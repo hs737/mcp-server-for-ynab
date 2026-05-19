@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 from ynab_mcp.models.ynab.common import YnabBaseModel
 
 
-class GoalType(str, Enum):
+class GoalType(StrEnum):
     TARGET_BALANCE = "TB"
     TARGET_BALANCE_BY_DATE = "TBD"
     MONTHLY_FUNDING = "MF"

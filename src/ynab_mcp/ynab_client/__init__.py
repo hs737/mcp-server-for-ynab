@@ -9,13 +9,13 @@ from ynab_mcp.ynab_client.transactions import TransactionsClient
 from ynab_mcp.ynab_client.user import UserClient
 
 __all__ = [
-    "UserClient",
-    "PlansClient",
     "AccountsClient",
     "CategoriesClient",
+    "MoneyMovementsClient",
     "MonthsClient",
     "PayeesClient",
-    "TransactionsClient",
+    "PlansClient",
     "ScheduledTransactionsClient",
-    "MoneyMovementsClient",
+    "TransactionsClient",
+    "UserClient",
 ]

@@ -34,8 +34,7 @@ class Settings:
         value = os.environ.get(name)
         if not value:
             raise ConfigError(
-                f"Required environment variable {name!r} is not set. "
-                f"See .env.example for setup instructions."
+                f"Required environment variable {name!r} is not set. See .env.example for setup instructions."
             )
         return value
 

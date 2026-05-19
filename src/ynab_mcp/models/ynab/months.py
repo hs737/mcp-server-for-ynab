@@ -13,7 +13,7 @@ class Month(YnabBaseModel):
     to_be_budgeted: int  # milliunits
     age_of_money: int | None = None
     deleted: bool
-    categories: list[Category] = []
+    categories: list[Category] = []  # noqa: RUF012
 
 
 class MonthSummary(YnabBaseModel):
