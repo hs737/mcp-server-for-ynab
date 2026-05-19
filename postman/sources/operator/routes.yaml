@@ -1,0 +1,847 @@
+---
+# Canonical source for the YNAB Operator Postman collection.
+# Edit this file to add routes, descriptions, or examples.
+# Run: uv run python scripts/generate_operator_collection.py
+#
+# IMPORTANT: This file is the source of truth.
+# Do not hand-edit the generated collection JSON directly.
+# Changes to generated JSON will be overwritten on the next generation run.
+
+collection:
+  name: "YNAB API — Operator"
+  description: |
+    Human-facing operational collection for the YNAB API as consumed by ynab-mcp.
+
+    Use this collection to:
+    - Discover what routes exist and what they return
+    - Manually explore a budget and inspect live data
+    - Debug tool failures by isolating the underlying API call
+    - Verify authentication and plan-id configuration
+
+    Authentication: All requests require a YNAB Personal Access Token (PAT).
+    Set `api_key` in your active Postman environment.
+
+    Amounts: YNAB stores all monetary values in milliunits (1000 = $1.00).
+
+    Delta sync: Many list endpoints accept `last_knowledge_of_server`.
+    Save the `server_knowledge` value from any response and pass it back
+    to fetch only changed records since that point.
+
+    Safety: Requests tagged [WRITE] create or modify durable data.
+    Read requests are safe to run at any time.
+
+# ---------------------------------------------------------------------------
+# Folder definitions
+# Each folder becomes a top-level group in the Postman collection.
+# Routes within a folder inherit the folder's auth header.
+# ---------------------------------------------------------------------------
+
+folders:
+
+  # -------------------------------------------------------------------------
+  # User
+  # -------------------------------------------------------------------------
+  - name: "User"
+    description: "Verify the authenticated identity of the PAT being used."
+    routes:
+      - name: "Get Authenticated User"
+        method: GET
+        path: /user
+        classification: read
+        smoke_check: true
+        description: |
+          Returns the user object associated with the current PAT.
+          Useful for verifying that the API key is valid before running
+          other requests. A 401 here means the api_key variable is wrong
+          or the PAT has been revoked.
+
+          Key fields: id, username.
+
+  # -------------------------------------------------------------------------
+  # Plans (Budgets)
+  # -------------------------------------------------------------------------
+  - name: "Plans"
+    description: |
+      A "plan" is what YNAB calls a "budget." All budget-scoped routes
+      require a plan_id. Set the `plan_id` environment variable to avoid
+      pasting it into every request.
+    routes:
+      - name: "List Plans"
+        method: GET
+        path: /budgets
+        classification: read
+        smoke_check: true
+        description: |
+          Returns all budgets accessible to the authenticated user.
+          Run this first to find your plan_id. Copy it into the `plan_id`
+          environment variable so other requests can use it via {{plan_id}}.
+
+          Key fields: data.budgets[].id, data.budgets[].name,
+          data.budgets[].last_modified_on.
+
+      - name: "Get Plan Detail"
+        method: GET
+        path: /budgets/{{plan_id}}
+        classification: read
+        smoke_check: true
+        description: |
+          Returns a single plan with all embedded data: accounts, categories,
+          months, payees, and transactions. This is a heavy response.
+
+          Pass `last_knowledge_of_server` to request only changes since the
+          last fetch — the server returns `server_knowledge` you can use
+          in the next call.
+
+          Key fields: data.budget.id, data.budget.name,
+          data.budget.currency_format, data.server_knowledge.
+        query_params:
+          - key: last_knowledge_of_server
+            example: ""
+            description: "Omit for full fetch. Pass saved server_knowledge for delta sync."
+            required: false
+
+      - name: "Get Plan (Delta Sync)"
+        method: GET
+        path: /budgets/{{plan_id}}
+        classification: read
+        description: |
+          Same as Get Plan Detail but demonstrates delta sync usage.
+          Set last_knowledge_of_server to a previously saved server_knowledge
+          value. The response contains only data that changed since that point.
+          Save the new server_knowledge from the response for the next call.
+
+          Use this pattern when polling for changes to avoid full budget downloads.
+        query_params:
+          - key: last_knowledge_of_server
+            example: "{{last_knowledge_of_server}}"
+            description: "Server knowledge from a previous response."
+            required: true
+
+      - name: "Get Plan Settings"
+        method: GET
+        path: /budgets/{{plan_id}}/settings
+        classification: read
+        description: |
+          Returns currency format and date format settings for the plan.
+          Use this to determine how to format amounts and dates when displaying
+          data to a user. The currency_format.iso_code field gives the ISO
+          currency code (e.g. USD, EUR).
+
+          Key fields: data.settings.date_format.format,
+          data.settings.currency_format.iso_code,
+          data.settings.currency_format.symbol.
+
+  # -------------------------------------------------------------------------
+  # Accounts
+  # -------------------------------------------------------------------------
+  - name: "Accounts"
+    description: |
+      Accounts represent bank accounts, credit cards, loans, and assets
+      tracked within a plan. Balances are in milliunits.
+    routes:
+      - name: "List Accounts"
+        method: GET
+        path: /budgets/{{plan_id}}/accounts
+        classification: read
+        smoke_check: true
+        description: |
+          Returns all accounts for the plan. Includes balance, cleared_balance,
+          uncleared_balance, and account type. Closed accounts are included
+          unless filtered. Supports delta sync.
+
+          Key fields: data.accounts[].id, data.accounts[].name,
+          data.accounts[].type, data.accounts[].balance,
+          data.accounts[].transfer_payee_id (needed for transfer transactions).
+        query_params:
+          - key: last_knowledge_of_server
+            example: ""
+            description: "Delta sync — omit for full list."
+            required: false
+
+      - name: "Get Account"
+        method: GET
+        path: /budgets/{{plan_id}}/accounts/{{account_id}}
+        classification: read
+        description: |
+          Returns a single account by ID. Useful for inspecting the
+          transfer_payee_id of a specific account — needed when creating
+          transfer transactions via the transactions API.
+
+          Key fields: data.account.id, data.account.name, data.account.balance,
+          data.account.transfer_payee_id, data.account.direct_import_linked.
+
+      - name: "Create Account [WRITE]"
+        method: POST
+        path: /budgets/{{plan_id}}/accounts
+        classification: write
+        description: |
+          Creates a new account. Note: this creates a durable account in YNAB.
+          Choose account_type carefully — it cannot be changed after creation.
+
+          account_type values: checking, savings, creditCard, cash, lineOfCredit,
+          otherAsset, otherLiability, mortgage, autoLoan, studentLoan, personalLoan,
+          medicalDebt, otherDebt.
+
+          balance: opening balance in milliunits.
+        body:
+          account:
+            name: "Test Checking Account"
+            type: "checking"
+            balance: 0
+
+  # -------------------------------------------------------------------------
+  # Categories
+  # -------------------------------------------------------------------------
+  - name: "Categories"
+    description: |
+      Categories organize spending. They live inside category groups.
+      Each category tracks budgeted, activity (spending), and balance.
+      Goal-related fields track funding targets.
+    routes:
+      - name: "List Categories"
+        method: GET
+        path: /budgets/{{plan_id}}/categories
+        classification: read
+        smoke_check: true
+        description: |
+          Returns all categories grouped by category group. The response
+          structure is data.category_groups[].categories[]. Use this to
+          map category names to IDs for downstream requests.
+
+          Key fields: data.category_groups[].id,
+          data.category_groups[].categories[].id,
+          data.category_groups[].categories[].name,
+          data.category_groups[].categories[].budgeted,
+          data.category_groups[].categories[].activity,
+          data.category_groups[].categories[].balance.
+        query_params:
+          - key: last_knowledge_of_server
+            example: ""
+            description: "Delta sync — omit for full list."
+            required: false
+
+      - name: "Get Category"
+        method: GET
+        path: /budgets/{{plan_id}}/categories/{{category_id}}
+        classification: read
+        description: |
+          Returns a single category. Includes the current month's budgeted,
+          activity, and balance values. Also includes goal fields if a funding
+          target is set: goal_type, goal_target, goal_percentage_complete,
+          goal_under_funded.
+
+          Key fields: data.category.id, data.category.name,
+          data.category.budgeted, data.category.balance,
+          data.category.goal_type, data.category.goal_under_funded.
+
+      - name: "Get Category for Month"
+        method: GET
+        path: /budgets/{{plan_id}}/months/{{month}}/categories/{{category_id}}
+        classification: read
+        description: |
+          Returns a category's values as of a specific month. Use this to
+          inspect historical budgeted/activity/balance data rather than
+          current-month values.
+
+          month: ISO date string for the first day of the month (e.g. 2025-01-01).
+
+      - name: "Update Category Budgeted Amount [WRITE]"
+        method: PATCH
+        path: /budgets/{{plan_id}}/months/{{month}}/categories/{{category_id}}
+        classification: write
+        description: |
+          Set the budgeted amount for a category in a specific month.
+          This is the primary way to allocate money in YNAB.
+
+          budgeted: amount in milliunits (1000 = $1.00).
+          month: first day of the target month, e.g. 2025-05-01.
+
+          Note: this modifies the plan's budget allocation. The change
+          is reflected immediately in the YNAB web app.
+        body:
+          category:
+            budgeted: 50000
+
+      - name: "Update Category [WRITE]"
+        method: PATCH
+        path: /budgets/{{plan_id}}/categories/{{category_id}}
+        classification: write
+        description: |
+          Update a category's name, note, or goal settings.
+          Only include fields you want to change — omitted fields are unchanged.
+        body:
+          category:
+            name: "Groceries"
+            note: "Monthly food budget"
+
+      - name: "Create Category [WRITE]"
+        method: POST
+        path: /budgets/{{plan_id}}/categories
+        classification: write
+        description: |
+          Create a new category inside an existing category group.
+          category_group_id is required.
+        body:
+          category:
+            category_group_id: "{{category_group_id}}"
+            name: "New Category"
+
+      - name: "Create Category Group [WRITE]"
+        method: POST
+        path: /budgets/{{plan_id}}/category-groups
+        classification: write
+        description: |
+          Create a new category group. Category groups organize categories
+          into logical sections (e.g. "Fixed Expenses", "Savings Goals").
+        body:
+          category_group:
+            name: "New Category Group"
+
+      - name: "Update Category Group [WRITE]"
+        method: PATCH
+        path: /budgets/{{plan_id}}/category-groups/{{category_group_id}}
+        classification: write
+        description: |
+          Update a category group's name or hidden status.
+          Note: YNAB does not support deleting category groups directly.
+        body:
+          category_group:
+            name: "Updated Group Name"
+            hidden: false
+
+  # -------------------------------------------------------------------------
+  # Months
+  # -------------------------------------------------------------------------
+  - name: "Months"
+    description: |
+      Month data includes summary-level budget information (to_be_budgeted,
+      income, activity) and optionally the full category list for that month.
+    routes:
+      - name: "List Months"
+        method: GET
+        path: /budgets/{{plan_id}}/months
+        classification: read
+        smoke_check: true
+        description: |
+          Returns summary data for all months that have budget activity.
+          Use this to see a timeline of the budget and navigate to specific
+          months. Ordered newest-first.
+
+          Key fields: data.months[].month (ISO date),
+          data.months[].to_be_budgeted, data.months[].income,
+          data.months[].budgeted, data.months[].activity.
+        query_params:
+          - key: last_knowledge_of_server
+            example: ""
+            description: "Delta sync."
+            required: false
+
+      - name: "Get Month Detail"
+        method: GET
+        path: /budgets/{{plan_id}}/months/{{month}}
+        classification: read
+        description: |
+          Returns full month data including all categories with their
+          budgeted/activity/balance values for that month.
+
+          month: ISO date for the first day of the month (e.g. 2025-05-01),
+          or the string "current" for the current month.
+
+          Key fields: data.month.to_be_budgeted, data.month.age_of_money,
+          data.month.categories[].budgeted, data.month.categories[].balance.
+
+      - name: "Get Current Month"
+        method: GET
+        path: /budgets/{{plan_id}}/months/current
+        classification: read
+        description: |
+          Convenience alias for the current month. Returns the same shape
+          as Get Month Detail. Use this when you don't know the current
+          month's ISO date or want to avoid computing it.
+
+  # -------------------------------------------------------------------------
+  # Transactions — Read
+  # -------------------------------------------------------------------------
+  - name: "Transactions — Read"
+    description: |
+      Transaction read endpoints. All amounts are in milliunits.
+      Negative amounts are outflows (spending); positive are inflows (income).
+      Split transactions have subtransactions[]; transfer transactions have
+      transfer_account_id and transfer_transaction_id set.
+    routes:
+      - name: "List Transactions"
+        method: GET
+        path: /budgets/{{plan_id}}/transactions
+        classification: read
+        smoke_check: true
+        description: |
+          Returns all transactions for the plan, newest first.
+          This can be a large response for mature budgets.
+          Use since_date or last_knowledge_of_server to limit the response.
+
+          Key fields: data.transactions[].id, data.transactions[].date,
+          data.transactions[].amount, data.transactions[].payee_name,
+          data.transactions[].category_name, data.transactions[].cleared,
+          data.transactions[].approved, data.transactions[].deleted.
+        query_params:
+          - key: since_date
+            example: "2025-01-01"
+            description: "Only return transactions on or after this ISO date."
+            required: false
+          - key: type
+            example: ""
+            description: "'uncategorized' or 'unapproved' for filtered lists."
+            required: false
+          - key: last_knowledge_of_server
+            example: ""
+            description: "Delta sync — omit for full list."
+            required: false
+
+      - name: "List Uncategorized Transactions"
+        method: GET
+        path: /budgets/{{plan_id}}/transactions
+        classification: read
+        description: |
+          List only transactions with no category assigned.
+          Useful for triage workflows — find all transactions that need
+          a category before closing out the month.
+        query_params:
+          - key: type
+            example: "uncategorized"
+            description: "Fixed: uncategorized"
+            required: true
+
+      - name: "List Unapproved Transactions"
+        method: GET
+        path: /budgets/{{plan_id}}/transactions
+        classification: read
+        description: |
+          List only transactions that are imported but not yet approved.
+          Useful for review workflows — imported bank transactions show as
+          unapproved until confirmed in YNAB.
+        query_params:
+          - key: type
+            example: "unapproved"
+            description: "Fixed: unapproved"
+            required: true
+
+      - name: "List Transactions (Since Date)"
+        method: GET
+        path: /budgets/{{plan_id}}/transactions
+        classification: read
+        description: |
+          List transactions on or after a specific date.
+          More efficient than fetching all transactions when you only need
+          recent activity. Useful for monthly review workflows.
+        query_params:
+          - key: since_date
+            example: "2025-05-01"
+            description: "ISO date. Only transactions on or after this date."
+            required: true
+
+      - name: "List Transactions by Account"
+        method: GET
+        path: /budgets/{{plan_id}}/accounts/{{account_id}}/transactions
+        classification: read
+        description: |
+          List transactions for a specific account. Useful for reconciliation
+          or inspecting spending on a particular credit card.
+        query_params:
+          - key: since_date
+            example: ""
+            description: "Optional ISO date filter."
+            required: false
+          - key: type
+            example: ""
+            description: "'uncategorized' or 'unapproved'."
+            required: false
+
+      - name: "List Transactions by Category"
+        method: GET
+        path: /budgets/{{plan_id}}/categories/{{category_id}}/transactions
+        classification: read
+        description: |
+          List all transactions assigned to a specific category.
+          Useful for reviewing spending in a category or auditing
+          a category's recent activity.
+        query_params:
+          - key: since_date
+            example: ""
+            description: "Optional ISO date filter."
+            required: false
+
+      - name: "List Transactions by Payee"
+        method: GET
+        path: /budgets/{{plan_id}}/payees/{{payee_id}}/transactions
+        classification: read
+        description: |
+          List all transactions for a specific payee.
+          Useful for reviewing spending at a particular merchant or
+          generating a history for a recurring payee.
+        query_params:
+          - key: since_date
+            example: ""
+            description: "Optional ISO date filter."
+            required: false
+
+      - name: "List Transactions by Month"
+        method: GET
+        path: /budgets/{{plan_id}}/months/{{month}}/transactions
+        classification: read
+        description: |
+          List all transactions for a specific month.
+          month: ISO date for the first day of the month (e.g. 2025-05-01).
+
+      - name: "Get Transaction"
+        method: GET
+        path: /budgets/{{plan_id}}/transactions/{{transaction_id}}
+        classification: read
+        description: |
+          Get a single transaction by ID. Includes the full subtransactions
+          array for split transactions. Check transfer_account_id to
+          determine if this is one side of a transfer.
+
+          Key fields: data.transaction.id, data.transaction.amount,
+          data.transaction.subtransactions[], data.transaction.transfer_account_id.
+
+  # -------------------------------------------------------------------------
+  # Transactions — Write
+  # -------------------------------------------------------------------------
+  - name: "Transactions — Write"
+    description: |
+      Write operations for transactions. These create or modify durable data in YNAB.
+      All amounts must be in milliunits (1000 = $1.00).
+      Negative amounts are outflows (spending); positive are inflows (income).
+    routes:
+      - name: "Create Transaction [WRITE]"
+        method: POST
+        path: /budgets/{{plan_id}}/transactions
+        classification: write
+        description: |
+          Create a single transaction. All provided fields are saved.
+
+          amount: milliunits. Negative for outflow (spending), positive for inflow.
+          cleared: "cleared", "uncleared", or "reconciled".
+          approved: if false, the transaction appears as pending in YNAB.
+
+          For transfers: set payee_id to the transfer_payee_id of the target
+          account (found in the accounts list). Do not set payee_name.
+
+          For splits: include subtransactions[] where amounts sum to the parent
+          amount. Each subtransaction can have its own category_id and memo.
+
+          import_id: optional dedup key. If a transaction with the same
+          import_id already exists, this request is silently skipped.
+        body:
+          transaction:
+            account_id: "{{account_id}}"
+            date: "2025-05-15"
+            amount: -25000
+            payee_name: "Whole Foods Market"
+            category_id: "{{category_id}}"
+            memo: "Weekly groceries"
+            cleared: "cleared"
+            approved: true
+
+      - name: "Create Split Transaction [WRITE]"
+        method: POST
+        path: /budgets/{{plan_id}}/transactions
+        classification: write
+        description: |
+          Create a split transaction where a single purchase is divided across
+          multiple categories. The subtransactions amounts must sum exactly to
+          the parent amount. Each subtransaction can have its own category_id
+          and memo.
+
+          Example: $50 Target purchase split between Groceries ($30) and
+          Household ($20). Parent amount: -50000. Sub amounts: -30000 + -20000.
+        body:
+          transaction:
+            account_id: "{{account_id}}"
+            date: "2025-05-15"
+            amount: -50000
+            payee_name: "Target"
+            memo: "Target run — split"
+            cleared: "cleared"
+            approved: true
+            subtransactions:
+              - amount: -30000
+                category_id: "{{category_id}}"
+                memo: "Groceries"
+              - amount: -20000
+                category_id: "{{category_id_2}}"
+                memo: "Household supplies"
+
+      - name: "Update Transaction [WRITE]"
+        method: PUT
+        path: /budgets/{{plan_id}}/transactions/{{transaction_id}}
+        classification: write
+        description: |
+          Replace a transaction's fields. All provided fields are updated.
+          Omit fields you want to leave unchanged. This is a full replacement
+          of the transaction's editable fields — not a partial patch.
+
+          amount: milliunits.
+          account_id and date are required.
+        body:
+          transaction:
+            account_id: "{{account_id}}"
+            date: "2025-05-15"
+            amount: -25000
+            payee_name: "Whole Foods Market"
+            category_id: "{{category_id}}"
+            memo: "Updated memo"
+            cleared: "cleared"
+            approved: true
+
+      - name: "Bulk Update Transactions [WRITE]"
+        method: PATCH
+        path: /budgets/{{plan_id}}/transactions
+        classification: write
+        description: |
+          Update multiple transactions in a single call. Each entry in
+          transactions[] must include `id`. Other fields are optional —
+          only provided fields are updated.
+
+          IMPORTANT: This is NOT atomic. The response contains:
+          - transaction_ids: successfully updated IDs
+          - duplicate_import_ids: skipped due to duplicate import_id
+
+          Always verify the response counts rather than assuming all-or-nothing.
+        body:
+          transactions:
+            - id: "{{transaction_id}}"
+              memo: "Bulk-updated memo"
+              approved: true
+
+      - name: "Delete Transaction [WRITE — DESTRUCTIVE]"
+        method: DELETE
+        path: /budgets/{{plan_id}}/transactions/{{transaction_id}}
+        classification: write
+        description: |
+          Delete a transaction. This is permanent — deleted transactions
+          are soft-deleted (deleted: true) but cannot be easily recovered.
+
+          WARNING: For transfer transactions, deleting one side also affects
+          the paired transaction on the other account. Always check
+          transfer_account_id before deleting. If transfer_account_id is set,
+          fetch the paired transaction first to understand the full impact.
+
+      - name: "Trigger Bank Import [WRITE]"
+        method: POST
+        path: /budgets/{{plan_id}}/transactions/import
+        classification: write
+        description: |
+          Trigger YNAB's built-in import from linked bank accounts.
+          This does NOT accept external transaction data or file uploads.
+          Only accounts with a direct bank link (direct_import_linked: true)
+          are affected.
+
+          Returns the IDs of transactions that were imported.
+          Safe to call multiple times — already-imported transactions are skipped.
+
+  # -------------------------------------------------------------------------
+  # Payees
+  # -------------------------------------------------------------------------
+  - name: "Payees"
+    description: |
+      Payees are merchants, people, or sources that transactions are
+      attributed to. YNAB creates payees automatically from imported
+      transactions. The transfer_payee_id on accounts is used to create
+      transfer transactions.
+    routes:
+      - name: "List Payees"
+        method: GET
+        path: /budgets/{{plan_id}}/payees
+        classification: read
+        smoke_check: true
+        description: |
+          Returns all payees for the plan. Use this to find payee IDs for
+          filtering transactions or for creating transfer transactions
+          (using the account's transfer_payee_id).
+
+          Key fields: data.payees[].id, data.payees[].name,
+          data.payees[].transfer_account_id (non-null for transfer payees).
+        query_params:
+          - key: last_knowledge_of_server
+            example: ""
+            description: "Delta sync."
+            required: false
+
+      - name: "Get Payee"
+        method: GET
+        path: /budgets/{{plan_id}}/payees/{{payee_id}}
+        classification: read
+        description: "Returns a single payee by ID."
+
+      - name: "Create Payee [WRITE]"
+        method: POST
+        path: /budgets/{{plan_id}}/payees
+        classification: write
+        description: |
+          Create a new payee. Added in YNAB API v1.81.0 (March 2026).
+          Useful for pre-seeding payees before creating transactions.
+        body:
+          payee:
+            name: "New Payee Name"
+
+      - name: "Update Payee [WRITE]"
+        method: PATCH
+        path: /budgets/{{plan_id}}/payees/{{payee_id}}
+        classification: write
+        description: |
+          Rename a payee. Note: renaming a payee renames it for all
+          existing transactions that reference it.
+        body:
+          payee:
+            name: "Updated Payee Name"
+
+      - name: "List Payee Locations"
+        method: GET
+        path: /budgets/{{plan_id}}/payee_locations
+        classification: read
+        description: |
+          Returns geographic location data (latitude/longitude) for payees
+          imported from bank feeds. Low priority for most workflows.
+          Location data is set by the bank, not by the user.
+
+      - name: "Get Payee Location"
+        method: GET
+        path: /budgets/{{plan_id}}/payee_locations/{{payee_location_id}}
+        classification: read
+        description: "Get a single payee location by ID."
+
+      - name: "List Locations for Payee"
+        method: GET
+        path: /budgets/{{plan_id}}/payees/{{payee_id}}/payee_locations
+        classification: read
+        description: "List all geographic locations for a specific payee."
+
+  # -------------------------------------------------------------------------
+  # Scheduled Transactions
+  # -------------------------------------------------------------------------
+  - name: "Scheduled Transactions"
+    description: |
+      Scheduled transactions are recurring entries that YNAB generates
+      automatically. They are used for recurring bills, subscriptions, and
+      planned transfers. They become real transactions when their date arrives.
+    routes:
+      - name: "List Scheduled Transactions"
+        method: GET
+        path: /budgets/{{plan_id}}/scheduled_transactions
+        classification: read
+        smoke_check: true
+        description: |
+          Returns all scheduled transactions. Use this to see upcoming
+          recurring bills, subscription charges, and planned transfers.
+
+          Key fields: data.scheduled_transactions[].id,
+          data.scheduled_transactions[].date_next (next occurrence),
+          data.scheduled_transactions[].frequency,
+          data.scheduled_transactions[].amount,
+          data.scheduled_transactions[].payee_name,
+          data.scheduled_transactions[].category_name.
+        query_params:
+          - key: last_knowledge_of_server
+            example: ""
+            description: "Delta sync."
+            required: false
+
+      - name: "Get Scheduled Transaction"
+        method: GET
+        path: /budgets/{{plan_id}}/scheduled_transactions/{{scheduled_transaction_id}}
+        classification: read
+        description: "Get a single scheduled transaction including subtransactions."
+
+      - name: "Create Scheduled Transaction [WRITE]"
+        method: POST
+        path: /budgets/{{plan_id}}/scheduled_transactions
+        classification: write
+        description: |
+          Create a recurring scheduled transaction.
+
+          frequency values: never, daily, weekly, everyOtherWeek, twiceAMonth,
+          every4Weeks, monthly, everyOtherMonth, every3Months, every4Months,
+          twiceAYear, yearly, everyOtherYear.
+
+          amount: milliunits (negative for outflow).
+          date_first: ISO date for the first occurrence.
+        body:
+          scheduled_transaction:
+            account_id: "{{account_id}}"
+            date_first: "2025-06-01"
+            frequency: "monthly"
+            amount: -120000
+            payee_name: "Netflix"
+            category_id: "{{category_id}}"
+            memo: "Monthly subscription"
+
+      - name: "Update Scheduled Transaction [WRITE]"
+        method: PUT
+        path: /budgets/{{plan_id}}/scheduled_transactions/{{scheduled_transaction_id}}
+        classification: write
+        description: |
+          Replace a scheduled transaction's fields. All editable fields
+          are replaced with the provided values.
+        body:
+          scheduled_transaction:
+            account_id: "{{account_id}}"
+            date_first: "2025-06-01"
+            frequency: "monthly"
+            amount: -130000
+            payee_name: "Netflix"
+            category_id: "{{category_id}}"
+            memo: "Updated amount"
+
+      - name: "Delete Scheduled Transaction [WRITE — DESTRUCTIVE]"
+        method: DELETE
+        path: /budgets/{{plan_id}}/scheduled_transactions/{{scheduled_transaction_id}}
+        classification: write
+        description: |
+          Delete a scheduled transaction. This stops the recurring entry
+          and removes all future scheduled occurrences.
+          Past transactions that were already generated are unaffected.
+
+  # -------------------------------------------------------------------------
+  # Money Movements
+  # -------------------------------------------------------------------------
+  - name: "Money Movements"
+    description: |
+      Money movements provide a view of how money flows between category groups.
+      This is an enriched view not available in the base transaction list.
+    routes:
+      - name: "List Money Movements"
+        method: GET
+        path: /budgets/{{plan_id}}/money_movements
+        classification: read
+        description: |
+          Returns money movement summary across all months.
+          Useful for understanding aggregate flows between categories.
+        query_params:
+          - key: month
+            example: ""
+            description: "Optional ISO month date filter."
+            required: false
+
+      - name: "List Money Movements for Month"
+        method: GET
+        path: /budgets/{{plan_id}}/months/{{month}}/money_movements
+        classification: read
+        description: "Returns money movements for a specific month."
+        query_params:
+          - key: type
+            example: ""
+            description: "Optional type filter."
+            required: false
+
+      - name: "List Money Movement Groups"
+        method: GET
+        path: /budgets/{{plan_id}}/money_movement_groups
+        classification: read
+        description: "Returns money movements grouped by category group."
+
+      - name: "List Money Movement Groups for Month"
+        method: GET
+        path: /budgets/{{plan_id}}/months/{{month}}/money_movement_groups
+        classification: read
+        description: "Returns money movement groups for a specific month."

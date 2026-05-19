@@ -1,0 +1,1867 @@
+{
+  "info": {
+    "_postman_id": "27822b25-7d98-5357-860b-584f8ecbc4e8",
+    "name": "YNAB API \u2014 QA",
+    "description": "QA collection for the YNAB API as consumed by ynab-mcp.\n\nGenerated from:\n  - tests/qa/features/*.feature  (human-readable scenarios)\n  - tests/qa/cases/*.yaml        (executable case definitions)\n  - tests/fixtures/*.json        (request body fixtures)\n\nTotal cases: 31\n\nDO NOT hand-edit this file. Edit the source files and regenerate:\n  uv run python scripts/generate_qa_collection.py\n\nRun with Newman:\n  newman run postman/collections/ynab-qa.postman_collection.json \\\n    --environment postman/environments/ynab-qa.postman_environment.json \\\n    --folder 'Auth And Plans'\n\nCI smoke check (read-only cases):\n  newman run ... --folder 'Auth And Plans' --folder 'Transactions Read'",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "id": "ba673424-8690-5a63-8cd1-061e8ba20998",
+      "name": "Auth And Plans",
+      "description": "QA cases for family: auth_and_plans",
+      "item": [
+        {
+          "id": "f5b22692-cfe3-5b4a-959f-ea37841068fb",
+          "name": "[QA-AUTH-001] Valid PAT returns authenticated user object",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "5d437111-6c67-5822-bcfe-680c4e45a4e7",
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"[QA-AUTH-001] Status is 200\", function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"[QA-AUTH-001] data exists (depth 1)\", function() {",
+                  "    pm.expect(json).to.have.property(\"data\");",
+                  "});",
+                  "pm.test(\"[QA-AUTH-001] data.user exists (depth 1)\", function() {",
+                  "    pm.expect(json).to.have.property(\"data\");",
+                  "});",
+                  "pm.test(\"[QA-AUTH-001] data.user exists (depth 2)\", function() {",
+                  "    pm.expect(json[\"data\"]).to.have.property(\"user\");",
+                  "});",
+                  "pm.test(\"[QA-AUTH-001] data.user.id is a string\", function() {",
+                  "    pm.expect(json[\"data\"][\"user\"][\"id\"]).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/user",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "user"
+              ]
+            },
+            "description": "**Case:** QA-AUTH-001\n\n**Intent:** Valid PAT returns authenticated user object\n\n**Preconditions:** api_key env var must be set to a valid YNAB PAT\n\n**Expected status:** 200\n\n**Source:** 01_auth_and_plans.yaml"
+          },
+          "response": []
+        },
+        {
+          "id": "ec9dc9ee-10e0-5772-b236-a7fe7daae7c7",
+          "name": "[QA-AUTH-002] Missing Authorization header returns 401 with error shape",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "id": "4d27d570-ac1a-5057-8ad2-933cd650a6b2",
+                "type": "text/javascript",
+                "exec": [
+                  "// Pre-request: override default headers for this case",
+                  "if (typeof qa_debug !== 'undefined' && pm.variables.get('qa_debug') === 'true') {",
+                  "    console.log('Running case: QA-AUTH-002');",
+                  "}",
+                  "pm.request.headers.upsert({key: 'Authorization', value: ''});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "id": "618f42ec-b62e-5c47-99cb-3f0182031e56",
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"[QA-AUTH-002] Status is 401\", function() {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "pm.test(\"[QA-AUTH-002] data.error exists (depth 1)\", function() {",
+                  "    pm.expect(json).to.have.property(\"data\");",
+                  "});",
+                  "pm.test(\"[QA-AUTH-002] data.error exists (depth 2)\", function() {",
+                  "    pm.expect(json[\"data\"]).to.have.property(\"error\");",
+                  "});",
+                  "pm.test(\"[QA-AUTH-002] data.error.name is a string\", function() {",
+                  "    pm.expect(json[\"data\"][\"error\"][\"name\"]).to.be.a('string');",
+                  "});",
+                  "pm.test(\"[QA-AUTH-002] data.error.detail is a string\", function() {",
+                  "    pm.expect(json[\"data\"][\"error\"][\"detail\"]).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/user",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "user"
+              ]
+            },
+            "description": "**Case:** QA-AUTH-002\n\n**Intent:** Missing Authorization header returns 401 with error shape\n\n**Preconditions:** This request intentionally omits the Authorization header\n\n**Notes:** Uses a pre-request script to remove the Authorization header for this request only.\n\n**Expected status:** 401\n\n**Source:** 01_auth_and_plans.yaml"
+          },
+          "response": []
+        },
+        {
+          "id": "06ac0531-33ee-5ffe-9a11-3818a7edb8b9",
+          "name": "[QA-AUTH-003] Invalid PAT returns 401 with error shape",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "id": "042a02ae-3384-5345-8775-e23a214e8b71",
+                "type": "text/javascript",
+                "exec": [
+                  "// Pre-request: override default headers for this case",
+                  "if (typeof qa_debug !== 'undefined' && pm.variables.get('qa_debug') === 'true') {",
+                  "    console.log('Running case: QA-AUTH-003');",
+                  "}",
+                  "pm.request.headers.upsert({key: 'Authorization', value: 'Bearer invalid-token-qa-test-do-not-use'});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "id": "8e150e4c-db2d-56b4-bade-3db4c8661b73",
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"[QA-AUTH-003] Status is 401\", function() {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "pm.test(\"[QA-AUTH-003] data.error exists (depth 1)\", function() {",
+                  "    pm.expect(json).to.have.property(\"data\");",
+                  "});",
+                  "pm.test(\"[QA-AUTH-003] data.error exists (depth 2)\", function() {",
+                  "    pm.expect(json[\"data\"]).to.have.property(\"error\");",
+                  "});",
+                  "pm.test(\"[QA-AUTH-003] data.error.id is a string\", function() {",
+                  "    pm.expect(json[\"data\"][\"error\"][\"id\"]).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/user",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "user"
+              ]
+            },
+            "description": "**Case:** QA-AUTH-003\n\n**Intent:** Invalid PAT returns 401 with error shape\n\n**Expected status:** 401\n\n**Source:** 01_auth_and_plans.yaml"
+          },
+          "response": []
+        },
+        {
+          "id": "1f5a5402-c0b0-5b60-b6aa-30a9172de637",
+          "name": "[QA-PLANS-001] List plans returns non-empty budgets array",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "39cc295e-e4ab-5a30-bfea-ec353995ed3e",
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"[QA-PLANS-001] Status is 200\", function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"[QA-PLANS-001] data.budgets exists (depth 1)\", function() {",
+                  "    pm.expect(json).to.have.property(\"data\");",
+                  "});",
+                  "pm.test(\"[QA-PLANS-001] data.budgets exists (depth 2)\", function() {",
+                  "    pm.expect(json[\"data\"]).to.have.property(\"budgets\");",
+                  "});",
+                  "pm.test(\"[QA-PLANS-001] data.budgets is an array\", function() {",
+                  "    pm.expect(json[\"data\"][\"budgets\"]).to.be.an('array');",
+                  "});",
+                  "pm.test(\"[QA-PLANS-001] data.budgets is not empty\", function() {",
+                  "    pm.expect(json[\"data\"][\"budgets\"].length).to.be.greaterThan(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets"
+              ]
+            },
+            "description": "**Case:** QA-PLANS-001\n\n**Intent:** List plans returns non-empty budgets array\n\n**Preconditions:** api_key must be a valid PAT for an account with at least one budget\n\n**Expected status:** 200\n\n**Source:** 01_auth_and_plans.yaml"
+          },
+          "response": []
+        },
+        {
+          "id": "80ad07cb-4ece-5ff9-a0d1-4ac065a85cc4",
+          "name": "[QA-PLANS-002] Get plan returns budget with required top-level fields",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "7000fd5b-8d11-55a1-b7b3-db0e9e81db16",
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"[QA-PLANS-002] Status is 200\", function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"[QA-PLANS-002] data.budget exists (depth 1)\", function() {",
+                  "    pm.expect(json).to.have.property(\"data\");",
+                  "});",
+                  "pm.test(\"[QA-PLANS-002] data.budget exists (depth 2)\", function() {",
+                  "    pm.expect(json[\"data\"]).to.have.property(\"budget\");",
+                  "});",
+                  "pm.test(\"[QA-PLANS-002] data.budget.id is a string\", function() {",
+                  "    pm.expect(json[\"data\"][\"budget\"][\"id\"]).to.be.a('string');",
+                  "});",
+                  "pm.test(\"[QA-PLANS-002] data.budget.name is a string\", function() {",
+                  "    pm.expect(json[\"data\"][\"budget\"][\"name\"]).to.be.a('string');",
+                  "});",
+                  "pm.test(\"[QA-PLANS-002] data.server_knowledge exists (depth 1)\", function() {",
+                  "    pm.expect(json).to.have.property(\"data\");",
+                  "});",
+                  "pm.test(\"[QA-PLANS-002] data.server_knowledge exists (depth 2)\", function() {",
+                  "    pm.expect(json[\"data\"]).to.have.property(\"server_knowledge\");",
+                  "});",
+                  "pm.test(\"[QA-PLANS-002] data.server_knowledge is an integer\", function() {",
+                  "    pm.expect(json[\"data\"][\"server_knowledge\"]).to.be.a('number');",
+                  "    pm.expect(Number.isInteger(json[\"data\"][\"server_knowledge\"])).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}"
+              ]
+            },
+            "description": "**Case:** QA-PLANS-002\n\n**Intent:** Get plan returns budget with required top-level fields\n\n**Preconditions:** plan_id must be set to a valid budget ID\n\n**Expected status:** 200\n\n**Source:** 01_auth_and_plans.yaml"
+          },
+          "response": []
+        },
+        {
+          "id": "9959cb38-0f92-512c-9f58-f411213d496e",
+          "name": "[QA-PLANS-003] Get plan settings returns currency format object",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "5ae9b6e9-b2ff-5cee-bf26-51594c501856",
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"[QA-PLANS-003] Status is 200\", function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"[QA-PLANS-003] data.settings exists (depth 1)\", function() {",
+                  "    pm.expect(json).to.have.property(\"data\");",
+                  "});",
+                  "pm.test(\"[QA-PLANS-003] data.settings exists (depth 2)\", function() {",
+                  "    pm.expect(json[\"data\"]).to.have.property(\"settings\");",
+                  "});",
+                  "pm.test(\"[QA-PLANS-003] data.settings.currency_format exists (depth 1)\", function() {",
+                  "    pm.expect(json).to.have.property(\"data\");",
+                  "});",
+                  "pm.test(\"[QA-PLANS-003] data.settings.currency_format exists (depth 2)\", function() {",
+                  "    pm.expect(json[\"data\"]).to.have.property(\"settings\");",
+                  "});",
+                  "pm.test(\"[QA-PLANS-003] data.settings.currency_format exists (depth 3)\", function() {",
+                  "    pm.expect(json[\"data\"][\"settings\"]).to.have.property(\"currency_format\");",
+                  "});",
+                  "pm.test(\"[QA-PLANS-003] data.settings.currency_format.iso_code is a string\", function() {",
+                  "    pm.expect(json[\"data\"][\"settings\"][\"currency_format\"][\"iso_code\"]).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/settings",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "settings"
+              ]
+            },
+            "description": "**Case:** QA-PLANS-003\n\n**Intent:** Get plan settings returns currency format object\n\n**Preconditions:** plan_id must be set\n\n**Expected status:** 200\n\n**Source:** 01_auth_and_plans.yaml"
+          },
+          "response": []
+        },
+        {
+          "id": "ededef3c-7a8f-549f-88d7-10819729a3e0",
+          "name": "[QA-PLANS-004] Get non-existent plan returns 404 with error shape",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "d393810e-d451-5b4f-91df-447761037aee",
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"[QA-PLANS-004] Status is 404\", function() {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "pm.test(\"[QA-PLANS-004] data.error exists (depth 1)\", function() {",
+                  "    pm.expect(json).to.have.property(\"data\");",
+                  "});",
+                  "pm.test(\"[QA-PLANS-004] data.error exists (depth 2)\", function() {",
+                  "    pm.expect(json[\"data\"]).to.have.property(\"error\");",
+                  "});",
+                  "pm.test(\"[QA-PLANS-004] data.error.name is a string\", function() {",
+                  "    pm.expect(json[\"data\"][\"error\"][\"name\"]).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/00000000-0000-0000-0000-000000000000",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "00000000-0000-0000-0000-000000000000"
+              ]
+            },
+            "description": "**Case:** QA-PLANS-004\n\n**Intent:** Get non-existent plan returns 404 with error shape\n\n**Notes:** Uses a nil UUID that cannot exist in YNAB.\n\n**Expected status:** 404\n\n**Source:** 01_auth_and_plans.yaml"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "id": "97f055dc-101f-5e69-b45d-a23cff76afb9",
+      "name": "Accounts And Categories",
+      "description": "QA cases for family: accounts_and_categories",
+      "item": [
+        {
+          "id": "5ec629ec-250c-543e-9c32-ff7cd63344fd",
+          "name": "[QA-ACCT-001] List accounts returns accounts array with required fields",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "cfb170cf-0649-50e2-823d-c374379c21ed",
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"[QA-ACCT-001] Status is 200\", function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"[QA-ACCT-001] data.accounts exists (depth 1)\", function() {",
+                  "    pm.expect(json).to.have.property(\"data\");",
+                  "});",
+                  "pm.test(\"[QA-ACCT-001] data.accounts exists (depth 2)\", function() {",
+                  "    pm.expect(json[\"data\"]).to.have.property(\"accounts\");",
+                  "});",
+                  "pm.test(\"[QA-ACCT-001] data.accounts is an array\", function() {",
+                  "    pm.expect(json[\"data\"][\"accounts\"]).to.be.an('array');",
+                  "});",
+                  "pm.test(\"[QA-ACCT-001] data.accounts is not empty\", function() {",
+                  "    pm.expect(json[\"data\"][\"accounts\"].length).to.be.greaterThan(0);",
+                  "});",
+                  "pm.test(\"[QA-ACCT-001] each data.accounts[] has key 'id'\", function() {",
+                  "    const arr = json[\"data\"][\"accounts\"] || [];",
+                  "    arr.slice(0, 5).forEach(function(item, i) {",
+                  "        pm.expect(item).to.have.property(\"id\");",
+                  "    });",
+                  "});",
+                  "pm.test(\"[QA-ACCT-001] each data.accounts[] has key 'balance'\", function() {",
+                  "    const arr = json[\"data\"][\"accounts\"] || [];",
+                  "    arr.slice(0, 5).forEach(function(item, i) {",
+                  "        pm.expect(item).to.have.property(\"balance\");",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/accounts",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "accounts"
+              ]
+            },
+            "description": "**Case:** QA-ACCT-001\n\n**Intent:** List accounts returns accounts array with required fields\n\n**Preconditions:** api_key and plan_id must be set\n\n**Expected status:** 200\n\n**Source:** 02_accounts_and_categories.yaml"
+          },
+          "response": []
+        },
+        {
+          "id": "93e944b0-1c98-5faa-8b6f-ce7b705dcbd3",
+          "name": "[QA-ACCT-002] List accounts response contains server_knowledge for delta sync",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "70c16f59-aac1-5ee3-af67-aad8a0d682cb",
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"[QA-ACCT-002] Status is 200\", function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"[QA-ACCT-002] data.server_knowledge exists (depth 1)\", function() {",
+                  "    pm.expect(json).to.have.property(\"data\");",
+                  "});",
+                  "pm.test(\"[QA-ACCT-002] data.server_knowledge exists (depth 2)\", function() {",
+                  "    pm.expect(json[\"data\"]).to.have.property(\"server_knowledge\");",
+                  "});",
+                  "pm.test(\"[QA-ACCT-002] data.server_knowledge is an integer\", function() {",
+                  "    pm.expect(json[\"data\"][\"server_knowledge\"]).to.be.a('number');",
+                  "    pm.expect(Number.isInteger(json[\"data\"][\"server_knowledge\"])).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/accounts",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "accounts"
+              ]
+            },
+            "description": "**Case:** QA-ACCT-002\n\n**Intent:** List accounts response contains server_knowledge for delta sync\n\n**Expected status:** 200\n\n**Source:** 02_accounts_and_categories.yaml"
+          },
+          "response": []
+        },
+        {
+          "id": "67bc8200-0927-5354-afd0-17bec5a2f9ee",
+          "name": "[QA-ACCT-003] Get non-existent account returns 404 with error shape",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "435b32fe-f883-5eeb-abbe-5152d04d08b7",
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"[QA-ACCT-003] Status is 404\", function() {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "pm.test(\"[QA-ACCT-003] data.error exists (depth 1)\", function() {",
+                  "    pm.expect(json).to.have.property(\"data\");",
+                  "});",
+                  "pm.test(\"[QA-ACCT-003] data.error exists (depth 2)\", function() {",
+                  "    pm.expect(json[\"data\"]).to.have.property(\"error\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/accounts/00000000-0000-0000-0000-000000000000",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "accounts",
+                "00000000-0000-0000-0000-000000000000"
+              ]
+            },
+            "description": "**Case:** QA-ACCT-003\n\n**Intent:** Get non-existent account returns 404 with error shape\n\n**Expected status:** 404\n\n**Source:** 02_accounts_and_categories.yaml"
+          },
+          "response": []
+        },
+        {
+          "id": "6742061d-7e00-5d0c-aa2c-1340b709a5e1",
+          "name": "[QA-CAT-001] List categories returns category_groups array with nested categories",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "23b524f7-1fb5-5968-8bc1-beb80b34e2c1",
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"[QA-CAT-001] Status is 200\", function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"[QA-CAT-001] data.category_groups exists (depth 1)\", function() {",
+                  "    pm.expect(json).to.have.property(\"data\");",
+                  "});",
+                  "pm.test(\"[QA-CAT-001] data.category_groups exists (depth 2)\", function() {",
+                  "    pm.expect(json[\"data\"]).to.have.property(\"category_groups\");",
+                  "});",
+                  "pm.test(\"[QA-CAT-001] data.category_groups is an array\", function() {",
+                  "    pm.expect(json[\"data\"][\"category_groups\"]).to.be.an('array');",
+                  "});",
+                  "pm.test(\"[QA-CAT-001] data.category_groups is not empty\", function() {",
+                  "    pm.expect(json[\"data\"][\"category_groups\"].length).to.be.greaterThan(0);",
+                  "});",
+                  "pm.test(\"[QA-CAT-001] each data.category_groups[] has key 'categories'\", function() {",
+                  "    const arr = json[\"data\"][\"category_groups\"] || [];",
+                  "    arr.slice(0, 5).forEach(function(item, i) {",
+                  "        pm.expect(item).to.have.property(\"categories\");",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/categories",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "categories"
+              ]
+            },
+            "description": "**Case:** QA-CAT-001\n\n**Intent:** List categories returns category_groups array with nested categories\n\n**Expected status:** 200\n\n**Source:** 02_accounts_and_categories.yaml"
+          },
+          "response": []
+        },
+        {
+          "id": "2dec5e12-c755-5d3c-bd0c-c4780deb8fcd",
+          "name": "[QA-CAT-002] List categories response includes budgeted activity and balance per category",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "b38bb28d-465a-5461-8f44-f5bf4594a165",
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"[QA-CAT-002] Status is 200\", function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "const cats = json.data.category_groups.flatMap(g => g.categories || []);",
+                  "const visible = cats.filter(c => !c.hidden && !c.deleted);",
+                  "pm.test(\"[QA-CAT-002] Has at least one visible category\", function() {",
+                  "    pm.expect(visible.length).to.be.greaterThan(0);",
+                  "});",
+                  "if (visible.length > 0) {",
+                  "    const c = visible[0];",
+                  "    pm.test(\"[QA-CAT-002] Category has integer budgeted\", function() {",
+                  "        pm.expect(c.budgeted).to.be.a('number');",
+                  "        pm.expect(Number.isInteger(c.budgeted)).to.be.true;",
+                  "    });",
+                  "    pm.test(\"[QA-CAT-002] Category has integer activity\", function() {",
+                  "        pm.expect(c.activity).to.be.a('number');",
+                  "        pm.expect(Number.isInteger(c.activity)).to.be.true;",
+                  "    });",
+                  "    pm.test(\"[QA-CAT-002] Category has integer balance\", function() {",
+                  "        pm.expect(c.balance).to.be.a('number');",
+                  "        pm.expect(Number.isInteger(c.balance)).to.be.true;",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/categories",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "categories"
+              ]
+            },
+            "description": "**Case:** QA-CAT-002\n\n**Intent:** List categories response includes budgeted activity and balance per category\n\n**Notes:** Custom script because we need to traverse the nested structure.\n\n**Expected status:** 200\n\n**Source:** 02_accounts_and_categories.yaml"
+          },
+          "response": []
+        },
+        {
+          "id": "e86838a3-b69e-5a2d-b289-a3aa8f43a5cf",
+          "name": "[QA-CAT-003] Get non-existent category returns 404 with error shape",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "13c63a5d-c6db-55e1-a83a-4a2d8a9020f0",
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"[QA-CAT-003] Status is 404\", function() {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "pm.test(\"[QA-CAT-003] data.error exists (depth 1)\", function() {",
+                  "    pm.expect(json).to.have.property(\"data\");",
+                  "});",
+                  "pm.test(\"[QA-CAT-003] data.error exists (depth 2)\", function() {",
+                  "    pm.expect(json[\"data\"]).to.have.property(\"error\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/categories/00000000-0000-0000-0000-000000000000",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "categories",
+                "00000000-0000-0000-0000-000000000000"
+              ]
+            },
+            "description": "**Case:** QA-CAT-003\n\n**Intent:** Get non-existent category returns 404 with error shape\n\n**Expected status:** 404\n\n**Source:** 02_accounts_and_categories.yaml"
+          },
+          "response": []
+        },
+        {
+          "id": "233e4803-3ed7-57f7-959a-afd55b34d634",
+          "name": "[QA-CAT-004] Get current month returns month object with categories",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "ccf25dfb-7517-5f54-bb8e-d1b6376c7963",
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"[QA-CAT-004] Status is 200\", function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"[QA-CAT-004] data.month exists (depth 1)\", function() {",
+                  "    pm.expect(json).to.have.property(\"data\");",
+                  "});",
+                  "pm.test(\"[QA-CAT-004] data.month exists (depth 2)\", function() {",
+                  "    pm.expect(json[\"data\"]).to.have.property(\"month\");",
+                  "});",
+                  "pm.test(\"[QA-CAT-004] data.month.month is a string\", function() {",
+                  "    pm.expect(json[\"data\"][\"month\"][\"month\"]).to.be.a('string');",
+                  "});",
+                  "pm.test(\"[QA-CAT-004] data.month.categories exists (depth 1)\", function() {",
+                  "    pm.expect(json).to.have.property(\"data\");",
+                  "});",
+                  "pm.test(\"[QA-CAT-004] data.month.categories exists (depth 2)\", function() {",
+                  "    pm.expect(json[\"data\"]).to.have.property(\"month\");",
+                  "});",
+                  "pm.test(\"[QA-CAT-004] data.month.categories exists (depth 3)\", function() {",
+                  "    pm.expect(json[\"data\"][\"month\"]).to.have.property(\"categories\");",
+                  "});",
+                  "pm.test(\"[QA-CAT-004] data.month.categories is an array\", function() {",
+                  "    pm.expect(json[\"data\"][\"month\"][\"categories\"]).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/months/current",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "months",
+                "current"
+              ]
+            },
+            "description": "**Case:** QA-CAT-004\n\n**Intent:** Get current month returns month object with categories\n\n**Expected status:** 200\n\n**Source:** 02_accounts_and_categories.yaml"
+          },
+          "response": []
+        },
+        {
+          "id": "88874a4e-f40a-5a0c-ab58-fb69076f8b78",
+          "name": "[QA-CAT-005] List months returns months array ordered by date",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "8f968edf-bb40-511e-811a-c6cd5c4dc311",
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"[QA-CAT-005] Status is 200\", function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"[QA-CAT-005] data.months exists (depth 1)\", function() {",
+                  "    pm.expect(json).to.have.property(\"data\");",
+                  "});",
+                  "pm.test(\"[QA-CAT-005] data.months exists (depth 2)\", function() {",
+                  "    pm.expect(json[\"data\"]).to.have.property(\"months\");",
+                  "});",
+                  "pm.test(\"[QA-CAT-005] data.months is an array\", function() {",
+                  "    pm.expect(json[\"data\"][\"months\"]).to.be.an('array');",
+                  "});",
+                  "pm.test(\"[QA-CAT-005] data.months is not empty\", function() {",
+                  "    pm.expect(json[\"data\"][\"months\"].length).to.be.greaterThan(0);",
+                  "});",
+                  "pm.test(\"[QA-CAT-005] each data.months[] has key 'month'\", function() {",
+                  "    const arr = json[\"data\"][\"months\"] || [];",
+                  "    arr.slice(0, 5).forEach(function(item, i) {",
+                  "        pm.expect(item).to.have.property(\"month\");",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/months",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "months"
+              ]
+            },
+            "description": "**Case:** QA-CAT-005\n\n**Intent:** List months returns months array ordered by date\n\n**Expected status:** 200\n\n**Source:** 02_accounts_and_categories.yaml"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "id": "41471608-1596-5795-b4f1-ae46ff70e3b1",
+      "name": "Transactions Read",
+      "description": "QA cases for family: transactions_read",
+      "item": [
+        {
+          "id": "78058f2b-c853-574d-921a-59e269ecbf73",
+          "name": "[QA-TXN-001] List transactions returns transactions array with required fields",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "3fdf5fea-39a4-5018-b088-267f8f34666c",
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"[QA-TXN-001] Status is 200\", function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"[QA-TXN-001] data.transactions exists (depth 1)\", function() {",
+                  "    pm.expect(json).to.have.property(\"data\");",
+                  "});",
+                  "pm.test(\"[QA-TXN-001] data.transactions exists (depth 2)\", function() {",
+                  "    pm.expect(json[\"data\"]).to.have.property(\"transactions\");",
+                  "});",
+                  "pm.test(\"[QA-TXN-001] data.transactions is an array\", function() {",
+                  "    pm.expect(json[\"data\"][\"transactions\"]).to.be.an('array');",
+                  "});",
+                  "pm.test(\"[QA-TXN-001] each data.transactions[] has key 'id'\", function() {",
+                  "    const arr = json[\"data\"][\"transactions\"] || [];",
+                  "    arr.slice(0, 5).forEach(function(item, i) {",
+                  "        pm.expect(item).to.have.property(\"id\");",
+                  "    });",
+                  "});",
+                  "pm.test(\"[QA-TXN-001] each data.transactions[] has key 'date'\", function() {",
+                  "    const arr = json[\"data\"][\"transactions\"] || [];",
+                  "    arr.slice(0, 5).forEach(function(item, i) {",
+                  "        pm.expect(item).to.have.property(\"date\");",
+                  "    });",
+                  "});",
+                  "pm.test(\"[QA-TXN-001] each data.transactions[] has key 'amount'\", function() {",
+                  "    const arr = json[\"data\"][\"transactions\"] || [];",
+                  "    arr.slice(0, 5).forEach(function(item, i) {",
+                  "        pm.expect(item).to.have.property(\"amount\");",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/transactions?since_date=2025-01-01",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "transactions"
+              ],
+              "query": [
+                {
+                  "key": "since_date",
+                  "value": "2025-01-01",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "**Case:** QA-TXN-001\n\n**Intent:** List transactions returns transactions array with required fields\n\n**Notes:** since_date limits the result set to avoid large responses in CI.\n\n**Expected status:** 200\n\n**Source:** 03_transactions_read.yaml"
+          },
+          "response": []
+        },
+        {
+          "id": "f7234620-bf21-5daf-bcb6-21f125025bca",
+          "name": "[QA-TXN-002] List transactions response includes server_knowledge integer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "b7eb0657-99ad-5be9-8c63-b673dec82593",
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"[QA-TXN-002] Status is 200\", function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"[QA-TXN-002] data.server_knowledge exists (depth 1)\", function() {",
+                  "    pm.expect(json).to.have.property(\"data\");",
+                  "});",
+                  "pm.test(\"[QA-TXN-002] data.server_knowledge exists (depth 2)\", function() {",
+                  "    pm.expect(json[\"data\"]).to.have.property(\"server_knowledge\");",
+                  "});",
+                  "pm.test(\"[QA-TXN-002] data.server_knowledge is an integer\", function() {",
+                  "    pm.expect(json[\"data\"][\"server_knowledge\"]).to.be.a('number');",
+                  "    pm.expect(Number.isInteger(json[\"data\"][\"server_knowledge\"])).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/transactions?since_date=2025-01-01",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "transactions"
+              ],
+              "query": [
+                {
+                  "key": "since_date",
+                  "value": "2025-01-01",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "**Case:** QA-TXN-002\n\n**Intent:** List transactions response includes server_knowledge integer\n\n**Expected status:** 200\n\n**Source:** 03_transactions_read.yaml"
+          },
+          "response": []
+        },
+        {
+          "id": "ffa39dc3-4efe-5198-8d8f-cc8cc6410c87",
+          "name": "[QA-TXN-003] Transaction amounts are integers (milliunits, not floats)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "585b81b6-3d63-543f-b66c-83151836291b",
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"[QA-TXN-003] Status is 200\", function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "const txns = (json.data.transactions || []).slice(0, 10);",
+                  "txns.forEach(function(t, i) {",
+                  "    pm.test(\"[QA-TXN-003] Transaction \" + i + \" amount is integer\", function() {",
+                  "        pm.expect(typeof t.amount).to.equal('number');",
+                  "        pm.expect(Number.isInteger(t.amount)).to.be.true;",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/transactions?since_date=2025-01-01",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "transactions"
+              ],
+              "query": [
+                {
+                  "key": "since_date",
+                  "value": "2025-01-01",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "**Case:** QA-TXN-003\n\n**Intent:** Transaction amounts are integers (milliunits, not floats)\n\n**Notes:** Floats in amount indicate a YNAB API contract change. Critical invariant for milliunit parsing.\n\n**Expected status:** 200\n\n**Source:** 03_transactions_read.yaml"
+          },
+          "response": []
+        },
+        {
+          "id": "c70d782d-fe34-5113-9198-4fb4dc0e87af",
+          "name": "[QA-TXN-004] Filter by type=uncategorized returns only uncategorized transactions",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "38fae6bd-125e-5b52-aa3f-5ba21909ef46",
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"[QA-TXN-004] Status is 200\", function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"[QA-TXN-004] data.transactions exists (depth 1)\", function() {",
+                  "    pm.expect(json).to.have.property(\"data\");",
+                  "});",
+                  "pm.test(\"[QA-TXN-004] data.transactions exists (depth 2)\", function() {",
+                  "    pm.expect(json[\"data\"]).to.have.property(\"transactions\");",
+                  "});",
+                  "const json = pm.response.json();",
+                  "const txns = json.data.transactions || [];",
+                  "txns.forEach(function(t, i) {",
+                  "    pm.test(\"[QA-TXN-004] Transaction \" + i + \" has null category_id\", function() {",
+                  "        pm.expect(t.category_id).to.be.null;",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/transactions?type=uncategorized",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "transactions"
+              ],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "uncategorized",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "**Case:** QA-TXN-004\n\n**Intent:** Filter by type=uncategorized returns only uncategorized transactions\n\n**Expected status:** 200\n\n**Source:** 03_transactions_read.yaml"
+          },
+          "response": []
+        },
+        {
+          "id": "2f1602d0-cb43-5cb7-8b0a-0fcba1fbdb23",
+          "name": "[QA-TXN-005] Filter by type=unapproved returns only unapproved transactions",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "2d9b182d-5ae9-577e-90a3-03adcb846dc3",
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"[QA-TXN-005] Status is 200\", function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"[QA-TXN-005] data.transactions exists (depth 1)\", function() {",
+                  "    pm.expect(json).to.have.property(\"data\");",
+                  "});",
+                  "pm.test(\"[QA-TXN-005] data.transactions exists (depth 2)\", function() {",
+                  "    pm.expect(json[\"data\"]).to.have.property(\"transactions\");",
+                  "});",
+                  "const json = pm.response.json();",
+                  "const txns = json.data.transactions || [];",
+                  "txns.forEach(function(t, i) {",
+                  "    pm.test(\"[QA-TXN-005] Transaction \" + i + \" is not approved\", function() {",
+                  "        pm.expect(t.approved).to.equal(false);",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/transactions?type=unapproved",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "transactions"
+              ],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "unapproved",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "**Case:** QA-TXN-005\n\n**Intent:** Filter by type=unapproved returns only unapproved transactions\n\n**Expected status:** 200\n\n**Source:** 03_transactions_read.yaml"
+          },
+          "response": []
+        },
+        {
+          "id": "44035b6f-03e2-5f19-a306-16f55e9044d4",
+          "name": "[QA-TXN-006] Filter by since_date returns only on-or-after transactions",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "94e3f2f2-0589-5a13-aa48-21db96011d5b",
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"[QA-TXN-006] Status is 200\", function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "const txns = json.data.transactions || [];",
+                  "const cutoff = \"2025-04-01\";",
+                  "txns.forEach(function(t, i) {",
+                  "    pm.test(\"[QA-TXN-006] Transaction \" + i + \" date >= \" + cutoff, function() {",
+                  "        pm.expect(t.date >= cutoff).to.be.true;",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/transactions?since_date=2025-04-01",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "transactions"
+              ],
+              "query": [
+                {
+                  "key": "since_date",
+                  "value": "2025-04-01",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "**Case:** QA-TXN-006\n\n**Intent:** Filter by since_date returns only on-or-after transactions\n\n**Expected status:** 200\n\n**Source:** 03_transactions_read.yaml"
+          },
+          "response": []
+        },
+        {
+          "id": "2f72121d-9afd-5c26-8a1f-12cf49da4191",
+          "name": "[QA-TXN-007] Get non-existent transaction returns 404 with error shape",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "bca86682-d2d7-5ccf-b1ba-0711e6c72aa5",
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"[QA-TXN-007] Status is 404\", function() {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "pm.test(\"[QA-TXN-007] data.error exists (depth 1)\", function() {",
+                  "    pm.expect(json).to.have.property(\"data\");",
+                  "});",
+                  "pm.test(\"[QA-TXN-007] data.error exists (depth 2)\", function() {",
+                  "    pm.expect(json[\"data\"]).to.have.property(\"error\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/transactions/00000000-0000-0000-0000-000000000000",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "transactions",
+                "00000000-0000-0000-0000-000000000000"
+              ]
+            },
+            "description": "**Case:** QA-TXN-007\n\n**Intent:** Get non-existent transaction returns 404 with error shape\n\n**Expected status:** 404\n\n**Source:** 03_transactions_read.yaml"
+          },
+          "response": []
+        },
+        {
+          "id": "72d772d1-6841-548f-ae08-b8575d689d2e",
+          "name": "[QA-SCHED-001] List scheduled transactions returns scheduled_transactions array",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "a341adf9-7c5c-5c26-8a61-e7b8f2af1e7d",
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"[QA-SCHED-001] Status is 200\", function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"[QA-SCHED-001] data.scheduled_transactions exists (depth 1)\", function() {",
+                  "    pm.expect(json).to.have.property(\"data\");",
+                  "});",
+                  "pm.test(\"[QA-SCHED-001] data.scheduled_transactions exists (depth 2)\", function() {",
+                  "    pm.expect(json[\"data\"]).to.have.property(\"scheduled_transactions\");",
+                  "});",
+                  "pm.test(\"[QA-SCHED-001] data.scheduled_transactions is an array\", function() {",
+                  "    pm.expect(json[\"data\"][\"scheduled_transactions\"]).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/scheduled_transactions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "scheduled_transactions"
+              ]
+            },
+            "description": "**Case:** QA-SCHED-001\n\n**Intent:** List scheduled transactions returns scheduled_transactions array\n\n**Expected status:** 200\n\n**Source:** 03_transactions_read.yaml"
+          },
+          "response": []
+        },
+        {
+          "id": "99142ead-d209-53fa-bbb7-2a154b421c82",
+          "name": "[QA-SCHED-002] Scheduled transaction entries have date_next and frequency fields",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "071fcd7b-3c95-5f81-bdb8-c0afa896d148",
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"[QA-SCHED-002] Status is 200\", function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "const items = json.data.scheduled_transactions || [];",
+                  "if (items.length > 0) {",
+                  "    pm.test(\"[QA-SCHED-002] First entry has date_next (string)\", function() {",
+                  "        pm.expect(items[0].date_next).to.be.a('string');",
+                  "    });",
+                  "    pm.test(\"[QA-SCHED-002] First entry has frequency (string)\", function() {",
+                  "        pm.expect(items[0].frequency).to.be.a('string');",
+                  "    });",
+                  "} else {",
+                  "    pm.test(\"[QA-SCHED-002] Skipped \u2014 no scheduled transactions in this budget\", function() {",
+                  "        pm.expect(true).to.be.true;",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/scheduled_transactions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "scheduled_transactions"
+              ]
+            },
+            "description": "**Case:** QA-SCHED-002\n\n**Intent:** Scheduled transaction entries have date_next and frequency fields\n\n**Expected status:** 200\n\n**Source:** 03_transactions_read.yaml"
+          },
+          "response": []
+        },
+        {
+          "id": "a089d2e1-7363-5bf6-8175-0959d4083337",
+          "name": "[QA-PAYEE-001] List payees returns payees array",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "1aeca0f5-59e1-56bd-b890-21092bb65474",
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"[QA-PAYEE-001] Status is 200\", function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"[QA-PAYEE-001] data.payees exists (depth 1)\", function() {",
+                  "    pm.expect(json).to.have.property(\"data\");",
+                  "});",
+                  "pm.test(\"[QA-PAYEE-001] data.payees exists (depth 2)\", function() {",
+                  "    pm.expect(json[\"data\"]).to.have.property(\"payees\");",
+                  "});",
+                  "pm.test(\"[QA-PAYEE-001] data.payees is an array\", function() {",
+                  "    pm.expect(json[\"data\"][\"payees\"]).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/payees",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "payees"
+              ]
+            },
+            "description": "**Case:** QA-PAYEE-001\n\n**Intent:** List payees returns payees array\n\n**Expected status:** 200\n\n**Source:** 03_transactions_read.yaml"
+          },
+          "response": []
+        },
+        {
+          "id": "f3e81672-f789-529a-929c-e755605a9955",
+          "name": "[QA-PAYEE-002] Get non-existent payee returns 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "6798c925-a261-5ec5-8648-4d920c708f2e",
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"[QA-PAYEE-002] Status is 404\", function() {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "pm.test(\"[QA-PAYEE-002] data.error exists (depth 1)\", function() {",
+                  "    pm.expect(json).to.have.property(\"data\");",
+                  "});",
+                  "pm.test(\"[QA-PAYEE-002] data.error exists (depth 2)\", function() {",
+                  "    pm.expect(json[\"data\"]).to.have.property(\"error\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/payees/00000000-0000-0000-0000-000000000000",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "payees",
+                "00000000-0000-0000-0000-000000000000"
+              ]
+            },
+            "description": "**Case:** QA-PAYEE-002\n\n**Intent:** Get non-existent payee returns 404\n\n**Expected status:** 404\n\n**Source:** 03_transactions_read.yaml"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "id": "3830bd53-c532-5d50-bd89-d6fe0f96374f",
+      "name": "Error Handling",
+      "description": "QA cases for family: error_handling",
+      "item": [
+        {
+          "id": "ba0076d3-c50e-599b-9556-b0a2f11278ce",
+          "name": "[QA-ERR-001] 401 error response has expected error structure",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "id": "3573b4eb-d7e6-5651-9f49-1f7e945c3bf8",
+                "type": "text/javascript",
+                "exec": [
+                  "// Pre-request: override default headers for this case",
+                  "if (typeof qa_debug !== 'undefined' && pm.variables.get('qa_debug') === 'true') {",
+                  "    console.log('Running case: QA-ERR-001');",
+                  "}",
+                  "pm.request.headers.upsert({key: 'Authorization', value: 'Bearer invalid-token-qa-err-001'});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "id": "cb43e542-d909-534f-84e9-18d87f4ad6c8",
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"[QA-ERR-001] Status is 401\", function() {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "pm.test(\"[QA-ERR-001] data.error exists (depth 1)\", function() {",
+                  "    pm.expect(json).to.have.property(\"data\");",
+                  "});",
+                  "pm.test(\"[QA-ERR-001] data.error exists (depth 2)\", function() {",
+                  "    pm.expect(json[\"data\"]).to.have.property(\"error\");",
+                  "});",
+                  "pm.test(\"[QA-ERR-001] data.error.name is a string\", function() {",
+                  "    pm.expect(json[\"data\"][\"error\"][\"name\"]).to.be.a('string');",
+                  "});",
+                  "pm.test(\"[QA-ERR-001] data.error.detail is a string\", function() {",
+                  "    pm.expect(json[\"data\"][\"error\"][\"detail\"]).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/user",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "user"
+              ]
+            },
+            "description": "**Case:** QA-ERR-001\n\n**Intent:** 401 error response has expected error structure\n\n**Expected status:** 401\n\n**Source:** 04_error_handling.yaml"
+          },
+          "response": []
+        },
+        {
+          "id": "da0caa15-99b3-562d-96f7-d0f283b63e69",
+          "name": "[QA-ERR-002] 404 error response has expected error structure",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "2c377b88-6a38-5ed6-8305-007e4c36878f",
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"[QA-ERR-002] Status is 404\", function() {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "pm.test(\"[QA-ERR-002] data.error exists (depth 1)\", function() {",
+                  "    pm.expect(json).to.have.property(\"data\");",
+                  "});",
+                  "pm.test(\"[QA-ERR-002] data.error exists (depth 2)\", function() {",
+                  "    pm.expect(json[\"data\"]).to.have.property(\"error\");",
+                  "});",
+                  "pm.test(\"[QA-ERR-002] data.error.name is a string\", function() {",
+                  "    pm.expect(json[\"data\"][\"error\"][\"name\"]).to.be.a('string');",
+                  "});",
+                  "pm.test(\"[QA-ERR-002] data.error.id is a string\", function() {",
+                  "    pm.expect(json[\"data\"][\"error\"][\"id\"]).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/00000000-0000-0000-0000-000000000000",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "00000000-0000-0000-0000-000000000000"
+              ]
+            },
+            "description": "**Case:** QA-ERR-002\n\n**Intent:** 404 error response has expected error structure\n\n**Expected status:** 404\n\n**Source:** 04_error_handling.yaml"
+          },
+          "response": []
+        },
+        {
+          "id": "f43d81dc-8ed8-55a6-90d2-d0f03aa871d4",
+          "name": "[QA-ERR-003] Request with invalid budget id returns 404 not 500",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "97d87011-c7ef-531c-a7e8-b70d073fb6a2",
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"[QA-ERR-003] Status is 404\", function() {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/00000000-dead-beef-0000-000000000000/accounts",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "00000000-dead-beef-0000-000000000000",
+                "accounts"
+              ]
+            },
+            "description": "**Case:** QA-ERR-003\n\n**Intent:** Request with invalid budget id returns 404 not 500\n\n**Expected status:** 404\n\n**Source:** 04_error_handling.yaml"
+          },
+          "response": []
+        },
+        {
+          "id": "612455d5-9001-5f64-927c-501d2d65b66e",
+          "name": "[QA-ERR-004] POST transaction with missing required field returns 422",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "00584abf-3839-531c-92d6-2b13a4930871",
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"[QA-ERR-004] Status is 422\", function() {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "pm.test(\"[QA-ERR-004] data.error exists (depth 1)\", function() {",
+                  "    pm.expect(json).to.have.property(\"data\");",
+                  "});",
+                  "pm.test(\"[QA-ERR-004] data.error exists (depth 2)\", function() {",
+                  "    pm.expect(json[\"data\"]).to.have.property(\"error\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/transactions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "transactions"
+              ]
+            },
+            "description": "**Case:** QA-ERR-004\n\n**Intent:** POST transaction with missing required field returns 422\n\n**Notes:** Uses a minimal body missing account_id and date, which are required by YNAB.\n\n**Expected status:** 422\n\n**Source:** 04_error_handling.yaml",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transaction\": {}\n}\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "ab300d2c-7d90-5440-9e1c-34ce6a4d77ca",
+          "name": "[QA-ERR-005] Error response data.error.id is always a string",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "26de4253-26d5-5817-906b-49b792d2fc19",
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"[QA-ERR-005] Status is 404\", function() {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.test(\"[QA-ERR-005] data.error.id is a string\", function() {",
+                  "    pm.expect(json.data.error.id).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/00000000-0000-0000-0000-000000000000",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "00000000-0000-0000-0000-000000000000"
+              ]
+            },
+            "description": "**Case:** QA-ERR-005\n\n**Intent:** Error response data.error.id is always a string\n\n**Notes:** YnabMcpError.from_ynab_response reads error_id as a string.\nIf YNAB ever changes this to an integer, the model must be updated.\n\n\n**Expected status:** 404\n\n**Source:** 04_error_handling.yaml"
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://api.ynab.com/v1",
+      "type": "default"
+    },
+    {
+      "key": "api_key",
+      "value": "",
+      "type": "secret"
+    },
+    {
+      "key": "plan_id",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "account_id",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "account_id_2",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "category_id",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "category_id_2",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "transaction_id",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "payee_id",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "scheduled_transaction_id",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "month",
+      "value": "2025-05-01",
+      "type": "default"
+    },
+    {
+      "key": "qa_debug",
+      "value": "false",
+      "type": "default",
+      "description": "Set to 'true' to enable verbose test logging."
+    }
+  ]
+}

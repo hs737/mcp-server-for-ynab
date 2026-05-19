@@ -1,0 +1,2105 @@
+{
+  "info": {
+    "_postman_id": "78997f8f-c3d3-57ba-9b48-1169138a0527",
+    "name": "YNAB API \u2014 Operator",
+    "description": "Human-facing operational collection for the YNAB API as consumed by ynab-mcp.\n\nUse this collection to:\n- Discover what routes exist and what they return\n- Manually explore a budget and inspect live data\n- Debug tool failures by isolating the underlying API call\n- Verify authentication and plan-id configuration\n\nAuthentication: All requests require a YNAB Personal Access Token (PAT).\nSet `api_key` in your active Postman environment.\n\nAmounts: YNAB stores all monetary values in milliunits (1000 = $1.00).\n\nDelta sync: Many list endpoints accept `last_knowledge_of_server`.\nSave the `server_knowledge` value from any response and pass it back\nto fetch only changed records since that point.\n\nSafety: Requests tagged [WRITE] create or modify durable data.\nRead requests are safe to run at any time.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "id": "33b72e6b-73f3-5962-8679-961616af6d8e",
+      "name": "User",
+      "description": "Verify the authenticated identity of the PAT being used.",
+      "item": [
+        {
+          "id": "6022808d-83d3-5d42-a1a5-216e8fd699c9",
+          "name": "Get Authenticated User",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/user",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "user"
+              ]
+            },
+            "description": "Returns the user object associated with the current PAT.\nUseful for verifying that the API key is valid before running\nother requests. A 401 here means the api_key variable is wrong\nor the PAT has been revoked.\n\nKey fields: id, username."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "863961d0-8e3e-54f0-9dca-11a9734529e0",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Response has data key\", function() {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property(\"data\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "8e9e2d84-0ea9-58fd-bbcd-42d50a191109",
+      "name": "Plans",
+      "description": "A \"plan\" is what YNAB calls a \"budget.\" All budget-scoped routes\nrequire a plan_id. Set the `plan_id` environment variable to avoid\npasting it into every request.",
+      "item": [
+        {
+          "id": "a235cdd8-97b1-5114-9f36-1c460553334b",
+          "name": "List Plans",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets"
+              ]
+            },
+            "description": "Returns all budgets accessible to the authenticated user.\nRun this first to find your plan_id. Copy it into the `plan_id`\nenvironment variable so other requests can use it via {{plan_id}}.\n\nKey fields: data.budgets[].id, data.budgets[].name,\ndata.budgets[].last_modified_on."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "62fe9f79-cc27-5113-a3d8-e92908587436",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Response has data key\", function() {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property(\"data\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "e86c710b-2e12-555c-b000-b1fce9580b1d",
+          "name": "Get Plan Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}"
+              ],
+              "query": [
+                {
+                  "key": "last_knowledge_of_server",
+                  "value": "",
+                  "description": "Omit for full fetch. Pass saved server_knowledge for delta sync.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Returns a single plan with all embedded data: accounts, categories,\nmonths, payees, and transactions. This is a heavy response.\n\nPass `last_knowledge_of_server` to request only changes since the\nlast fetch \u2014 the server returns `server_knowledge` you can use\nin the next call.\n\nKey fields: data.budget.id, data.budget.name,\ndata.budget.currency_format, data.server_knowledge."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "58faada0-ace4-5fb4-9f57-d1036800cef3",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Response has data key\", function() {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property(\"data\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "52015f58-e96c-5859-b15f-f1e71296c489",
+          "name": "Get Plan (Delta Sync)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}"
+              ],
+              "query": [
+                {
+                  "key": "last_knowledge_of_server",
+                  "value": "{{last_knowledge_of_server}}",
+                  "description": "Server knowledge from a previous response.",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "Same as Get Plan Detail but demonstrates delta sync usage.\nSet last_knowledge_of_server to a previously saved server_knowledge\nvalue. The response contains only data that changed since that point.\nSave the new server_knowledge from the response for the next call.\n\nUse this pattern when polling for changes to avoid full budget downloads."
+          },
+          "response": []
+        },
+        {
+          "id": "424db94e-87f2-56ec-8fd6-0bee215d77b3",
+          "name": "Get Plan Settings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/settings",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "settings"
+              ]
+            },
+            "description": "Returns currency format and date format settings for the plan.\nUse this to determine how to format amounts and dates when displaying\ndata to a user. The currency_format.iso_code field gives the ISO\ncurrency code (e.g. USD, EUR).\n\nKey fields: data.settings.date_format.format,\ndata.settings.currency_format.iso_code,\ndata.settings.currency_format.symbol."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "id": "f83ef261-e6f6-5b3f-977f-fa86f682e1a7",
+      "name": "Accounts",
+      "description": "Accounts represent bank accounts, credit cards, loans, and assets\ntracked within a plan. Balances are in milliunits.",
+      "item": [
+        {
+          "id": "389b21c0-95a8-5005-9f2d-c3d4042e924a",
+          "name": "List Accounts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/accounts",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "accounts"
+              ],
+              "query": [
+                {
+                  "key": "last_knowledge_of_server",
+                  "value": "",
+                  "description": "Delta sync \u2014 omit for full list.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Returns all accounts for the plan. Includes balance, cleared_balance,\nuncleared_balance, and account type. Closed accounts are included\nunless filtered. Supports delta sync.\n\nKey fields: data.accounts[].id, data.accounts[].name,\ndata.accounts[].type, data.accounts[].balance,\ndata.accounts[].transfer_payee_id (needed for transfer transactions)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "bee7aa82-390f-5897-bc20-f3f980a925cd",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Response has data key\", function() {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property(\"data\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "79265580-e828-5863-ae2b-96cb96110e48",
+          "name": "Get Account",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/accounts/{{account_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "accounts",
+                "{{account_id}}"
+              ]
+            },
+            "description": "Returns a single account by ID. Useful for inspecting the\ntransfer_payee_id of a specific account \u2014 needed when creating\ntransfer transactions via the transactions API.\n\nKey fields: data.account.id, data.account.name, data.account.balance,\ndata.account.transfer_payee_id, data.account.direct_import_linked."
+          },
+          "response": []
+        },
+        {
+          "id": "6b3de499-f150-5865-9c8a-9a40ca3e118c",
+          "name": "Create Account [WRITE]",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/accounts",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "accounts"
+              ]
+            },
+            "description": "Creates a new account. Note: this creates a durable account in YNAB.\nChoose account_type carefully \u2014 it cannot be changed after creation.\n\naccount_type values: checking, savings, creditCard, cash, lineOfCredit,\notherAsset, otherLiability, mortgage, autoLoan, studentLoan, personalLoan,\nmedicalDebt, otherDebt.\n\nbalance: opening balance in milliunits.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"account\": {\n    \"name\": \"Test Checking Account\",\n    \"type\": \"checking\",\n    \"balance\": 0\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "id": "32ce9293-c614-5344-8e02-e267b7ecc61c",
+      "name": "Categories",
+      "description": "Categories organize spending. They live inside category groups.\nEach category tracks budgeted, activity (spending), and balance.\nGoal-related fields track funding targets.",
+      "item": [
+        {
+          "id": "24ea0b8c-31b7-50e1-bf3c-71f86289187e",
+          "name": "List Categories",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/categories",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "categories"
+              ],
+              "query": [
+                {
+                  "key": "last_knowledge_of_server",
+                  "value": "",
+                  "description": "Delta sync \u2014 omit for full list.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Returns all categories grouped by category group. The response\nstructure is data.category_groups[].categories[]. Use this to\nmap category names to IDs for downstream requests.\n\nKey fields: data.category_groups[].id,\ndata.category_groups[].categories[].id,\ndata.category_groups[].categories[].name,\ndata.category_groups[].categories[].budgeted,\ndata.category_groups[].categories[].activity,\ndata.category_groups[].categories[].balance."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "ee2e408d-3178-5cd9-b19f-31aa6bc3eeed",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Response has data key\", function() {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property(\"data\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "b1970bfb-b007-5208-83d3-5476dcbb1ce1",
+          "name": "Get Category",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/categories/{{category_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "categories",
+                "{{category_id}}"
+              ]
+            },
+            "description": "Returns a single category. Includes the current month's budgeted,\nactivity, and balance values. Also includes goal fields if a funding\ntarget is set: goal_type, goal_target, goal_percentage_complete,\ngoal_under_funded.\n\nKey fields: data.category.id, data.category.name,\ndata.category.budgeted, data.category.balance,\ndata.category.goal_type, data.category.goal_under_funded."
+          },
+          "response": []
+        },
+        {
+          "id": "844348dc-4c63-54be-99aa-acbe7551dfca",
+          "name": "Get Category for Month",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/months/{{month}}/categories/{{category_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "months",
+                "{{month}}",
+                "categories",
+                "{{category_id}}"
+              ]
+            },
+            "description": "Returns a category's values as of a specific month. Use this to\ninspect historical budgeted/activity/balance data rather than\ncurrent-month values.\n\nmonth: ISO date string for the first day of the month (e.g. 2025-01-01)."
+          },
+          "response": []
+        },
+        {
+          "id": "386baa48-856b-58e6-87ff-b81af1e3ce73",
+          "name": "Update Category Budgeted Amount [WRITE]",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/months/{{month}}/categories/{{category_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "months",
+                "{{month}}",
+                "categories",
+                "{{category_id}}"
+              ]
+            },
+            "description": "Set the budgeted amount for a category in a specific month.\nThis is the primary way to allocate money in YNAB.\n\nbudgeted: amount in milliunits (1000 = $1.00).\nmonth: first day of the target month, e.g. 2025-05-01.\n\nNote: this modifies the plan's budget allocation. The change\nis reflected immediately in the YNAB web app.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"category\": {\n    \"budgeted\": 50000\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "087fea36-5dc8-5296-84ce-2d8ff8107c39",
+          "name": "Update Category [WRITE]",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/categories/{{category_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "categories",
+                "{{category_id}}"
+              ]
+            },
+            "description": "Update a category's name, note, or goal settings.\nOnly include fields you want to change \u2014 omitted fields are unchanged.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"category\": {\n    \"name\": \"Groceries\",\n    \"note\": \"Monthly food budget\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "3a8ad75e-851a-5db9-bc43-6662573026fd",
+          "name": "Create Category [WRITE]",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/categories",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "categories"
+              ]
+            },
+            "description": "Create a new category inside an existing category group.\ncategory_group_id is required.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"category\": {\n    \"category_group_id\": \"{{category_group_id}}\",\n    \"name\": \"New Category\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "8f6d6898-c5fc-570b-9e92-7e0336ac2d6c",
+          "name": "Create Category Group [WRITE]",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/category-groups",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "category-groups"
+              ]
+            },
+            "description": "Create a new category group. Category groups organize categories\ninto logical sections (e.g. \"Fixed Expenses\", \"Savings Goals\").",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"category_group\": {\n    \"name\": \"New Category Group\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "31a9b551-5292-592a-a47c-d7324bc8f801",
+          "name": "Update Category Group [WRITE]",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/category-groups/{{category_group_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "category-groups",
+                "{{category_group_id}}"
+              ]
+            },
+            "description": "Update a category group's name or hidden status.\nNote: YNAB does not support deleting category groups directly.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"category_group\": {\n    \"name\": \"Updated Group Name\",\n    \"hidden\": false\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "id": "42f40cdd-707e-523f-bc9f-28fdd36858e8",
+      "name": "Months",
+      "description": "Month data includes summary-level budget information (to_be_budgeted,\nincome, activity) and optionally the full category list for that month.",
+      "item": [
+        {
+          "id": "be102323-f9a8-52c5-9c2c-e6447417ced9",
+          "name": "List Months",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/months",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "months"
+              ],
+              "query": [
+                {
+                  "key": "last_knowledge_of_server",
+                  "value": "",
+                  "description": "Delta sync.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Returns summary data for all months that have budget activity.\nUse this to see a timeline of the budget and navigate to specific\nmonths. Ordered newest-first.\n\nKey fields: data.months[].month (ISO date),\ndata.months[].to_be_budgeted, data.months[].income,\ndata.months[].budgeted, data.months[].activity."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "6d6d6456-59b7-53fa-8c17-bb5650225842",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Response has data key\", function() {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property(\"data\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "cdfca8e3-62ea-5875-b270-c4aceb09d03a",
+          "name": "Get Month Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/months/{{month}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "months",
+                "{{month}}"
+              ]
+            },
+            "description": "Returns full month data including all categories with their\nbudgeted/activity/balance values for that month.\n\nmonth: ISO date for the first day of the month (e.g. 2025-05-01),\nor the string \"current\" for the current month.\n\nKey fields: data.month.to_be_budgeted, data.month.age_of_money,\ndata.month.categories[].budgeted, data.month.categories[].balance."
+          },
+          "response": []
+        },
+        {
+          "id": "f0fa8672-a5dc-576d-97f8-d46fbb263f06",
+          "name": "Get Current Month",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/months/current",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "months",
+                "current"
+              ]
+            },
+            "description": "Convenience alias for the current month. Returns the same shape\nas Get Month Detail. Use this when you don't know the current\nmonth's ISO date or want to avoid computing it."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "id": "2e255ee2-cfdf-5eae-939d-fff333cbd5ad",
+      "name": "Transactions \u2014 Read",
+      "description": "Transaction read endpoints. All amounts are in milliunits.\nNegative amounts are outflows (spending); positive are inflows (income).\nSplit transactions have subtransactions[]; transfer transactions have\ntransfer_account_id and transfer_transaction_id set.",
+      "item": [
+        {
+          "id": "c7023fe5-ef03-533c-8b61-ee61e607f63a",
+          "name": "List Transactions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/transactions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "transactions"
+              ],
+              "query": [
+                {
+                  "key": "since_date",
+                  "value": "2025-01-01",
+                  "description": "Only return transactions on or after this ISO date.",
+                  "disabled": true
+                },
+                {
+                  "key": "type",
+                  "value": "",
+                  "description": "'uncategorized' or 'unapproved' for filtered lists.",
+                  "disabled": true
+                },
+                {
+                  "key": "last_knowledge_of_server",
+                  "value": "",
+                  "description": "Delta sync \u2014 omit for full list.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Returns all transactions for the plan, newest first.\nThis can be a large response for mature budgets.\nUse since_date or last_knowledge_of_server to limit the response.\n\nKey fields: data.transactions[].id, data.transactions[].date,\ndata.transactions[].amount, data.transactions[].payee_name,\ndata.transactions[].category_name, data.transactions[].cleared,\ndata.transactions[].approved, data.transactions[].deleted."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "d501a772-8009-5117-9d41-1fc8bca45ed1",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Response has data key\", function() {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property(\"data\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "843b7412-a6a4-57b9-b805-2514af3c569b",
+          "name": "List Uncategorized Transactions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/transactions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "transactions"
+              ],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "uncategorized",
+                  "description": "Fixed: uncategorized",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "List only transactions with no category assigned.\nUseful for triage workflows \u2014 find all transactions that need\na category before closing out the month."
+          },
+          "response": []
+        },
+        {
+          "id": "449ff6df-8348-5e41-89db-d2269f6d0a64",
+          "name": "List Unapproved Transactions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/transactions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "transactions"
+              ],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "unapproved",
+                  "description": "Fixed: unapproved",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "List only transactions that are imported but not yet approved.\nUseful for review workflows \u2014 imported bank transactions show as\nunapproved until confirmed in YNAB."
+          },
+          "response": []
+        },
+        {
+          "id": "37965946-edab-5efb-bfee-e8c118541c15",
+          "name": "List Transactions (Since Date)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/transactions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "transactions"
+              ],
+              "query": [
+                {
+                  "key": "since_date",
+                  "value": "2025-05-01",
+                  "description": "ISO date. Only transactions on or after this date.",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "List transactions on or after a specific date.\nMore efficient than fetching all transactions when you only need\nrecent activity. Useful for monthly review workflows."
+          },
+          "response": []
+        },
+        {
+          "id": "303aa74a-b94e-5e4e-9489-d5cf9d97b558",
+          "name": "List Transactions by Account",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/accounts/{{account_id}}/transactions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "accounts",
+                "{{account_id}}",
+                "transactions"
+              ],
+              "query": [
+                {
+                  "key": "since_date",
+                  "value": "",
+                  "description": "Optional ISO date filter.",
+                  "disabled": true
+                },
+                {
+                  "key": "type",
+                  "value": "",
+                  "description": "'uncategorized' or 'unapproved'.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List transactions for a specific account. Useful for reconciliation\nor inspecting spending on a particular credit card."
+          },
+          "response": []
+        },
+        {
+          "id": "84cb5c9f-3f75-5307-a54c-bde938fb6588",
+          "name": "List Transactions by Category",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/categories/{{category_id}}/transactions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "categories",
+                "{{category_id}}",
+                "transactions"
+              ],
+              "query": [
+                {
+                  "key": "since_date",
+                  "value": "",
+                  "description": "Optional ISO date filter.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List all transactions assigned to a specific category.\nUseful for reviewing spending in a category or auditing\na category's recent activity."
+          },
+          "response": []
+        },
+        {
+          "id": "40c85204-ecd1-5934-84cf-fe7b0815498d",
+          "name": "List Transactions by Payee",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/payees/{{payee_id}}/transactions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "payees",
+                "{{payee_id}}",
+                "transactions"
+              ],
+              "query": [
+                {
+                  "key": "since_date",
+                  "value": "",
+                  "description": "Optional ISO date filter.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List all transactions for a specific payee.\nUseful for reviewing spending at a particular merchant or\ngenerating a history for a recurring payee."
+          },
+          "response": []
+        },
+        {
+          "id": "c8b4052a-32a2-5415-a0c4-d607fd7dd3bf",
+          "name": "List Transactions by Month",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/months/{{month}}/transactions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "months",
+                "{{month}}",
+                "transactions"
+              ]
+            },
+            "description": "List all transactions for a specific month.\nmonth: ISO date for the first day of the month (e.g. 2025-05-01)."
+          },
+          "response": []
+        },
+        {
+          "id": "a8c882d4-9013-55b9-b02d-cf428bc4d0e3",
+          "name": "Get Transaction",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/transactions/{{transaction_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "transactions",
+                "{{transaction_id}}"
+              ]
+            },
+            "description": "Get a single transaction by ID. Includes the full subtransactions\narray for split transactions. Check transfer_account_id to\ndetermine if this is one side of a transfer.\n\nKey fields: data.transaction.id, data.transaction.amount,\ndata.transaction.subtransactions[], data.transaction.transfer_account_id."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "id": "e874c4e4-790c-5731-b783-662305f35b16",
+      "name": "Transactions \u2014 Write",
+      "description": "Write operations for transactions. These create or modify durable data in YNAB.\nAll amounts must be in milliunits (1000 = $1.00).\nNegative amounts are outflows (spending); positive are inflows (income).",
+      "item": [
+        {
+          "id": "ef2361f2-bff8-549b-baf7-a249e30f02db",
+          "name": "Create Transaction [WRITE]",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/transactions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "transactions"
+              ]
+            },
+            "description": "Create a single transaction. All provided fields are saved.\n\namount: milliunits. Negative for outflow (spending), positive for inflow.\ncleared: \"cleared\", \"uncleared\", or \"reconciled\".\napproved: if false, the transaction appears as pending in YNAB.\n\nFor transfers: set payee_id to the transfer_payee_id of the target\naccount (found in the accounts list). Do not set payee_name.\n\nFor splits: include subtransactions[] where amounts sum to the parent\namount. Each subtransaction can have its own category_id and memo.\n\nimport_id: optional dedup key. If a transaction with the same\nimport_id already exists, this request is silently skipped.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transaction\": {\n    \"account_id\": \"{{account_id}}\",\n    \"date\": \"2025-05-15\",\n    \"amount\": -25000,\n    \"payee_name\": \"Whole Foods Market\",\n    \"category_id\": \"{{category_id}}\",\n    \"memo\": \"Weekly groceries\",\n    \"cleared\": \"cleared\",\n    \"approved\": true\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "e5dc9666-2d9e-520f-80cc-79a1676b8357",
+          "name": "Create Split Transaction [WRITE]",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/transactions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "transactions"
+              ]
+            },
+            "description": "Create a split transaction where a single purchase is divided across\nmultiple categories. The subtransactions amounts must sum exactly to\nthe parent amount. Each subtransaction can have its own category_id\nand memo.\n\nExample: $50 Target purchase split between Groceries ($30) and\nHousehold ($20). Parent amount: -50000. Sub amounts: -30000 + -20000.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transaction\": {\n    \"account_id\": \"{{account_id}}\",\n    \"date\": \"2025-05-15\",\n    \"amount\": -50000,\n    \"payee_name\": \"Target\",\n    \"memo\": \"Target run \\u2014 split\",\n    \"cleared\": \"cleared\",\n    \"approved\": true,\n    \"subtransactions\": [\n      {\n        \"amount\": -30000,\n        \"category_id\": \"{{category_id}}\",\n        \"memo\": \"Groceries\"\n      },\n      {\n        \"amount\": -20000,\n        \"category_id\": \"{{category_id_2}}\",\n        \"memo\": \"Household supplies\"\n      }\n    ]\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "3dd4e08c-4ecf-5bc4-b74d-7879c97eff68",
+          "name": "Update Transaction [WRITE]",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/transactions/{{transaction_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "transactions",
+                "{{transaction_id}}"
+              ]
+            },
+            "description": "Replace a transaction's fields. All provided fields are updated.\nOmit fields you want to leave unchanged. This is a full replacement\nof the transaction's editable fields \u2014 not a partial patch.\n\namount: milliunits.\naccount_id and date are required.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transaction\": {\n    \"account_id\": \"{{account_id}}\",\n    \"date\": \"2025-05-15\",\n    \"amount\": -25000,\n    \"payee_name\": \"Whole Foods Market\",\n    \"category_id\": \"{{category_id}}\",\n    \"memo\": \"Updated memo\",\n    \"cleared\": \"cleared\",\n    \"approved\": true\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "7c5bd79e-e950-5fb0-8281-7e7302fe12cc",
+          "name": "Bulk Update Transactions [WRITE]",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/transactions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "transactions"
+              ]
+            },
+            "description": "Update multiple transactions in a single call. Each entry in\ntransactions[] must include `id`. Other fields are optional \u2014\nonly provided fields are updated.\n\nIMPORTANT: This is NOT atomic. The response contains:\n- transaction_ids: successfully updated IDs\n- duplicate_import_ids: skipped due to duplicate import_id\n\nAlways verify the response counts rather than assuming all-or-nothing.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transactions\": [\n    {\n      \"id\": \"{{transaction_id}}\",\n      \"memo\": \"Bulk-updated memo\",\n      \"approved\": true\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "ced6db9c-a9c7-55f7-accd-0ca87dad7e3a",
+          "name": "Delete Transaction [WRITE \u2014 DESTRUCTIVE]",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/transactions/{{transaction_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "transactions",
+                "{{transaction_id}}"
+              ]
+            },
+            "description": "Delete a transaction. This is permanent \u2014 deleted transactions\nare soft-deleted (deleted: true) but cannot be easily recovered.\n\nWARNING: For transfer transactions, deleting one side also affects\nthe paired transaction on the other account. Always check\ntransfer_account_id before deleting. If transfer_account_id is set,\nfetch the paired transaction first to understand the full impact."
+          },
+          "response": []
+        },
+        {
+          "id": "4829287e-367f-5808-8f84-b7c5d2f64f65",
+          "name": "Trigger Bank Import [WRITE]",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/transactions/import",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "transactions",
+                "import"
+              ]
+            },
+            "description": "Trigger YNAB's built-in import from linked bank accounts.\nThis does NOT accept external transaction data or file uploads.\nOnly accounts with a direct bank link (direct_import_linked: true)\nare affected.\n\nReturns the IDs of transactions that were imported.\nSafe to call multiple times \u2014 already-imported transactions are skipped."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "id": "5ccfc5d8-5129-5dff-a4aa-f600c0923810",
+      "name": "Payees",
+      "description": "Payees are merchants, people, or sources that transactions are\nattributed to. YNAB creates payees automatically from imported\ntransactions. The transfer_payee_id on accounts is used to create\ntransfer transactions.",
+      "item": [
+        {
+          "id": "e3c3cb5f-6169-5e8e-88f2-513123d0588e",
+          "name": "List Payees",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/payees",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "payees"
+              ],
+              "query": [
+                {
+                  "key": "last_knowledge_of_server",
+                  "value": "",
+                  "description": "Delta sync.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Returns all payees for the plan. Use this to find payee IDs for\nfiltering transactions or for creating transfer transactions\n(using the account's transfer_payee_id).\n\nKey fields: data.payees[].id, data.payees[].name,\ndata.payees[].transfer_account_id (non-null for transfer payees)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "01b02143-eb04-5edb-affc-3711c7277b87",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Response has data key\", function() {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property(\"data\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "9fedd212-9a1b-51d9-8446-4ed14e52cd48",
+          "name": "Get Payee",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/payees/{{payee_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "payees",
+                "{{payee_id}}"
+              ]
+            },
+            "description": "Returns a single payee by ID."
+          },
+          "response": []
+        },
+        {
+          "id": "41198f7a-e70f-5b1d-b1c2-ef2d6f4bfd24",
+          "name": "Create Payee [WRITE]",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/payees",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "payees"
+              ]
+            },
+            "description": "Create a new payee. Added in YNAB API v1.81.0 (March 2026).\nUseful for pre-seeding payees before creating transactions.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payee\": {\n    \"name\": \"New Payee Name\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "2e7d1849-2222-57e6-8d42-577e635de0fa",
+          "name": "Update Payee [WRITE]",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/payees/{{payee_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "payees",
+                "{{payee_id}}"
+              ]
+            },
+            "description": "Rename a payee. Note: renaming a payee renames it for all\nexisting transactions that reference it.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payee\": {\n    \"name\": \"Updated Payee Name\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "ee440b85-7471-5c9f-979e-ee10bfb8e092",
+          "name": "List Payee Locations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/payee_locations",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "payee_locations"
+              ]
+            },
+            "description": "Returns geographic location data (latitude/longitude) for payees\nimported from bank feeds. Low priority for most workflows.\nLocation data is set by the bank, not by the user."
+          },
+          "response": []
+        },
+        {
+          "id": "1ca79676-f895-53ff-9ba5-64e58b7de599",
+          "name": "Get Payee Location",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/payee_locations/{{payee_location_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "payee_locations",
+                "{{payee_location_id}}"
+              ]
+            },
+            "description": "Get a single payee location by ID."
+          },
+          "response": []
+        },
+        {
+          "id": "147ec5dc-8a6a-5665-91da-18a8be6a41b7",
+          "name": "List Locations for Payee",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/payees/{{payee_id}}/payee_locations",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "payees",
+                "{{payee_id}}",
+                "payee_locations"
+              ]
+            },
+            "description": "List all geographic locations for a specific payee."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "id": "0fe7ca24-3e1f-56de-97f0-3c56bd4d358b",
+      "name": "Scheduled Transactions",
+      "description": "Scheduled transactions are recurring entries that YNAB generates\nautomatically. They are used for recurring bills, subscriptions, and\nplanned transfers. They become real transactions when their date arrives.",
+      "item": [
+        {
+          "id": "bd4860a6-8ed5-5ea9-8e52-2f2a10bf5104",
+          "name": "List Scheduled Transactions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/scheduled_transactions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "scheduled_transactions"
+              ],
+              "query": [
+                {
+                  "key": "last_knowledge_of_server",
+                  "value": "",
+                  "description": "Delta sync.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Returns all scheduled transactions. Use this to see upcoming\nrecurring bills, subscription charges, and planned transfers.\n\nKey fields: data.scheduled_transactions[].id,\ndata.scheduled_transactions[].date_next (next occurrence),\ndata.scheduled_transactions[].frequency,\ndata.scheduled_transactions[].amount,\ndata.scheduled_transactions[].payee_name,\ndata.scheduled_transactions[].category_name."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "93d085e5-b9d3-52a0-9737-a6ac32c0a362",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Response has data key\", function() {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property(\"data\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "55d7dac4-108b-5fd3-bc3e-417947ef205d",
+          "name": "Get Scheduled Transaction",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/scheduled_transactions/{{scheduled_transaction_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "scheduled_transactions",
+                "{{scheduled_transaction_id}}"
+              ]
+            },
+            "description": "Get a single scheduled transaction including subtransactions."
+          },
+          "response": []
+        },
+        {
+          "id": "69ea9d7c-8728-5051-b213-c4204495bf31",
+          "name": "Create Scheduled Transaction [WRITE]",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/scheduled_transactions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "scheduled_transactions"
+              ]
+            },
+            "description": "Create a recurring scheduled transaction.\n\nfrequency values: never, daily, weekly, everyOtherWeek, twiceAMonth,\nevery4Weeks, monthly, everyOtherMonth, every3Months, every4Months,\ntwiceAYear, yearly, everyOtherYear.\n\namount: milliunits (negative for outflow).\ndate_first: ISO date for the first occurrence.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"scheduled_transaction\": {\n    \"account_id\": \"{{account_id}}\",\n    \"date_first\": \"2025-06-01\",\n    \"frequency\": \"monthly\",\n    \"amount\": -120000,\n    \"payee_name\": \"Netflix\",\n    \"category_id\": \"{{category_id}}\",\n    \"memo\": \"Monthly subscription\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "321d0006-697e-537a-b94a-5ed3b1ae29d6",
+          "name": "Update Scheduled Transaction [WRITE]",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/scheduled_transactions/{{scheduled_transaction_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "scheduled_transactions",
+                "{{scheduled_transaction_id}}"
+              ]
+            },
+            "description": "Replace a scheduled transaction's fields. All editable fields\nare replaced with the provided values.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"scheduled_transaction\": {\n    \"account_id\": \"{{account_id}}\",\n    \"date_first\": \"2025-06-01\",\n    \"frequency\": \"monthly\",\n    \"amount\": -130000,\n    \"payee_name\": \"Netflix\",\n    \"category_id\": \"{{category_id}}\",\n    \"memo\": \"Updated amount\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "id": "518735ef-d0d7-5d53-a4c5-2ec278c7f57c",
+          "name": "Delete Scheduled Transaction [WRITE \u2014 DESTRUCTIVE]",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/scheduled_transactions/{{scheduled_transaction_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "scheduled_transactions",
+                "{{scheduled_transaction_id}}"
+              ]
+            },
+            "description": "Delete a scheduled transaction. This stops the recurring entry\nand removes all future scheduled occurrences.\nPast transactions that were already generated are unaffected."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "id": "f122a115-9dc8-50f7-b84e-84cde034f7ab",
+      "name": "Money Movements",
+      "description": "Money movements provide a view of how money flows between category groups.\nThis is an enriched view not available in the base transaction list.",
+      "item": [
+        {
+          "id": "00dc9038-86b8-5555-9717-203499b3543c",
+          "name": "List Money Movements",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/money_movements",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "money_movements"
+              ],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "",
+                  "description": "Optional ISO month date filter.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Returns money movement summary across all months.\nUseful for understanding aggregate flows between categories."
+          },
+          "response": []
+        },
+        {
+          "id": "853207cb-4356-54da-ab2b-bd36a1ae81c9",
+          "name": "List Money Movements for Month",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/months/{{month}}/money_movements",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "months",
+                "{{month}}",
+                "money_movements"
+              ],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "",
+                  "description": "Optional type filter.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Returns money movements for a specific month."
+          },
+          "response": []
+        },
+        {
+          "id": "38ee3b29-9bdd-5b3f-a0a4-99853380e9f0",
+          "name": "List Money Movement Groups",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/money_movement_groups",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "money_movement_groups"
+              ]
+            },
+            "description": "Returns money movements grouped by category group."
+          },
+          "response": []
+        },
+        {
+          "id": "f196c0e7-b0dc-5cd6-94a2-02b5c85a0817",
+          "name": "List Money Movement Groups for Month",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_key}}",
+                "type": "text",
+                "description": "YNAB Personal Access Token. Set api_key in your environment."
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/budgets/{{plan_id}}/months/{{month}}/money_movement_groups",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "budgets",
+                "{{plan_id}}",
+                "months",
+                "{{month}}",
+                "money_movement_groups"
+              ]
+            },
+            "description": "Returns money movement groups for a specific month."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://api.ynab.com/v1",
+      "type": "default",
+      "description": "YNAB API base URL. Do not change unless testing a mock."
+    },
+    {
+      "key": "api_key",
+      "value": "",
+      "type": "secret",
+      "description": "YNAB Personal Access Token. Required."
+    },
+    {
+      "key": "plan_id",
+      "value": "",
+      "type": "default",
+      "description": "Default budget/plan ID. Copy from List Plans response."
+    },
+    {
+      "key": "account_id",
+      "value": "",
+      "type": "default",
+      "description": "Account ID for account-scoped requests."
+    },
+    {
+      "key": "account_id_2",
+      "value": "",
+      "type": "default",
+      "description": "Second account ID, used for transfer requests."
+    },
+    {
+      "key": "category_id",
+      "value": "",
+      "type": "default",
+      "description": "Category ID for category-scoped requests."
+    },
+    {
+      "key": "category_id_2",
+      "value": "",
+      "type": "default",
+      "description": "Second category ID, used for split transaction requests."
+    },
+    {
+      "key": "category_group_id",
+      "value": "",
+      "type": "default",
+      "description": "Category group ID for category group requests."
+    },
+    {
+      "key": "transaction_id",
+      "value": "",
+      "type": "default",
+      "description": "Transaction ID for single-transaction requests."
+    },
+    {
+      "key": "payee_id",
+      "value": "",
+      "type": "default",
+      "description": "Payee ID for payee-scoped requests."
+    },
+    {
+      "key": "payee_location_id",
+      "value": "",
+      "type": "default",
+      "description": "Payee location ID for location requests."
+    },
+    {
+      "key": "scheduled_transaction_id",
+      "value": "",
+      "type": "default",
+      "description": "Scheduled transaction ID."
+    },
+    {
+      "key": "month",
+      "value": "2025-05-01",
+      "type": "default",
+      "description": "ISO date for the first day of the month, e.g. 2025-05-01."
+    },
+    {
+      "key": "last_knowledge_of_server",
+      "value": "",
+      "type": "default",
+      "description": "Save server_knowledge from any response; pass it back for delta sync."
+    }
+  ]
+}

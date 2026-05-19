@@ -26,6 +26,7 @@ dev = [
     "pytest>=9.0.3",
     "pytest-asyncio>=1.3.0",
     "pytest-httpx>=0.36.2",
+    "pyyaml>=6.0.3",
     "ruff>=0.15.13",
 ]
 
@@ -60,3 +61,21 @@ mypy_path = "src"
 testpaths = ["tests"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
+
+# ---------------------------------------------------------------------------
+# Postman collection commands
+# Run with: uv run python scripts/<script>.py
+#
+# Generate:
+#   generate:postman:operator   — regenerate operator collection from routes.yaml
+#   generate:postman:qa         — regenerate QA collection from feature+case files
+#
+# Drift check (CI):
+#   check:postman:operator      — fail if operator collection is out of date
+#   check:postman:qa            — fail if QA collection is out of date
+#
+# Run with Newman (requires: npm install -g newman):
+#   test:postman:operator       — smoke-check the operator collection (read-only)
+#   test:postman:qa             — run all QA cases with Newman
+#   test:postman:qa:smoke       — run only @smoke-tagged QA cases
+# ---------------------------------------------------------------------------
