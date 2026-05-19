@@ -31,6 +31,7 @@ mindmap
       layers
       request flow
       errors
+      deployment modes
     repo-structure.md
       top-level tree
       code locations
@@ -44,13 +45,33 @@ mindmap
       commands
       gaps
     security.md
-      auth
-      logging
-      write safety
+      PAT mode
+      hosted OAuth mode
+      token handling
     AGENTS.md
       implementation rules
       extension paths
       diagram rules
+    privacy-policy.md
+      data accessed
+      storage
+      deletion
+    branding.md
+      naming rules
+      domain rules
+      copy blocks
+    ynab-app-requirements.md
+      attribution
+      OAuth constraints
+      support positioning
+    oauth-architecture.md
+      flow design
+      token lifecycle
+      dual-mode model
+    public-launch-checklist.md
+      legal docs
+      branding compliance
+      hosted security
 ```
 
 ## Recommended Reading Order
@@ -62,6 +83,14 @@ mindmap
 5. [AGENTS.md](../AGENTS.md)
 6. [testing.md](testing.md)
 7. [security.md](security.md)
+
+For the hosted OAuth and public app path:
+
+8. [oauth-architecture.md](oauth-architecture.md)
+9. [privacy-policy.md](privacy-policy.md)
+10. [branding.md](branding.md)
+11. [ynab-app-requirements.md](ynab-app-requirements.md)
+12. [public-launch-checklist.md](public-launch-checklist.md)
 
 ## By Audience
 
@@ -92,6 +121,17 @@ Start with:
 - [tool-surface.md](tool-surface.md)
 
 Use these to understand where to add tools, how requests flow, and how the tool families are organized.
+
+### Public app / hosted OAuth track
+
+Start with:
+- [oauth-architecture.md](oauth-architecture.md)
+- [privacy-policy.md](privacy-policy.md)
+- [branding.md](branding.md)
+- [ynab-app-requirements.md](ynab-app-requirements.md)
+- [public-launch-checklist.md](public-launch-checklist.md)
+
+Use these to understand the planned hosted deployment, public legal requirements, and launch readiness criteria.
 
 ## Document Guide
 
@@ -164,6 +204,52 @@ Implementation companion for AI agents and contributors:
 - extension rules
 - architecture invariants
 - diagram update rules
+
+### [privacy-policy.md](privacy-policy.md)
+
+Public privacy policy for the planned hosted OAuth deployment:
+- data accessed and how it is used
+- storage and caching behavior
+- OAuth token storage
+- retention and deletion
+- contact placeholder
+
+### [branding.md](branding.md)
+
+Naming and branding guidance before a public product name is chosen:
+- acceptable and unacceptable product name patterns
+- acceptable and unacceptable domain patterns
+- logo and artwork rules
+- standardized copy blocks (footer disclaimer, support notice, OAuth pointer)
+- pre-launch naming checklist
+
+### [ynab-app-requirements.md](ynab-app-requirements.md)
+
+YNAB-specific public app requirements:
+- required footer attribution text
+- OAuth app constraints (privacy policy, naming, branding)
+- third-party app and support positioning
+- YNAB restricted mode and review process
+
+### [oauth-architecture.md](oauth-architecture.md)
+
+Implementation-ready OAuth design for the planned Cloudflare Worker deployment:
+- OAuth flow (Authorization Code + PKCE)
+- token and session storage model
+- token lifecycle
+- dual-mode auth provider model (PAT vs OAuth)
+- user deletion/revocation contract
+- open decisions before implementation
+
+### [public-launch-checklist.md](public-launch-checklist.md)
+
+Launch readiness checklist for the hosted public app:
+- legal and public docs
+- branding and domain compliance
+- OAuth app configuration
+- hosted security posture
+- token deletion path
+- YNAB review readiness
 
 ## Mermaid Guidance
 

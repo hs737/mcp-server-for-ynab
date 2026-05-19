@@ -28,6 +28,13 @@ Next reads:
 - [Legal Notice](NOTICE.md)
 - [Postman Notes](postman/README.md)
 
+Public app and hosted OAuth docs:
+- [Privacy Policy](docs/privacy-policy.md)
+- [Branding](docs/branding.md)
+- [YNAB App Requirements](docs/ynab-app-requirements.md)
+- [OAuth Architecture](docs/oauth-architecture.md)
+- [Public Launch Checklist](docs/public-launch-checklist.md)
+
 ## High-Level Architecture
 
 ```mermaid
@@ -192,7 +199,18 @@ All YNAB monetary amounts are in **milliunits**: `1000 = $1.00`.
 - Raw tools accept and return milliunits for canonical amount fields.
 - Enriched tools may include display helpers alongside canonical values.
 
-## Current State
+## Deployment Modes
+
+This repo currently operates in **local PAT mode** and is evolving toward a dual-mode product:
+
+| Mode | Status | Auth | Deployment |
+|------|--------|------|------------|
+| Local self-hosted (PAT) | Live | `YNAB_API_KEY` env var | Local machine, stdio |
+| Hosted OAuth | Planned | Per-user OAuth tokens | Cloudflare Worker |
+
+The hosted OAuth path is designed and documented but not yet implemented. See [OAuth Architecture](docs/oauth-architecture.md) for the full implementation plan.
+
+## Current Implementation
 
 The current implementation uses:
 - Python 3.12

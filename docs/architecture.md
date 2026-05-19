@@ -15,7 +15,43 @@ Adjacent docs:
 - [Tool Surface](tool-surface.md)
 - [Testing](testing.md)
 - [Security](security.md)
+- [OAuth Architecture](oauth-architecture.md)
 - [Agent Guidance](../AGENTS.md)
+
+## Deployment Modes
+
+This repo is evolving from a local-first tool into a dual-mode product. Both modes expose the same logical tool surface. The auth and transport layers differ.
+
+### Current mode: local self-hosted (PAT)
+
+```mermaid
+flowchart LR
+    A["Local MCP client\n(Claude Desktop, etc.)"] -->|stdio| B["FastMCP server\n(local process)"]
+    B --> C["PAT auth\n(YNAB_API_KEY env var)"]
+    C --> D["YNAB API"]
+```
+
+- Auth: Personal Access Token from environment variable
+- Transport: stdio
+- Users: single user per process
+- Deployment: local machine
+
+### Planned mode: hosted OAuth (Cloudflare Worker)
+
+```mermaid
+flowchart LR
+    A["Public MCP client\n(any user)"] -->|HTTP| B["Cloudflare Worker"]
+    B --> C["OAuth token store\nper-user grant record"]
+    C --> D["YNAB API"]
+```
+
+- Auth: per-user OAuth access token + refresh token
+- Transport: streamable HTTP
+- Users: multi-user
+- Deployment: Cloudflare Worker
+- Status: planned — not yet implemented
+
+The OAuth design is documented in [OAuth Architecture](oauth-architecture.md). Implementation begins after the public/legal layer is in place.
 
 ## Product Model
 
