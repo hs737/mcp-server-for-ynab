@@ -929,6 +929,7 @@ dev = [
     { name = "pytest-httpx" },
     { name = "pyyaml" },
     { name = "ruff" },
+    { name = "uvicorn" },
 ]
 
 [package.metadata]
@@ -946,4 +947,5 @@ dev = [
     { name = "pytest-httpx", specifier = ">=0.36.2" },
     { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "ruff", specifier = ">=0.15.13" },
+    { name = "uvicorn", specifier = ">=0.34.0" },
 ]
