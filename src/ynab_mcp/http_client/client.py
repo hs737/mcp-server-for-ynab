@@ -29,10 +29,16 @@ _BACKOFF_BASE = 0.5  # seconds
 
 
 def _redact_headers(headers: httpx.Headers) -> dict[str, str]:
-    """Return a copy of headers with Authorization redacted for logging."""
-    result = dict(headers)
-    if "authorization" in {k.lower() for k in result}:
-        result["Authorization"] = "Bearer [REDACTED]"
+    """Return a copy of headers with Authorization redacted for logging.
+
+    httpx.Headers stores keys in lowercase. dict(headers) therefore produces
+    lowercase keys. Adding a capitalized "Authorization" key would leave the
+    original lowercase "authorization" key (containing the real token) intact.
+    Normalise to lowercase first so the replacement is unambiguous.
+    """
+    result = {k.lower(): v for k, v in headers.items()}
+    if "authorization" in result:
+        result["authorization"] = "Bearer [REDACTED]"
     return result
 
 

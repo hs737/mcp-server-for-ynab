@@ -1,4 +1,4 @@
-"""Unit tests: HTTP client retry logic and error mapping."""
+"""Unit tests: HTTP client retry logic, error mapping, and header redaction."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from ynab_mcp.http_client.client import YnabHttpClient
+from ynab_mcp.http_client.client import YnabHttpClient, _redact_headers
 from ynab_mcp.models.errors import ErrorType, YnabMcpException
 
 
@@ -118,3 +118,35 @@ async def test_raises_transport_error_after_max_retries() -> None:
         await client.get("/budgets")
 
     assert exc_info.value.error.error_type == ErrorType.TRANSPORT_ERROR
+
+
+# ---------------------------------------------------------------------------
+# _redact_headers
+# ---------------------------------------------------------------------------
+
+
+def test_redact_headers_removes_authorization() -> None:
+    """The real token must not appear anywhere in the redacted dict."""
+    raw = httpx.Headers({"authorization": "Bearer secret-token", "content-type": "application/json"})
+    result = _redact_headers(raw)
+
+    assert "secret-token" not in str(result)
+    assert result["authorization"] == "Bearer [REDACTED]"
+    assert result["content-type"] == "application/json"
+
+
+def test_redact_headers_no_duplicate_key() -> None:
+    """Redaction must not leave both 'authorization' and 'Authorization' in the dict."""
+    raw = httpx.Headers({"authorization": "Bearer secret"})
+    result = _redact_headers(raw)
+
+    lowercase_keys = {k.lower() for k in result}
+    assert lowercase_keys == {"authorization"}  # exactly one entry
+
+
+def test_redact_headers_no_auth_header_is_unchanged() -> None:
+    raw = httpx.Headers({"content-type": "application/json", "x-request-id": "abc123"})
+    result = _redact_headers(raw)
+
+    assert "authorization" not in result
+    assert result["content-type"] == "application/json"
