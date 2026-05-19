@@ -1,122 +1,236 @@
 # Testing
 
+This document explains how the current test suite is organized, what it verifies today, and where the remaining gaps are.
+
+## What this document is for
+
+Read this page if you need:
+- test commands
+- the purpose of each test layer
+- the difference between implemented checks and planned checks
+- where QA and Postman assets fit
+
+Adjacent docs:
+- [Architecture](architecture.md)
+- [Repo Structure](repo-structure.md)
+- [Security](security.md)
+
+## Test Layers
+
+```mermaid
+flowchart TD
+    A["Unit tests"] --> B["Contract tests"]
+    B --> C["Integration tests"]
+    C --> D["Postman / QA checks"]
+```
+
+Interpretation:
+- unit tests are fastest and most isolated
+- contract tests validate route wrappers and payloads
+- integration tests validate app assembly and MCP-facing behavior
+- Postman and QA assets exercise external verification workflows
+
 ## Commands
 
 ```bash
-make lint            # ruff check .
-make format          # ruff format .
-make typecheck       # mypy src
-make test            # all tests
-make test-unit       # tests/unit only
-make test-contract   # tests/contract only
-make test-integration  # tests/integration only
-make check           # lint + typecheck + all tests
-make smoke-stdio     # quick smoke: start server, call overview_budget_snapshot, exit
+make lint
+make format
+make typecheck
+make test
+make test-unit
+make test-contract
+make test-integration
+make check
+make smoke-stdio
+make run-stdio
+make run-http
+make postman-generate
+make postman-check
+make test-postman
+make test-postman-operator
 ```
 
-Or call pytest directly for more control:
+## Current State
 
-```bash
-uv run pytest tests/unit/test_models/ -v
-uv run pytest tests/contract/test_transactions.py -v -k "delta"
-uv run pytest -x --tb=short    # stop on first failure
+The current suite verifies a meaningful portion of the codebase, but the coverage is uneven by layer.
+
+Implemented today:
+- unit tests for config, HTTP client retry behavior, amount helpers, and shared errors
+- contract tests for the transactions client
+- integration tests for app creation and tool metadata/registration
+- QA source assets and generated Postman collections
+
+Not yet fully implemented:
+- broad contract coverage for every `ynab_client` resource
+- MCP-boundary integration tests that invoke representative tools and assert structured error payloads
+- comprehensive transport parity checks between stdio and HTTP
+
+This doc intentionally reflects the current suite rather than the ideal future suite.
+
+## Test Directory Map
+
+```text
+tests/
+├── contract/      route wrapper and payload tests
+├── fixtures/      reusable JSON payloads and request bodies
+├── integration/   app assembly and MCP-facing behavior
+├── qa/            feature and case sources for generated Postman collections
+└── unit/          isolated logic tests
 ```
 
-## Required environment for tests
+## Layer by Layer
 
-Unit and contract tests run entirely against mocked HTTP — no real YNAB credentials needed.
+### Unit tests
 
-Integration tests also run against mocked HTTP by default.
+Location:
+- `tests/unit/`
 
-The smoke test (`make smoke-stdio`) requires a real `YNAB_API_KEY` and optionally `YNAB_PLAN_ID`.
-Set them in `.env` or export them before running.
+Purpose:
+- verify isolated logic without real network calls
 
-## Test categories
+Currently covers:
+- config loading and default plan resolution
+- shared error model
+- milliunit helpers
+- HTTP retry and error mapping behavior
 
-### Unit tests (`tests/unit/`)
+Fastest layer:
+- yes
 
-Test isolated logic with no external I/O.
+Best place to add:
+- helper logic
+- parsing/validation behavior
+- enriched heuristics
 
-Covers:
-- `config/` — env loading, default plan resolution, validation errors
-- `auth/` — PAT provider: token loading, error on missing key
-- `http_client/` — retry logic, backoff, error mapping, header redaction
-- `models/` — milliunit conversions, error shape construction, amount display formatting
-- `enriched/` — heuristic logic: categorization scoring, memo pattern detection
+### Contract tests
 
-### Contract tests (`tests/contract/`)
+Location:
+- `tests/contract/`
 
-One test file per `ynab_client` resource. Each verifies:
-- Correct HTTP method and URL path
-- Query parameter serialization
-- Request body shape for mutations
-- Response parsing into typed models
-- Delta sync parameters (`last_knowledge_of_server`, `server_knowledge`)
-- Error mapping (401 → `auth_failure`, 404 → `not_found`, 429 → `rate_limited`)
-- Special cases: subtransactions, transfer fields, partial success on bulk update
+Purpose:
+- verify `ynab_client` resource wrappers use the correct path, method, params, and shape
 
-Uses `pytest-httpx` (`respx`) to mock at the transport layer.
+Currently covers:
+- transactions client behavior
+- delta-sync parameters
+- typed transaction response parsing
 
-Special contract tests required:
-- `test_payees.py` — verify `payees_create` route (added in YNAB v1.81.0)
-- `test_plans.py` — verify `plans_get_settings` returns settings object
-- `test_transactions.py` — verify `transactions_trigger_import` hits the correct endpoint,
-  not an upload endpoint; verify `transactions_bulk_update` partial-success shape
+Current gap:
+- most other resource wrappers do not yet have the same contract coverage
 
-### Integration tests (`tests/integration/`)
+Best place to add:
+- new raw YNAB route coverage
+- endpoint-specific payload assertions
 
-Verify the full MCP server stack with mocked YNAB responses.
+### Integration tests
 
-Covers:
-- stdio server startup and graceful shutdown
-- representative raw read tool: `accounts_list`
-- representative raw write tool: `transactions_create` (via mock)
-- representative enriched tool: `overview_budget_snapshot`
-- default `YNAB_PLAN_ID` resolution behavior
-- `overview_available_tools` returns expected structure
-- shared error shape at the tool boundary (401 → structured error)
+Location:
+- `tests/integration/`
 
-## Fixture strategy
+Purpose:
+- verify the assembled app and MCP-facing registration behavior
 
-Fixtures live in `tests/fixtures/`. Start small and expand when a test requires it.
+Currently covers:
+- app creation
+- tool registry population
+- family/classification metadata presence
 
-Core fixtures (always present):
-- `healthy_budget.json` — single plan, normal accounts and categories
-- `overspent_budget.json` — budget with several overspent categories
-- `uncategorized_transactions.json` — budget with uncategorized transactions
-- `auth_failure.json` — YNAB 401 response body
-- `rate_limit.json` — YNAB 429 response body
+Current gap:
+- the current integration suite does not yet exercise representative tool invocation through the MCP boundary as thoroughly as the architecture intends
+- error-shape assertions at the actual tool boundary still deserve stronger coverage
 
-Expand as needed:
-- `transfer_transactions.json` — transaction list with transfer pairs
-- `split_transactions.json` — transactions with subtransactions
-- `scheduled_pressure.json` — scheduled transactions causing upcoming funding gaps
-- `bulk_update_partial.json` — bulk update response with mixed success/failure
+Best place to add:
+- startup and transport behavior
+- real tool invocation
+- boundary error handling
 
-## Async testing
+### QA and Postman checks
 
-All tests that touch async code use `pytest-asyncio`. The `pyproject.toml` sets
-`asyncio_mode = "auto"` so `async def test_*` functions run automatically without
-requiring `@pytest.mark.asyncio`.
+Locations:
+- `tests/qa/features/`
+- `tests/qa/cases/`
+- `postman/collections/`
+- `postman/environments/`
+- `postman/sources/`
 
-```python
-async def test_accounts_list_parses_response(httpx_mock):
-    httpx_mock.add_response(json=load_fixture("healthy_budget.json"))
-    client = AccountsClient(...)
-    result = await client.list(plan_id="abc")
-    assert len(result.accounts) > 0
-```
+Purpose:
+- maintain generated Postman collections
+- support external verification via Newman
 
-## Phase 2 additions
+Current behavior:
+- collections are generated from YAML/feature sources
+- `make postman-check` detects drift in generated collections
+- `make test-postman` and `make test-postman-operator` run Newman if credentials and tool prerequisites are present
 
-When HTTP transport is added:
-- `test-postman` target via Newman
-- HTTP integration tests
-- Transport parity checks (same tool, same response via stdio and HTTP)
+These are slower and more operational than unit/contract tests.
 
-## Phase 3 additions
+## Which Tests Are Fast vs End-to-End
 
-When OAuth is added:
-- OAuth flow unit tests
-- Token refresh tests
-- Auth-mode matrix: PAT path still works after OAuth is added
+| Layer | Speed | External dependencies | Notes |
+|------|-------|------------------------|-------|
+| Unit | Fast | None | Best first pass |
+| Contract | Fast | Mocked HTTP only | Best for raw client accuracy |
+| Integration | Medium | Local app assembly | Good for wiring and metadata |
+| Postman/Newman | Slowest | Credentials, Newman, runtime env | External verification path |
+
+## Fixtures
+
+Fixtures currently live in:
+- `tests/fixtures/`
+
+Use them for:
+- request body examples
+- known response payloads
+- edge-case input validation
+
+When adding fixtures:
+- keep them small
+- make the scenario obvious from the filename
+- prefer reusable payloads over one-off blobs
+
+## Async Testing
+
+The repo uses `pytest-asyncio` with `asyncio_mode = "auto"` from `pyproject.toml`.
+
+That means:
+- async tests can be written directly as `async def`
+- async wrappers and helpers should be tested without sync shims
+
+## Generated Postman Artifacts
+
+Generated artifacts live in:
+- `postman/collections/`
+- `postman/environments/`
+
+Source-of-truth inputs live in:
+- `postman/sources/`
+- `tests/qa/features/`
+- `tests/qa/cases/`
+
+Edit the source inputs, not just the generated JSON.
+
+## Recommended Verification Flow
+
+For most code changes:
+
+1. `make lint`
+2. `make typecheck`
+3. `make test-unit`
+4. `make test-contract`
+5. `make test-integration`
+
+For changes affecting generated API verification assets:
+
+1. `make postman-generate`
+2. `make postman-check`
+3. `make test-postman-operator` if credentials are available
+
+## Planned Improvements
+
+The current suite would benefit from:
+- contract tests for all raw resource wrappers
+- stronger integration tests that invoke actual tool handlers
+- explicit MCP-boundary error-shape assertions
+- clearer parity checks between stdio and HTTP transports
+
+These are planned improvements, not claims about current coverage.

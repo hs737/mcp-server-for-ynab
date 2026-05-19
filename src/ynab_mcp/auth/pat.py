@@ -1,4 +1,4 @@
-"""Personal Access Token auth provider — Phase 1 implementation."""
+"""Personal Access Token auth provider."""
 
 from __future__ import annotations
 

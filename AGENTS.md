@@ -1,168 +1,246 @@
 # AGENTS.md
 
-This file tells AI agents how this repository works and how to extend it correctly.
+This file tells AI agents and contributors how this repository works and how to extend it correctly.
+
+## What this document is for
+
+Read this page if you need:
+- implementation rules
+- extension paths for raw or enriched tools
+- architecture invariants that docs must match
+- guidance for updating diagrams and repo docs
+
+Adjacent docs:
+- [README.md](README.md)
+- [Architecture](docs/architecture.md)
+- [Repo Structure](docs/repo-structure.md)
+- [Tool Surface](docs/tool-surface.md)
+- [Testing](docs/testing.md)
 
 ## Mission
 
-`ynab-mcp` is an MCP server for AI agents to interact with YNAB budgets. It exposes the full YNAB API through raw tools and adds enriched AI-friendly helpers on top. The goal is safe, explicit budget management — not autonomous financial decision-making.
+`ynab-mcp` is an MCP server for AI agents to interact with YNAB budgets. It exposes the YNAB API through raw tools and adds enriched AI-friendly helpers on top. The goal is safe, explicit budget management rather than autonomous financial decision-making.
 
-## Architecture map
+## Start Here If You Are Modifying the Repo
 
-```
+1. Read [Architecture](docs/architecture.md).
+2. Read [Repo Structure](docs/repo-structure.md).
+3. Read [Tool Surface](docs/tool-surface.md) if you are touching tools.
+4. Read [Testing](docs/testing.md) before changing behavior.
+5. Update docs and diagrams when the structure or request flow changes.
+
+## Architecture Map
+
+```text
 src/ynab_mcp/
+├── auth/         auth abstraction + PAT implementation
+├── cli/          stdio/http entrypoints and smoke helper
 ├── config/       env loading, runtime validation, default plan resolution
-├── auth/         AuthProvider abstraction + PAT implementation
+├── enriched/     AI-friendly read workflows
 ├── http_client/  async httpx wrapper: retries, error normalization, redaction
-├── models/       Pydantic types: YNAB shapes, shared error model, milliunit helpers
-├── ynab_client/  one module per YNAB resource family (thin async wrappers)
-├── enriched/     cross-resource AI-friendly read tools
-├── server/       MCP tool registry, metadata, stdio wiring
-└── cli/          run-stdio entrypoint and smoke helpers
+├── models/       typed YNAB shapes, shared error model, milliunit helpers
+├── server/       FastMCP app, context, registry, error boundary, tool registration
+└── ynab_client/  async wrappers for YNAB resource families
 ```
 
-Request flow for a raw tool call:
-```
-MCP client → server/registry → ynab_client/<resource> → http_client → YNAB API
+## Trace a Tool from MCP Name to YNAB Request
+
+```mermaid
+sequenceDiagram
+    participant Client as MCP client
+    participant Server as server/app.py
+    participant Handler as server/tools/*
+    participant YClient as ynab_client/*
+    participant Http as http_client/client.py
+    participant API as YNAB API
+
+    Client->>Server: invoke tool name
+    Server->>Handler: registered FastMCP handler
+    Handler->>YClient: call resource or enriched workflow
+    YClient->>Http: request(...)
+    Http->>API: HTTP call
+    API-->>Http: JSON response
+    Http-->>YClient: dict or structured exception
+    YClient-->>Handler: typed model
+    Handler-->>Server: dict payload
+    Server-->>Client: MCP tool result
 ```
 
-Request flow for an enriched tool call:
-```
-MCP client → server/registry → enriched/<tool> → ynab_client/* → http_client → YNAB API
-```
+If you need to follow a tool:
+- start in `src/ynab_mcp/server/tools/`
+- find the corresponding `ynab_client` resource wrapper
+- then trace through `http_client/client.py`
 
-## Tool conventions
+## Tool Conventions
 
 ### Classification
 
-Every tool is tagged as one of:
-- `read` — inspects YNAB data, makes no changes
-- `write` — mutates YNAB data (create, update, delete)
+Every tool is one of:
+- `read`
+- `write`
 
-Enriched tools in Phase 1 are all `read`. No enriched tool performs a hidden write.
+Enriched tools should stay read-only unless there is a very strong reason otherwise.
 
 ### Naming
 
-Raw tools: `<resource>_<action>` — e.g. `transactions_list`, `categories_update`
-Enriched tools: `<family>_<intent>` — e.g. `triage_uncategorized_transactions`, `overview_budget_snapshot`
+Raw tools:
+- `<resource>_<action>`
+
+Enriched tools:
+- `<family>_<intent>`
 
 ### Metadata
 
 Every registered tool carries:
-- `family` — tool family string
-- `classification` — `"read"` or `"write"`
-- `tool_type` — `"raw"` or `"enriched"`
-- `summary` — one-sentence description
-- `priority` — `"standard"` or `"low"` (low = niche tools like payee_locations)
+- `family`
+- `classification`
+- `tool_type`
+- `summary`
+- optional `priority`
 
-## Milliunit rule
+Keep metadata accurate. `overview_available_tools` depends on it.
 
-**YNAB amounts are always milliunits. `1000 = $1.00`.**
+## Milliunit Rule
 
-- Raw tools accept and return milliunit values for all canonical amount fields.
-- Enriched tools include a `display_amount` helper string alongside milliunit values.
-- If you add a tool that involves amounts, document the milliunit requirement explicitly in the tool description.
-- Any future convenience dollar-input mode must be opt-in, clearly named, and routed through `models.amounts.dollars_to_milliunits()`.
+YNAB amounts are always milliunits.
 
-## MCP SDK
+- `1000 = $1.00`
+- raw tools accept and return milliunits for canonical amount fields
+- enriched tools may add display helpers, but canonical values stay milliunits
+- any future dollar-input convenience must be explicit and route through `models.amounts`
 
-FastMCP ships inside the official Anthropic `mcp` package. The import path
-`from mcp.server.fastmcp import FastMCP` is correct — this is **not** the
-standalone `fastmcp` PyPI package. `pyproject.toml` pins `mcp>=1.27.1`.
+If a tool touches money, say so in the tool description.
 
-## Shared error shape
+## Shared Error Shape
 
-All tool failures return a consistent structure. Never invent a different top-level error contract.
+All tool failures should use the shared error contract from `models/errors.py`.
 
-```python
-class YnabMcpError(BaseModel):
-    error_type: str   # see ErrorType enum in models/errors.py
-    message: str
-    status_code: int | None = None
-    retry_after: int | None = None   # seconds, for rate_limited errors
-    details: dict | None = None
-    ynab_error_name: str | None = None
-    ynab_error_id: str | None = None
-```
+Top-level fields:
+- `error_type`
+- `message`
+- optional `status_code`
+- optional `retry_after`
+- optional `details`
+- optional `ynab_error_name`
+- optional `ynab_error_id`
 
-`error_type` values: `auth_failure`, `rate_limited`, `not_found`, `validation_error`,
-`conflict`, `transport_error`, `ynab_api_error`, `internal_error`
+At the MCP boundary, `server/tools/boundary.py` is responsible for converting known exceptions into the shared shape.
 
-For 429 responses, always set `retry_after` when the YNAB API provides it.
+## Default Plan Behavior
 
-### Error boundary
+If `YNAB_PLAN_ID` is set:
+- tools that accept `plan_id` may default to it
 
-Every tool handler is wrapped with `@tool_handler` from `server/tools/boundary.py`.
-This decorator catches `YnabMcpException` (from the HTTP client), `ConfigError`
-(from missing plan_id / bad config), and any unexpected exception, converting all
-of them to `{"error": YnabMcpError.model_dump()}` before returning to the MCP layer.
-AI agents therefore always receive a dict — never a raw exception.
+If no explicit or default plan ID is available:
+- the call should fail in a validation-style way through the shared tool boundary
 
-Decoration order (outer-to-inner):
+## Transfer and Subtransaction Rules
 
-```python
-@mcp.tool(name="...", ...)
-@tool_handler
-async def some_tool(...) -> dict[str, Any]:
-    ...
-```
+Transfer transactions are paired:
+- do not treat them as ordinary spending
+- document transfer implications for raw mutation tools
 
-## Default plan behavior
+Split transactions use `subtransactions`:
+- raw transaction models should include them
+- enriched tools must not lose or misinterpret them
 
-If `YNAB_PLAN_ID` is set in config, all tools that accept `plan_id` default to it.
-The `plan_id` parameter is marked optional in all tool schemas when a default exists.
-If called without `plan_id` and no default is configured, the tool returns a `validation_error`.
+## Delta Sync
 
-## Transfer semantics
+Where YNAB supports it:
+- accept `last_knowledge_of_server`
+- return `server_knowledge`
 
-Transfer transactions in YNAB are **paired** — each transfer creates two linked transactions across accounts. Raw mutation tools must document transfer-related fields. Enriched tools must not misclassify transfer pairs as ordinary spending or as duplicates.
+Do not remove delta-sync capability from raw tools when modifying route wrappers.
 
-## Subtransaction semantics
-
-Split transactions use `subtransactions`. Raw transaction models always include the `subtransactions` field. List/get tools surface them. Create/update paths handle split payloads correctly where YNAB supports it.
-
-## Delta sync
-
-Delta-capable YNAB endpoints accept `last_knowledge_of_server` and return `server_knowledge`.
-Raw tools for these endpoints expose both parameters. The tool contract must not prevent callers from doing incremental sync even when Phase 1 has no local cache.
-
-## Mutation safety
+## Mutation Safety
 
 - Raw write tools mutate only when explicitly called.
-- Enriched tools never write.
-- Tool descriptions for write tools must include `[WRITE]` in the summary.
-- Examples in docs should demonstrate review-before-write patterns.
+- Enriched tools never perform hidden writes.
+- Write tool descriptions should clearly indicate side effects.
 
-## How to add a raw tool
+## How to Add a Raw Tool
 
-1. Add or update the Pydantic model in `models/` if the resource shape is new.
-2. Add or update the async wrapper method in `ynab_client/<resource>.py`.
-3. Write a contract test in `tests/contract/test_<resource>.py`.
-4. Register the tool in `server/tools/<resource>.py` with correct metadata.
-5. Add an integration test in `tests/integration/`.
-6. Update `docs/architecture.md` if the resource family is new.
+1. Add or update types under `models/ynab/` if needed.
+2. Add the async wrapper in `ynab_client/<resource>.py`.
+3. Register the tool in `server/tools/raw/`.
+4. Ensure it is wrapped by the tool boundary.
+5. Add contract tests.
+6. Add integration tests if MCP-boundary behavior matters.
+7. Update docs if the tool family or semantics changed.
 
-## How to add an enriched tool
+## How to Add an Enriched Tool
 
-1. Define the agent intent clearly — what question does this tool answer?
-2. Classify it: `read` (almost always) or `write` (rare, requires justification).
-3. Implement in `enriched/<family>.py`, reusing `ynab_client` methods.
-4. Return structured output per the enriched output rules (scope, boundaries, findings, rationale).
-5. Use the shared error shape on failure.
-6. Add fixture-driven tests in `tests/unit/`.
-7. Register in `server/tools/enriched.py` with metadata.
-8. Keep it async throughout.
+1. Define the user or agent question it answers.
+2. Implement it in `enriched/`.
+3. Register it in `server/tools/enriched.py`.
+4. Keep it read-only unless there is a deliberate design change.
+5. Reuse raw client semantics rather than duplicating route logic.
+6. Add tests.
+7. Update [Tool Surface](docs/tool-surface.md) if the surface area changes.
 
-## Async rule
+## How to Validate a Documentation Change
 
-The entire stack is `asyncio`-based. Do not introduce sync I/O wrappers into the call path. All `ynab_client` methods are `async def`. All enriched tool methods are `async def`. Tests use `pytest-asyncio` with `asyncio_mode = "auto"`.
+After changing docs:
+- read `README.md` as a new contributor
+- confirm package/file references actually exist
+- confirm Mermaid diagrams still describe the current code
+- run the existing repo checks if the change touched code or commands
 
-## Cross-phase quality gate
+If the doc change affects examples or commands:
+- ensure those examples still match `Makefile`, CLI, and current config
+
+## Mermaid Guidance
+
+Use Mermaid for:
+- architecture diagrams
+- request flow diagrams
+- tool family maps
+- documentation maps
+
+Prefer:
+- `flowchart`
+- `sequenceDiagram`
+- `mindmap`
+
+Rules:
+- keep labels short
+- prefer structural diagrams over decorative ones
+- diagrams must render in GitHub markdown
+- update diagrams when package layout, request flow, or tool families change
+
+## When to Update Diagrams
+
+Update the affected Mermaid diagrams whenever you change:
+- package boundaries
+- server wiring
+- request flow
+- tool registration model
+- test layering
+- documentation navigation structure
+
+## Known Documentation Invariants
+
+- `docs/architecture.md` must match the actual package layout.
+- `README.md` examples must remain runnable.
+- Mermaid diagrams must reflect current request flow and structure.
+- `docs/testing.md` must not overclaim test coverage.
+- `docs/repo-structure.md` must match the actual repo tree.
+
+## Async Rule
+
+The stack is `asyncio`-based end to end.
+
+Do not introduce:
+- sync HTTP wrappers
+- duplicated sync entry paths
+- blocking network logic in tool handlers
+
+## Quality Gate
 
 A change is not done unless:
-- Docs are updated
-- Tool descriptions match actual behavior
-- Tests pass
-- Milliunit rules are consistent
-- Errors use the shared shape
-- No hidden writes were introduced
-- Quick-start flows still work
+- docs are updated when structure or behavior changes
+- tool descriptions match behavior
+- milliunit handling remains consistent
+- shared error-shape behavior remains intact
+- tests remain green
+- diagrams remain truthful

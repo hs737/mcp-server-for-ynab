@@ -1,23 +1,74 @@
 # ynab-mcp
 
-An AI-first [Model Context Protocol](https://modelcontextprotocol.io/) server for [YNAB](https://ynab.com). Lets AI agents read and manage your budget through a clean, predictable tool interface.
+An AI-first [Model Context Protocol](https://modelcontextprotocol.io/) server for [YNAB](https://ynab.com). It exposes the YNAB API as MCP tools for AI agents, then adds enriched read-only tools for orientation, triage, and bookkeeping workflows.
+
+This repo is structured so a contributor or AI agent can answer three questions quickly:
+- where the MCP server lives
+- where YNAB API wrappers and models live
+- where to add new tools, tests, and docs
+
+## What this document is for
+
+Read this page if you need:
+- a quick understanding of the product
+- local setup and run commands
+- a map of the repository docs
+- a high-level view of the architecture
+
+Next reads:
+- [Architecture](docs/architecture.md)
+- [Repo Structure](docs/repo-structure.md)
+- [Tool Surface](docs/tool-surface.md)
+- [Testing](docs/testing.md)
+- [Security](docs/security.md)
+- [Contributing](CONTRIBUTING.md)
+- [Agent Guidance](AGENTS.md)
+- [Docs Index](docs/README.md)
+- [Legal Notice](NOTICE.md)
+- [Postman Notes](postman/README.md)
+
+## High-Level Architecture
+
+```mermaid
+flowchart LR
+    A["MCP Client"] --> B["FastMCP Server"]
+    B --> C["Tool Handlers"]
+    C --> D["ynab_client"]
+    D --> E["http_client (httpx)"]
+    E --> F["YNAB API"]
+    C --> G["enriched/"]
+    G --> D
+```
 
 ## What it does
 
-Exposes two kinds of tools to AI agents:
+The server exposes two kinds of tools:
 
-- **Raw tools** — direct mirrors of the YNAB API (read + write). Use these for precise reads and all writes.
-- **Enriched tools** — AI-friendly helpers that consolidate common multi-step workflows into discoverable interfaces. Use these for orientation, triage, and analysis.
+- **Raw tools**: close mirrors of YNAB endpoints. Use these for exact reads and all writes.
+- **Enriched tools**: AI-friendly helpers that combine multiple reads into clearer workflows. Use these for orientation, investigation, and analysis.
 
-Every tool is labeled `read` or `write`. Enriched tools never perform hidden writes.
+Every tool is labeled `read` or `write`. Enriched tools do not perform hidden writes.
 
-## Quick start
+## How the Repo Is Organized
 
-**1. Get a YNAB Personal Access Token**
+The code is centered around a small set of layers:
 
-Go to [app.ynab.com/settings/developer](https://app.ynab.com/settings/developer) → Generate a new token.
+- `src/ynab_mcp/server/`: FastMCP app, tool metadata, tool registration, error boundary
+- `src/ynab_mcp/ynab_client/`: one async wrapper module per YNAB resource family
+- `src/ynab_mcp/http_client/`: outbound `httpx` wrapper with retries, redaction, and error normalization
+- `src/ynab_mcp/models/`: typed YNAB shapes, shared error model, milliunit helpers
+- `src/ynab_mcp/enriched/`: higher-level read-only workflows built on top of raw clients
+- `tests/`: unit, contract, integration, and QA/Postman source assets
 
-**2. Install**
+For the full tree and “where do I put X?” guidance, read [Repo Structure](docs/repo-structure.md).
+
+## Quick Start
+
+### 1. Get a YNAB Personal Access Token
+
+Go to [app.ynab.com/settings/developer](https://app.ynab.com/settings/developer) and generate a token.
+
+### 2. Install
 
 ```bash
 git clone <repo-url>
@@ -25,16 +76,22 @@ cd ynab-mcp
 uv sync
 ```
 
-**3. Configure**
+### 3. Configure
 
 ```bash
 cp .env.example .env
 # Edit .env: set YNAB_API_KEY and optionally YNAB_PLAN_ID
 ```
 
-Most users have one budget. Set `YNAB_PLAN_ID` and all tools will default to it without requiring you to pass it every call.
+Most users have one budget. If you set `YNAB_PLAN_ID`, tools that accept `plan_id` can default to it.
 
-**4. Add to your MCP client**
+### 4. Run Over stdio
+
+```bash
+make run-stdio
+```
+
+### 5. Add to Your MCP Client
 
 For Claude Desktop, add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
@@ -53,66 +110,112 @@ For Claude Desktop, add to `~/Library/Application Support/Claude/claude_desktop_
 }
 ```
 
-**5. Verify**
+### 6. Verify
 
 ```bash
 make smoke-stdio
 ```
 
-## Tool families
+## Tool Families
 
-Start with `overview_available_tools` — it returns the full tool catalog grouped by family, distinguishing raw from enriched, and highlights recommended entry points.
+Start with `overview_available_tools`. It returns the current tool catalog grouped by family, including raw vs enriched classification and low-priority families.
 
 | Family | Type | Purpose |
 |--------|------|---------|
 | `overview` | enriched | Budget health snapshots and orientation |
 | `triage` | enriched | Transaction cleanup queues |
-| `bookkeeping` | enriched | Categorization suggestions, memo help, payee history |
+| `bookkeeping` | enriched | Categorization suggestions, memo help, history |
 | `analysis` | enriched | Spending analysis, funding gaps, scheduled risks |
 | `user` | raw | YNAB user info |
-| `plans` | raw | Budget/plan management |
+| `plans` | raw | Plan and settings reads |
 | `accounts` | raw | Account reads and creation |
-| `categories` | raw | Category and category group management |
+| `categories` | raw | Categories and category groups |
 | `months` | raw | Month-level budget data |
 | `payees` | raw | Payee management |
-| `payee_locations` | raw | Payee geographic data (niche) |
-| `transactions` | raw | Transaction CRUD, import trigger |
+| `payee_locations` | raw | Geographic payee metadata, niche/low-priority |
+| `transactions` | raw | Transaction CRUD and import trigger |
 | `scheduled_transactions` | raw | Scheduled transaction management |
 | `money_movements` | raw | Money movement data |
 
-## Development commands
+More detail: [Tool Surface](docs/tool-surface.md)
+
+## Where to Read Next
+
+If you are:
+
+- **new to the repo**: read [Architecture](docs/architecture.md)
+- **adding code**: read [Contributing](CONTRIBUTING.md), [Repo Structure](docs/repo-structure.md), and [Agent Guidance](AGENTS.md)
+- **adding or changing tools**: read [Tool Surface](docs/tool-surface.md)
+- **verifying behavior**: read [Testing](docs/testing.md)
+- **working on auth, error handling, or logging**: read [Security](docs/security.md)
+
+## Common Contributor Paths
+
+### Add a raw tool
+
+Read:
+- [Contributing](CONTRIBUTING.md)
+- [Repo Structure](docs/repo-structure.md)
+- [Architecture](docs/architecture.md)
+- [Agent Guidance](AGENTS.md)
+
+### Add an enriched tool
+
+Read:
+- [Contributing](CONTRIBUTING.md)
+- [Tool Surface](docs/tool-surface.md)
+- [Architecture](docs/architecture.md)
+- [Agent Guidance](AGENTS.md)
+
+### Run the server
 
 ```bash
-make lint            # ruff check
-make format          # ruff format
-make typecheck       # mypy
-make test            # all tests
-make test-unit       # unit tests only
-make test-contract   # contract tests only
-make test-integration  # integration tests only
-make check           # lint + typecheck + test
-make smoke-stdio     # quick smoke test against stdio transport
-make run-stdio       # start the MCP server over stdio
+make run-stdio
+make run-http
+```
+
+### Run tests
+
+```bash
+make test
+make test-unit
+make test-contract
+make test-integration
+make test-postman-operator
 ```
 
 ## Configuration
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `YNAB_API_KEY` | Yes | YNAB Personal Access Token |
-| `YNAB_PLAN_ID` | Recommended | Default budget ID — makes `plan_id` optional on all tools |
-| `LOG_LEVEL` | No | Logging verbosity (default: `INFO`) |
+| `YNAB_API_KEY` | Yes | YNAB personal access token |
+| `YNAB_PLAN_ID` | Recommended | Default plan ID to make `plan_id` optional on most tools |
+| `LOG_LEVEL` | No | Logging verbosity, default `INFO` |
 
-## Amount convention
+## Amount Convention
 
-All YNAB amounts are in **milliunits**: `1000 = $1.00`. Raw tools accept and return milliunits. Enriched tools include human-readable `display_amount` fields alongside canonical milliunit values.
+All YNAB monetary amounts are in **milliunits**: `1000 = $1.00`.
 
-## Roadmap
+- Raw tools accept and return milliunits for canonical amount fields.
+- Enriched tools may include display helpers alongside canonical values.
 
-- **Phase 1 (current):** PAT auth, stdio transport, full raw API coverage, enriched read tools
-- **Phase 2:** HTTP transport, Postman/Newman verification, expanded enriched tools
-- **Phase 3:** OAuth authorization-code flow, token refresh, hosted usage patterns
+## Current State
+
+The current implementation uses:
+- Python 3.12
+- `FastMCP` from the official `mcp` package
+- `asyncio` end to end
+- `httpx` for outbound YNAB calls
+- built-in stdio and streamable HTTP transports from the current FastMCP stack
+
+If architecture and implementation ever diverge, the source of truth should be [Architecture](docs/architecture.md), updated to reflect the actual code.
 
 ## License
 
-MIT
+Apache License 2.0. See [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md).
+
+## Disclaimer
+
+We are not affiliated, associated, or in any way officially connected with YNAB or any of its subsidiaries or affiliates. The official YNAB website can be found at [https://www.ynab.com](https://www.ynab.com).
+
+The names YNAB and You Need A Budget, as well as related names, tradenames, marks, trademarks, emblems, and images are registered trademarks of YNAB.

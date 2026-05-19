@@ -1,171 +1,309 @@
 # Architecture
 
-## Product intent
+This document describes the current implementation of `ynab-mcp`.
 
-`ynab-mcp` is an MCP server, not a consumer app. It exists to let AI agents interact with YNAB budgets safely and effectively. The product optimizes for:
+## What this document is for
 
-- **Tool clarity** over UI
-- **Explicit schemas** over loosely described behavior
-- **Predictable mutations** over smart magic
-- **Discoverability** for language models
+Read this page if you need:
+- the actual package and layer structure
+- request flow through the server
+- error flow and tool boundary behavior
+- current implementation notes where code differs from older plans
 
-## Toolchain baseline
+Adjacent docs:
+- [Repo Structure](repo-structure.md)
+- [Tool Surface](tool-surface.md)
+- [Testing](testing.md)
+- [Security](security.md)
+- [Agent Guidance](../AGENTS.md)
 
-| Concern | Choice | Why |
-|---------|--------|-----|
-| Python version | 3.12 | Stable, strong typing, compatible with mcp SDK |
-| MCP server framework | `mcp` (official SDK) | Canonical implementation, closest to protocol source |
-| Concurrency | `asyncio` end-to-end | mcp SDK is async-first; avoids sync/async impedance |
-| Outbound HTTP | `httpx` | Native async, aligns with mcp SDK ecosystem |
-| Data validation | `pydantic` v2 | Strict typed models, good MCP schema generation |
-| Lint/format | `ruff` | Fast, single tool for both concerns |
-| Type checking | `mypy` (strict) | Catches bugs before runtime |
-| Testing | `pytest` + `pytest-asyncio` + `pytest-httpx` | Async-native, httpx mocking |
+## Product Model
 
-## Package layout
+`ynab-mcp` is an MCP server for AI agents. It exposes:
+- raw tools that mirror the YNAB API closely
+- enriched tools that consolidate common read workflows into more discoverable agent-facing operations
 
+The system is optimized for:
+- explicit tool contracts
+- predictable writes
+- agent discoverability
+- async I/O across the stack
+
+## Current Technical Baseline
+
+| Concern | Current implementation |
+|---------|------------------------|
+| Python | 3.12 |
+| Concurrency | `asyncio` |
+| MCP framework | `FastMCP` from the `mcp` package |
+| Outbound HTTP | `httpx` |
+| Validation/models | `pydantic` v2 |
+| Test stack | `pytest`, `pytest-asyncio`, `pytest-httpx` |
+
+## Current State Notes
+
+- The current server uses `FastMCP`, not a hand-built lower-level protocol layer.
+- The CLI supports both `stdio` and HTTP transports today.
+- HTTP transport currently runs through FastMCP’s built-in streamable HTTP mode rather than a dedicated `http_transport` package.
+- Structured tool errors are handled through `server/tools/boundary.py`.
+
+These are implementation truths and should be preferred over older planning assumptions.
+
+## Package and Layer Overview
+
+```mermaid
+flowchart TD
+    A["cli/"] --> B["server/app.py"]
+    B --> C["server/tools/"]
+    C --> D["server/tools/boundary.py"]
+    C --> E["enriched/"]
+    C --> F["ynab_client/"]
+    F --> G["http_client/client.py"]
+    G --> H["YNAB API"]
+    F --> I["models/ynab/"]
+    E --> F
+    B --> J["server/context.py"]
+    J --> F
+    J --> K["auth/"]
+    B --> L["server/registry.py"]
 ```
+
+## Package Layout
+
+```text
 src/ynab_mcp/
-├── config/
-│   └── settings.py       env loading, YNAB_API_KEY, YNAB_PLAN_ID, LOG_LEVEL
-├── auth/
-│   ├── base.py           AuthProvider protocol
-│   └── pat.py            PatAuthProvider — Phase 1 implementation
-├── http_client/
-│   └── client.py         async httpx wrapper, retries, 429 handling, redaction
-├── models/
-│   ├── errors.py         YnabMcpError, ErrorType enum
-│   ├── amounts.py        milliunit helpers
-│   ├── ynab/             typed YNAB request/response shapes (per resource)
-│   └── mcp_types.py      MCP input/output schema helpers
-├── ynab_client/
-│   ├── base.py           shared request execution
-│   ├── user.py           GET /user
-│   ├── plans.py          GET /budgets, GET /budgets/{id}, GET /budgets/{id}/settings
-│   ├── accounts.py       accounts resource
-│   ├── categories.py     categories + category groups resource
-│   ├── months.py         months resource
-│   ├── payees.py         payees resource
-│   ├── payee_locations.py  payee locations resource
-│   ├── transactions.py   transactions resource (includes delta sync)
-│   ├── scheduled_transactions.py
-│   └── money_movements.py
-├── enriched/
-│   ├── overview.py       budget_snapshot, month_health, cash_position, available_tools
-│   ├── triage.py         uncategorized, unapproved transactions
-│   ├── bookkeeping.py    categorization suggestions, memo annotation, transaction history
-│   └── analysis.py       overspent categories, funding gaps, upcoming risks
-├── server/
-│   ├── registry.py       ToolRegistry: registration, metadata storage
-│   ├── tools/
-│   │   ├── raw/          one file per resource family
-│   │   └── enriched.py   enriched tool registrations
-│   └── stdio.py          stdio server entry via mcp SDK
-└── cli/
-    ├── main.py           `ynab-mcp stdio` entrypoint
-    └── smoke.py          smoke test helper
+├── auth/           auth abstraction and PAT provider
+├── cli/            stdio/http entrypoints and smoke helper
+├── config/         settings and environment loading
+├── enriched/       consolidated read-only workflows
+├── http_client/    outbound httpx client for YNAB API calls
+├── models/         shared errors, amount helpers, typed YNAB models
+├── server/         FastMCP app, context, metadata, tool boundary, tool registration
+└── ynab_client/    async resource wrappers over the YNAB API
 ```
 
-## Request flow
+## Responsibilities by Layer
 
+### `config/`
+
+Loads runtime configuration:
+- `YNAB_API_KEY`
+- optional `YNAB_PLAN_ID`
+- `LOG_LEVEL`
+
+Also owns default plan resolution via `Settings.resolve_plan_id()`.
+
+### `auth/`
+
+Owns access token retrieval.
+
+Current implementation:
+- PAT-only via `PatAuthProvider`
+
+Planned future change:
+- OAuth provider can be added behind the same interface later
+
+### `http_client/`
+
+Owns outbound YNAB API concerns:
+- auth header injection
+- retries and backoff
+- rate-limit handling
+- header redaction
+- normalization into the shared error contract
+
+### `models/`
+
+Owns:
+- milliunit helpers
+- shared `YnabMcpError`
+- typed YNAB request/response models
+
+### `ynab_client/`
+
+Owns async wrappers around YNAB resource families:
+- plans
+- accounts
+- categories
+- months
+- payees
+- transactions
+- scheduled transactions
+- money movements
+
+This is where YNAB route semantics belong, not in the server layer.
+
+### `enriched/`
+
+Owns higher-level read workflows, including:
+- overview
+- triage
+- bookkeeping guidance
+- analysis
+
+These modules combine multiple raw reads into structured agent-friendly outputs.
+
+### `server/`
+
+Owns MCP-facing concerns:
+- FastMCP application factory
+- shared app context
+- tool metadata registry
+- raw and enriched tool registration
+- structured tool error boundary
+
+### `cli/`
+
+Owns entrypoints only:
+- `stdio`
+- HTTP/streamable HTTP
+- smoke validation
+
+Business logic should not accumulate here.
+
+## Raw Request Lifecycle
+
+```mermaid
+sequenceDiagram
+    participant Client as MCP client
+    participant App as FastMCP app
+    participant Tool as raw tool handler
+    participant Boundary as tool_handler boundary
+    participant Ctx as AppContext
+    participant YClient as ynab_client
+    participant Http as http_client
+    participant YNAB as YNAB API
+
+    Client->>App: invoke raw tool
+    App->>Boundary: wrapped handler call
+    Boundary->>Tool: execute handler
+    Tool->>Ctx: get_app_context()
+    Tool->>Ctx: resolve plan_id
+    Tool->>YClient: call resource method
+    YClient->>Http: request(...)
+    Http->>YNAB: HTTP request
+    YNAB-->>Http: JSON response
+    Http-->>YClient: parsed dict or YnabMcpException
+    YClient-->>Tool: typed model
+    Tool-->>Boundary: model_dump()
+    Boundary-->>App: dict payload
+    App-->>Client: MCP tool result
 ```
-MCP client (stdio)
-  → server/stdio.py          (mcp SDK handles protocol framing)
-  → server/registry.py       (routes tool name to handler)
-  → server/tools/raw/*.py    (raw tool handler)
-    OR enriched/<family>.py  (enriched tool handler)
-  → ynab_client/<resource>   (async method per YNAB endpoint)
-  → http_client/client.py    (httpx, auth header, retries)
-  → YNAB API
+
+## Enriched Request Lifecycle
+
+```mermaid
+sequenceDiagram
+    participant Client as MCP client
+    participant App as FastMCP app
+    participant Tool as enriched tool handler
+    participant Boundary as tool_handler boundary
+    participant Enriched as enriched module
+    participant YClient as ynab_client
+    participant Http as http_client
+    participant YNAB as YNAB API
+
+    Client->>App: invoke enriched tool
+    App->>Boundary: wrapped handler call
+    Boundary->>Tool: execute handler
+    Tool->>Enriched: call workflow function
+    Enriched->>YClient: multiple resource reads
+    YClient->>Http: one or more requests
+    Http->>YNAB: HTTP calls
+    YNAB-->>Http: JSON responses
+    Http-->>YClient: parsed dict or YnabMcpException
+    YClient-->>Enriched: typed models
+    Enriched-->>Tool: structured findings
+    Tool-->>Boundary: result dict
+    Boundary-->>App: result or structured error
+    App-->>Client: MCP tool result
 ```
 
-## Auth abstraction
+## Error Flow
 
-`AuthProvider` is a protocol with one method: `async def get_access_token() -> str`.
-
-Phase 1: `PatAuthProvider` reads `YNAB_API_KEY` from config and returns it directly.
-Phase 3: `OAuthAuthProvider` will implement token refresh and persistence behind the same interface. No tool layer code changes are needed when OAuth is added.
-
-## Raw vs enriched tools
-
-**Raw tools** are thin wrappers over YNAB API endpoints. They:
-- accept the same parameters the YNAB API does (normalized to snake_case)
-- return the same response shapes YNAB returns (typed Pydantic models)
-- expose `last_knowledge_of_server` and return `server_knowledge` on delta-capable endpoints
-- are labeled `[READ]` or `[WRITE]` in their description
-
-**Enriched tools** consolidate multi-step read workflows. They:
-- accept intent-level parameters (e.g., a budget month, a transaction to classify)
-- call multiple `ynab_client` methods internally
-- return structured findings with rationale
-- are always `read` in Phase 1
-- never write to YNAB
-
-## Default plan behavior
-
-`YNAB_PLAN_ID` in config sets a default budget ID for all tools that accept `plan_id`.
-When a default is configured, `plan_id` is an optional parameter in tool schemas.
-When no default is configured and `plan_id` is not provided, tools return `validation_error`.
-
-The YNAB API also accepts `last-used` as a budget ID sentinel. The MCP may pass this
-through on supported endpoints but `YNAB_PLAN_ID` is the primary ergonomics path.
-
-## Transfer semantics
-
-YNAB transfer transactions are **paired** — a transfer from account A to account B
-creates two linked transactions. Key implications:
-- `transfer_account_id` identifies the linked account
-- `transfer_transaction_id` identifies the paired transaction
-- Deleting one side of a transfer affects both
-- Enriched tools must not misclassify transfer pairs as duplicates or ordinary spending
-- Category/memo suggestion tools skip transfers
-
-## Subtransaction semantics
-
-Split transactions use the `subtransactions` array on a parent transaction.
-- All transaction models include `subtransactions: list[SubTransaction]`
-- List/get tools surface them in the response
-- Create/update tools accept them where YNAB supports it
-- Enriched tools that compute amounts must sum subtransaction amounts for splits
-
-## Delta sync
-
-Several YNAB endpoints support incremental updates via `last_knowledge_of_server` / `server_knowledge`.
-Raw tools for these endpoints:
-- Accept `last_knowledge_of_server: int | None` as an optional parameter
-- Return `server_knowledge: int` in their output
-- Phase 1 has no local cache, but the contract does not block callers from implementing one
-
-Delta-capable endpoints: budgets, accounts, categories, months, payees, transactions,
-scheduled transactions.
-
-## Amount convention (milliunits)
-
-**All YNAB amounts are in milliunits. `1000 = $1.00`.**
-
-- Raw tool inputs and outputs use milliunits for all canonical amount fields
-- Enriched tool outputs include `display_amount: str` (e.g., `"$12.50"`) alongside milliunit values
-- Conversion utilities live in `models/amounts.py`
-- Any future dollar-input convenience mode must be opt-in and route through `models/amounts.py`
-
-## Shared error shape
-
-All tool failures normalize to `YnabMcpError` (see `models/errors.py`):
-
-```
-error_type    required  stable string from ErrorType enum
-message       required  human-readable description
-status_code   optional  HTTP status code from YNAB if applicable
-retry_after   optional  seconds to wait (set for rate_limited errors)
-details       optional  additional structured context
-ynab_error_name  optional  YNAB's own error name field
-ynab_error_id    optional  YNAB's own error ID field
+```mermaid
+flowchart TD
+    A["YNAB/API or config failure"] --> B["http_client or settings"]
+    B --> C["YnabMcpException or ConfigError"]
+    C --> D["server/tools/boundary.py"]
+    D --> E["YnabMcpError dict"]
+    E --> F["MCP client receives structured error payload"]
 ```
 
-## Testing strategy
+The intended boundary behavior is:
+- `YnabMcpException` becomes `{"error": ...}`
+- `ConfigError` becomes `validation_error`
+- unexpected exceptions become `internal_error`
 
-See `docs/testing.md` for commands. The test architecture:
+## Tool Registration Flow
 
-- **Unit tests** (`tests/unit/`) — isolated logic: config parsing, auth, models, amounts, error mapping, enriched heuristics
-- **Contract tests** (`tests/contract/`) — one test file per `ynab_client` resource; verify route, payload, and response shape using `pytest-httpx` mocks
-- **Integration tests** (`tests/integration/`) — full stdio startup + representative tool invocations through mocked YNAB responses
+```mermaid
+flowchart LR
+    A["server/app.py:create_app"] --> B["initialize AppContext"]
+    B --> C["import server.tools.enriched"]
+    B --> D["import server.tools.raw"]
+    C --> E["FastMCP tool registration"]
+    D --> E
+    C --> F["ToolRegistry metadata"]
+    D --> F
+    F --> G["overview_available_tools"]
+```
+
+## AppContext and Shared Clients
+
+`server/context.py` creates a shared `AppContext` at startup. It contains:
+- settings
+- one shared `YnabHttpClient`
+- initialized `ynab_client` instances for each resource family
+
+This keeps tool handlers thin and avoids recreating clients per call.
+
+## Tool Metadata Model
+
+`server/registry.py` stores metadata for discoverability:
+- tool name
+- family
+- classification
+- tool type (`raw` vs `enriched`)
+- summary
+- optional priority
+
+This metadata is separate from FastMCP’s protocol registration and is used by `overview_available_tools`.
+
+## Amount Convention
+
+YNAB canonical amounts are milliunits:
+- `1000 = $1.00`
+- raw tools use milliunits for canonical amount fields
+- enriched outputs may include display helpers
+
+All amount conversion logic belongs in `models/amounts.py`.
+
+## Default Plan Resolution
+
+Most tools accept `plan_id: str | None`.
+
+Resolution behavior:
+- use the explicit tool argument if present
+- otherwise use `YNAB_PLAN_ID`
+- otherwise return a validation-style failure through the tool boundary
+
+## Delta Sync
+
+The repo supports YNAB’s delta-sync semantics where available:
+- raw tools accept `last_knowledge_of_server`
+- responses expose `server_knowledge`
+- enriched tools may pass through relevant sync state when useful
+
+There is no local sync cache layer in the current implementation.
+
+## Truthfulness Rules for Future Updates
+
+When the implementation changes, update this document if any of these move:
+- package layout
+- transport model
+- request flow
+- error boundary
+- tool registration strategy
+
+If a planned architecture differs from the current one, label it clearly as a future change rather than describing it as present reality.

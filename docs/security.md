@@ -15,14 +15,14 @@ Do not commit your `.env` file. The `.gitignore` excludes it.
 The `http_client` redacts sensitive headers before any log output:
 - `Authorization: Bearer <token>` → `Authorization: Bearer [REDACTED]`
 
-If you add new auth mechanisms (Phase 3 OAuth), extend the redaction rules in
+If you add new auth mechanisms such as OAuth, extend the redaction rules in
 `http_client/client.py` to cover OAuth tokens and any callback parameters that
 contain secrets.
 
 ## Write safety
 
 - Raw write tools (`[WRITE]`) mutate YNAB data when called.
-- Enriched tools never write. They are all `read` in Phase 1.
+- Enriched tools never write. They are currently `read`-only.
 - The MCP itself has no autonomous behavior — it only acts when an AI agent explicitly
   calls a tool with explicit parameters.
 - `transactions_bulk_update` has partial-success behavior: it may succeed on some
@@ -35,7 +35,7 @@ Transfer transactions are paired. Mutating one side of a transfer affects both
 linked transactions. Raw write tools document transfer fields explicitly.
 AI agents should inspect transfer fields before modifying linked transactions.
 
-## OAuth (Phase 3)
+## OAuth
 
 When OAuth is added:
 - Tokens will be stored in a local file with restricted permissions (mode 600)

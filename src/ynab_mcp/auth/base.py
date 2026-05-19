@@ -9,8 +9,8 @@ from typing import Protocol, runtime_checkable
 class AuthProvider(Protocol):
     """Common interface for auth providers.
 
-    Phase 1: PatAuthProvider reads a static PAT.
-    Phase 3: OAuthAuthProvider will implement token refresh behind this interface.
+    PatAuthProvider reads a static PAT today.
+    A future OAuthAuthProvider can implement token refresh behind this interface.
     """
 
     async def get_access_token(self) -> str:
