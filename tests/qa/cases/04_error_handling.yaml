@@ -1,5 +1,11 @@
 # Executable case definitions for family: error_handling
 # Paired with: tests/qa/features/04_error_handling.feature
+#
+# All error cases: YNAB returns { error: { id, name, detail } } at top level.
+# There is NO data wrapper on 4xx responses. Paths use error.xxx, not data.error.xxx.
+#
+# Custom scripts: the generator prepends `const json = pm.response.json();`
+# Do NOT re-declare json in custom script blocks.
 
 family: error_handling
 
@@ -17,11 +23,11 @@ cases:
       - type: status
         value: 401
       - type: json_has_key
-        path: data.error
+        path: error
       - type: json_key_is_string
-        path: data.error.name
+        path: error.name
       - type: json_key_is_string
-        path: data.error.detail
+        path: error.detail
     tags: [smoke, error]
 
   - id: QA-ERR-002
@@ -34,11 +40,11 @@ cases:
       - type: status
         value: 404
       - type: json_has_key
-        path: data.error
+        path: error
       - type: json_key_is_string
-        path: data.error.name
+        path: error.name
       - type: json_key_is_string
-        path: data.error.id
+        path: error.id
     tags: [smoke, error]
 
   - id: QA-ERR-003
@@ -58,14 +64,17 @@ cases:
     path: /budgets/{{plan_id}}/transactions
     params: {}
     body_fixture: transaction_create_invalid.json
-    expected_status: 422
+    expected_status: 400
     assertions:
       - type: status
-        value: 422
+        value: 400
       - type: json_has_key
-        path: data.error
+        path: error
     tags: [error]
-    notes: "Uses a minimal body missing account_id and date, which are required by YNAB."
+    notes: |
+      YNAB returns 400 (not 422) for validation errors on malformed request bodies.
+      The YnabMcpError.from_ynab_response mapping treats both 400 and 422 as
+      YNAB_API_ERROR — this test confirms the actual status code used by the API.
 
   - id: QA-ERR-005
     title: "Error response data.error.id is always a string"
@@ -77,11 +86,10 @@ cases:
       - type: status
         value: 404
       - type: custom
-        description: "data.error.id is a string, not an integer"
+        description: "error.id is a string, not an integer"
         script: |
-          const json = pm.response.json();
-          pm.test("[QA-ERR-005] data.error.id is a string", function() {
-              pm.expect(json.data.error.id).to.be.a('string');
+          pm.test("[QA-ERR-005] error.id is a string", function() {
+              pm.expect(json.error.id).to.be.a('string');
           });
     tags: [error]
     notes: |

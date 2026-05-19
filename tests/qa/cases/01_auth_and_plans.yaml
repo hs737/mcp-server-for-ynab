@@ -55,15 +55,18 @@ cases:
       - type: status
         value: 401
       - type: json_has_key
-        path: data.error
+        path: error
       - type: json_key_is_string
-        path: data.error.name
+        path: error.name
       - type: json_key_is_string
-        path: data.error.detail
+        path: error.detail
     tags: [smoke, error]
     preconditions:
       - "This request intentionally omits the Authorization header"
-    notes: "Uses a pre-request script to remove the Authorization header for this request only."
+    notes: |
+      YNAB error responses use { error: { id, name, detail } } at the top level —
+      there is no data wrapper on 4xx responses. This is different from 200 responses
+      which wrap everything under data.
 
   - id: QA-AUTH-003
     title: "Invalid PAT returns 401 with error shape"
@@ -77,9 +80,9 @@ cases:
       - type: status
         value: 401
       - type: json_has_key
-        path: data.error
+        path: error
       - type: json_key_is_string
-        path: data.error.id
+        path: error.id
     tags: [error]
 
   # ---------------------------------------------------------------------------
@@ -157,8 +160,8 @@ cases:
       - type: status
         value: 404
       - type: json_has_key
-        path: data.error
+        path: error
       - type: json_key_is_string
-        path: data.error.name
+        path: error.name
     tags: [error]
-    notes: "Uses a nil UUID that cannot exist in YNAB."
+    notes: "YNAB 4xx responses: { error: {...} } at top level, no data wrapper."

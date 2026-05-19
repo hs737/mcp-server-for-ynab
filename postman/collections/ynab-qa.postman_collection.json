@@ -91,17 +91,14 @@
                   "pm.test(\"[QA-AUTH-002] Status is 401\", function() {",
                   "    pm.response.to.have.status(401);",
                   "});",
-                  "pm.test(\"[QA-AUTH-002] data.error exists (depth 1)\", function() {",
-                  "    pm.expect(json).to.have.property(\"data\");",
+                  "pm.test(\"[QA-AUTH-002] error exists (depth 1)\", function() {",
+                  "    pm.expect(json).to.have.property(\"error\");",
                   "});",
-                  "pm.test(\"[QA-AUTH-002] data.error exists (depth 2)\", function() {",
-                  "    pm.expect(json[\"data\"]).to.have.property(\"error\");",
+                  "pm.test(\"[QA-AUTH-002] error.name is a string\", function() {",
+                  "    pm.expect(json[\"error\"][\"name\"]).to.be.a('string');",
                   "});",
-                  "pm.test(\"[QA-AUTH-002] data.error.name is a string\", function() {",
-                  "    pm.expect(json[\"data\"][\"error\"][\"name\"]).to.be.a('string');",
-                  "});",
-                  "pm.test(\"[QA-AUTH-002] data.error.detail is a string\", function() {",
-                  "    pm.expect(json[\"data\"][\"error\"][\"detail\"]).to.be.a('string');",
+                  "pm.test(\"[QA-AUTH-002] error.detail is a string\", function() {",
+                  "    pm.expect(json[\"error\"][\"detail\"]).to.be.a('string');",
                   "});"
                 ]
               }
@@ -125,7 +122,7 @@
                 "user"
               ]
             },
-            "description": "**Case:** QA-AUTH-002\n\n**Intent:** Missing Authorization header returns 401 with error shape\n\n**Preconditions:** This request intentionally omits the Authorization header\n\n**Notes:** Uses a pre-request script to remove the Authorization header for this request only.\n\n**Expected status:** 401\n\n**Source:** 01_auth_and_plans.yaml"
+            "description": "**Case:** QA-AUTH-002\n\n**Intent:** Missing Authorization header returns 401 with error shape\n\n**Preconditions:** This request intentionally omits the Authorization header\n\n**Notes:** YNAB error responses use { error: { id, name, detail } } at the top level \u2014\nthere is no data wrapper on 4xx responses. This is different from 200 responses\nwhich wrap everything under data.\n\n\n**Expected status:** 401\n\n**Source:** 01_auth_and_plans.yaml"
           },
           "response": []
         },
@@ -157,14 +154,11 @@
                   "pm.test(\"[QA-AUTH-003] Status is 401\", function() {",
                   "    pm.response.to.have.status(401);",
                   "});",
-                  "pm.test(\"[QA-AUTH-003] data.error exists (depth 1)\", function() {",
-                  "    pm.expect(json).to.have.property(\"data\");",
+                  "pm.test(\"[QA-AUTH-003] error exists (depth 1)\", function() {",
+                  "    pm.expect(json).to.have.property(\"error\");",
                   "});",
-                  "pm.test(\"[QA-AUTH-003] data.error exists (depth 2)\", function() {",
-                  "    pm.expect(json[\"data\"]).to.have.property(\"error\");",
-                  "});",
-                  "pm.test(\"[QA-AUTH-003] data.error.id is a string\", function() {",
-                  "    pm.expect(json[\"data\"][\"error\"][\"id\"]).to.be.a('string');",
+                  "pm.test(\"[QA-AUTH-003] error.id is a string\", function() {",
+                  "    pm.expect(json[\"error\"][\"id\"]).to.be.a('string');",
                   "});"
                 ]
               }
@@ -381,14 +375,11 @@
                   "pm.test(\"[QA-PLANS-004] Status is 404\", function() {",
                   "    pm.response.to.have.status(404);",
                   "});",
-                  "pm.test(\"[QA-PLANS-004] data.error exists (depth 1)\", function() {",
-                  "    pm.expect(json).to.have.property(\"data\");",
+                  "pm.test(\"[QA-PLANS-004] error exists (depth 1)\", function() {",
+                  "    pm.expect(json).to.have.property(\"error\");",
                   "});",
-                  "pm.test(\"[QA-PLANS-004] data.error exists (depth 2)\", function() {",
-                  "    pm.expect(json[\"data\"]).to.have.property(\"error\");",
-                  "});",
-                  "pm.test(\"[QA-PLANS-004] data.error.name is a string\", function() {",
-                  "    pm.expect(json[\"data\"][\"error\"][\"name\"]).to.be.a('string');",
+                  "pm.test(\"[QA-PLANS-004] error.name is a string\", function() {",
+                  "    pm.expect(json[\"error\"][\"name\"]).to.be.a('string');",
                   "});"
                 ]
               }
@@ -413,7 +404,7 @@
                 "00000000-0000-0000-0000-000000000000"
               ]
             },
-            "description": "**Case:** QA-PLANS-004\n\n**Intent:** Get non-existent plan returns 404 with error shape\n\n**Notes:** Uses a nil UUID that cannot exist in YNAB.\n\n**Expected status:** 404\n\n**Source:** 01_auth_and_plans.yaml"
+            "description": "**Case:** QA-PLANS-004\n\n**Intent:** Get non-existent plan returns 404 with error shape\n\n**Notes:** YNAB 4xx responses: { error: {...} } at top level, no data wrapper.\n\n**Expected status:** 404\n\n**Source:** 01_auth_and_plans.yaml"
           },
           "response": []
         }
@@ -556,11 +547,8 @@
                   "pm.test(\"[QA-ACCT-003] Status is 404\", function() {",
                   "    pm.response.to.have.status(404);",
                   "});",
-                  "pm.test(\"[QA-ACCT-003] data.error exists (depth 1)\", function() {",
-                  "    pm.expect(json).to.have.property(\"data\");",
-                  "});",
-                  "pm.test(\"[QA-ACCT-003] data.error exists (depth 2)\", function() {",
-                  "    pm.expect(json[\"data\"]).to.have.property(\"error\");",
+                  "pm.test(\"[QA-ACCT-003] error exists (depth 1)\", function() {",
+                  "    pm.expect(json).to.have.property(\"error\");",
                   "});"
                 ]
               }
@@ -665,9 +653,8 @@
                   "pm.test(\"[QA-CAT-002] Status is 200\", function() {",
                   "    pm.response.to.have.status(200);",
                   "});",
-                  "const json = pm.response.json();",
-                  "const cats = json.data.category_groups.flatMap(g => g.categories || []);",
-                  "const visible = cats.filter(c => !c.hidden && !c.deleted);",
+                  "const cats = json.data.category_groups.flatMap(function(g) { return g.categories || []; });",
+                  "const visible = cats.filter(function(c) { return !c.hidden && !c.deleted; });",
                   "pm.test(\"[QA-CAT-002] Has at least one visible category\", function() {",
                   "    pm.expect(visible.length).to.be.greaterThan(0);",
                   "});",
@@ -710,7 +697,7 @@
                 "categories"
               ]
             },
-            "description": "**Case:** QA-CAT-002\n\n**Intent:** List categories response includes budgeted activity and balance per category\n\n**Notes:** Custom script because we need to traverse the nested structure.\n\n**Expected status:** 200\n\n**Source:** 02_accounts_and_categories.yaml"
+            "description": "**Case:** QA-CAT-002\n\n**Intent:** List categories response includes budgeted activity and balance per category\n\n**Notes:** Custom script uses the top-level 'json' variable injected by the generator \u2014\ndo not re-declare it. Arrow functions replaced with function() to avoid\nstrict-mode issues in some Newman versions.\n\n\n**Expected status:** 200\n\n**Source:** 02_accounts_and_categories.yaml"
           },
           "response": []
         },
@@ -728,11 +715,8 @@
                   "pm.test(\"[QA-CAT-003] Status is 404\", function() {",
                   "    pm.response.to.have.status(404);",
                   "});",
-                  "pm.test(\"[QA-CAT-003] data.error exists (depth 1)\", function() {",
-                  "    pm.expect(json).to.have.property(\"data\");",
-                  "});",
-                  "pm.test(\"[QA-CAT-003] data.error exists (depth 2)\", function() {",
-                  "    pm.expect(json[\"data\"]).to.have.property(\"error\");",
+                  "pm.test(\"[QA-CAT-003] error exists (depth 1)\", function() {",
+                  "    pm.expect(json).to.have.property(\"error\");",
                   "});"
                 ]
               }
@@ -1043,7 +1027,6 @@
                   "pm.test(\"[QA-TXN-003] Status is 200\", function() {",
                   "    pm.response.to.have.status(200);",
                   "});",
-                  "const json = pm.response.json();",
                   "const txns = (json.data.transactions || []).slice(0, 10);",
                   "txns.forEach(function(t, i) {",
                   "    pm.test(\"[QA-TXN-003] Transaction \" + i + \" amount is integer\", function() {",
@@ -1106,7 +1089,6 @@
                   "pm.test(\"[QA-TXN-004] data.transactions exists (depth 2)\", function() {",
                   "    pm.expect(json[\"data\"]).to.have.property(\"transactions\");",
                   "});",
-                  "const json = pm.response.json();",
                   "const txns = json.data.transactions || [];",
                   "txns.forEach(function(t, i) {",
                   "    pm.test(\"[QA-TXN-004] Transaction \" + i + \" has null category_id\", function() {",
@@ -1168,7 +1150,6 @@
                   "pm.test(\"[QA-TXN-005] data.transactions exists (depth 2)\", function() {",
                   "    pm.expect(json[\"data\"]).to.have.property(\"transactions\");",
                   "});",
-                  "const json = pm.response.json();",
                   "const txns = json.data.transactions || [];",
                   "txns.forEach(function(t, i) {",
                   "    pm.test(\"[QA-TXN-005] Transaction \" + i + \" is not approved\", function() {",
@@ -1224,7 +1205,6 @@
                   "pm.test(\"[QA-TXN-006] Status is 200\", function() {",
                   "    pm.response.to.have.status(200);",
                   "});",
-                  "const json = pm.response.json();",
                   "const txns = json.data.transactions || [];",
                   "const cutoff = \"2025-04-01\";",
                   "txns.forEach(function(t, i) {",
@@ -1281,11 +1261,8 @@
                   "pm.test(\"[QA-TXN-007] Status is 404\", function() {",
                   "    pm.response.to.have.status(404);",
                   "});",
-                  "pm.test(\"[QA-TXN-007] data.error exists (depth 1)\", function() {",
-                  "    pm.expect(json).to.have.property(\"data\");",
-                  "});",
-                  "pm.test(\"[QA-TXN-007] data.error exists (depth 2)\", function() {",
-                  "    pm.expect(json[\"data\"]).to.have.property(\"error\");",
+                  "pm.test(\"[QA-TXN-007] error exists (depth 1)\", function() {",
+                  "    pm.expect(json).to.have.property(\"error\");",
                   "});"
                 ]
               }
@@ -1312,7 +1289,7 @@
                 "00000000-0000-0000-0000-000000000000"
               ]
             },
-            "description": "**Case:** QA-TXN-007\n\n**Intent:** Get non-existent transaction returns 404 with error shape\n\n**Expected status:** 404\n\n**Source:** 03_transactions_read.yaml"
+            "description": "**Case:** QA-TXN-007\n\n**Intent:** Get non-existent transaction returns 404 with error shape\n\n**Notes:** YNAB 4xx: { error: {...} } at top level \u2014 no data wrapper.\n\n**Expected status:** 404\n\n**Source:** 03_transactions_read.yaml"
           },
           "response": []
         },
@@ -1381,7 +1358,6 @@
                   "pm.test(\"[QA-SCHED-002] Status is 200\", function() {",
                   "    pm.response.to.have.status(200);",
                   "});",
-                  "const json = pm.response.json();",
                   "const items = json.data.scheduled_transactions || [];",
                   "if (items.length > 0) {",
                   "    pm.test(\"[QA-SCHED-002] First entry has date_next (string)\", function() {",
@@ -1488,11 +1464,8 @@
                   "pm.test(\"[QA-PAYEE-002] Status is 404\", function() {",
                   "    pm.response.to.have.status(404);",
                   "});",
-                  "pm.test(\"[QA-PAYEE-002] data.error exists (depth 1)\", function() {",
-                  "    pm.expect(json).to.have.property(\"data\");",
-                  "});",
-                  "pm.test(\"[QA-PAYEE-002] data.error exists (depth 2)\", function() {",
-                  "    pm.expect(json[\"data\"]).to.have.property(\"error\");",
+                  "pm.test(\"[QA-PAYEE-002] error exists (depth 1)\", function() {",
+                  "    pm.expect(json).to.have.property(\"error\");",
                   "});"
                 ]
               }
@@ -1558,17 +1531,14 @@
                   "pm.test(\"[QA-ERR-001] Status is 401\", function() {",
                   "    pm.response.to.have.status(401);",
                   "});",
-                  "pm.test(\"[QA-ERR-001] data.error exists (depth 1)\", function() {",
-                  "    pm.expect(json).to.have.property(\"data\");",
+                  "pm.test(\"[QA-ERR-001] error exists (depth 1)\", function() {",
+                  "    pm.expect(json).to.have.property(\"error\");",
                   "});",
-                  "pm.test(\"[QA-ERR-001] data.error exists (depth 2)\", function() {",
-                  "    pm.expect(json[\"data\"]).to.have.property(\"error\");",
+                  "pm.test(\"[QA-ERR-001] error.name is a string\", function() {",
+                  "    pm.expect(json[\"error\"][\"name\"]).to.be.a('string');",
                   "});",
-                  "pm.test(\"[QA-ERR-001] data.error.name is a string\", function() {",
-                  "    pm.expect(json[\"data\"][\"error\"][\"name\"]).to.be.a('string');",
-                  "});",
-                  "pm.test(\"[QA-ERR-001] data.error.detail is a string\", function() {",
-                  "    pm.expect(json[\"data\"][\"error\"][\"detail\"]).to.be.a('string');",
+                  "pm.test(\"[QA-ERR-001] error.detail is a string\", function() {",
+                  "    pm.expect(json[\"error\"][\"detail\"]).to.be.a('string');",
                   "});"
                 ]
               }
@@ -1610,17 +1580,14 @@
                   "pm.test(\"[QA-ERR-002] Status is 404\", function() {",
                   "    pm.response.to.have.status(404);",
                   "});",
-                  "pm.test(\"[QA-ERR-002] data.error exists (depth 1)\", function() {",
-                  "    pm.expect(json).to.have.property(\"data\");",
+                  "pm.test(\"[QA-ERR-002] error exists (depth 1)\", function() {",
+                  "    pm.expect(json).to.have.property(\"error\");",
                   "});",
-                  "pm.test(\"[QA-ERR-002] data.error exists (depth 2)\", function() {",
-                  "    pm.expect(json[\"data\"]).to.have.property(\"error\");",
+                  "pm.test(\"[QA-ERR-002] error.name is a string\", function() {",
+                  "    pm.expect(json[\"error\"][\"name\"]).to.be.a('string');",
                   "});",
-                  "pm.test(\"[QA-ERR-002] data.error.name is a string\", function() {",
-                  "    pm.expect(json[\"data\"][\"error\"][\"name\"]).to.be.a('string');",
-                  "});",
-                  "pm.test(\"[QA-ERR-002] data.error.id is a string\", function() {",
-                  "    pm.expect(json[\"data\"][\"error\"][\"id\"]).to.be.a('string');",
+                  "pm.test(\"[QA-ERR-002] error.id is a string\", function() {",
+                  "    pm.expect(json[\"error\"][\"id\"]).to.be.a('string');",
                   "});"
                 ]
               }
@@ -1702,14 +1669,11 @@
                 "type": "text/javascript",
                 "exec": [
                   "const json = pm.response.json();",
-                  "pm.test(\"[QA-ERR-004] Status is 422\", function() {",
-                  "    pm.response.to.have.status(422);",
+                  "pm.test(\"[QA-ERR-004] Status is 400\", function() {",
+                  "    pm.response.to.have.status(400);",
                   "});",
-                  "pm.test(\"[QA-ERR-004] data.error exists (depth 1)\", function() {",
-                  "    pm.expect(json).to.have.property(\"data\");",
-                  "});",
-                  "pm.test(\"[QA-ERR-004] data.error exists (depth 2)\", function() {",
-                  "    pm.expect(json[\"data\"]).to.have.property(\"error\");",
+                  "pm.test(\"[QA-ERR-004] error exists (depth 1)\", function() {",
+                  "    pm.expect(json).to.have.property(\"error\");",
                   "});"
                 ]
               }
@@ -1740,7 +1704,7 @@
                 "transactions"
               ]
             },
-            "description": "**Case:** QA-ERR-004\n\n**Intent:** POST transaction with missing required field returns 422\n\n**Notes:** Uses a minimal body missing account_id and date, which are required by YNAB.\n\n**Expected status:** 422\n\n**Source:** 04_error_handling.yaml",
+            "description": "**Case:** QA-ERR-004\n\n**Intent:** POST transaction with missing required field returns 422\n\n**Notes:** YNAB returns 400 (not 422) for validation errors on malformed request bodies.\nThe YnabMcpError.from_ynab_response mapping treats both 400 and 422 as\nYNAB_API_ERROR \u2014 this test confirms the actual status code used by the API.\n\n\n**Expected status:** 400\n\n**Source:** 04_error_handling.yaml",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"transaction\": {}\n}\n",
@@ -1767,9 +1731,8 @@
                   "pm.test(\"[QA-ERR-005] Status is 404\", function() {",
                   "    pm.response.to.have.status(404);",
                   "});",
-                  "const json = pm.response.json();",
-                  "pm.test(\"[QA-ERR-005] data.error.id is a string\", function() {",
-                  "    pm.expect(json.data.error.id).to.be.a('string');",
+                  "pm.test(\"[QA-ERR-005] error.id is a string\", function() {",
+                  "    pm.expect(json.error.id).to.be.a('string');",
                   "});"
                 ]
               }

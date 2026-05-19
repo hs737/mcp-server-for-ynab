@@ -1,5 +1,12 @@
 # Executable case definitions for family: transactions_read
 # Paired with: tests/qa/features/03_transactions_read.feature
+#
+# YNAB response shapes:
+#   Success (2xx): { data: { ... } }          — assertions use data.xxx paths
+#   Error (4xx):   { error: { id, name, detail } } — assertions use error.xxx paths (no data wrapper)
+#
+# Custom scripts: the generator prepends `const json = pm.response.json();`
+# Do NOT re-declare json in custom script blocks — just use it directly.
 
 family: transactions_read
 
@@ -64,7 +71,6 @@ cases:
       - type: custom
         description: "Sample the first 10 transactions and assert amounts are integers"
         script: |
-          const json = pm.response.json();
           const txns = (json.data.transactions || []).slice(0, 10);
           txns.forEach(function(t, i) {
               pm.test("[QA-TXN-003] Transaction " + i + " amount is integer", function() {
@@ -94,7 +100,6 @@ cases:
       - type: custom
         description: "All returned transactions have null category_id"
         script: |
-          const json = pm.response.json();
           const txns = json.data.transactions || [];
           txns.forEach(function(t, i) {
               pm.test("[QA-TXN-004] Transaction " + i + " has null category_id", function() {
@@ -118,7 +123,6 @@ cases:
       - type: custom
         description: "All returned transactions have approved = false"
         script: |
-          const json = pm.response.json();
           const txns = json.data.transactions || [];
           txns.forEach(function(t, i) {
               pm.test("[QA-TXN-005] Transaction " + i + " is not approved", function() {
@@ -140,7 +144,6 @@ cases:
       - type: custom
         description: "All returned transactions have date >= 2025-04-01"
         script: |
-          const json = pm.response.json();
           const txns = json.data.transactions || [];
           const cutoff = "2025-04-01";
           txns.forEach(function(t, i) {
@@ -164,8 +167,9 @@ cases:
       - type: status
         value: 404
       - type: json_has_key
-        path: data.error
+        path: error
     tags: [error]
+    notes: "YNAB 4xx: { error: {...} } at top level — no data wrapper."
 
   # ---------------------------------------------------------------------------
   # Scheduled transactions
@@ -198,7 +202,6 @@ cases:
       - type: custom
         description: "Non-empty list has date_next and frequency on first entry"
         script: |
-          const json = pm.response.json();
           const items = json.data.scheduled_transactions || [];
           if (items.length > 0) {
               pm.test("[QA-SCHED-002] First entry has date_next (string)", function() {
@@ -243,5 +246,5 @@ cases:
       - type: status
         value: 404
       - type: json_has_key
-        path: data.error
+        path: error
     tags: [error]

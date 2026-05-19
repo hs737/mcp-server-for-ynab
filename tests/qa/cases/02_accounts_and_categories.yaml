@@ -59,7 +59,7 @@ cases:
       - type: status
         value: 404
       - type: json_has_key
-        path: data.error
+        path: error
     tags: [error]
 
   # ---------------------------------------------------------------------------
@@ -98,9 +98,8 @@ cases:
       - type: custom
         description: "At least one non-hidden category has budgeted, activity, and balance as integers"
         script: |
-          const json = pm.response.json();
-          const cats = json.data.category_groups.flatMap(g => g.categories || []);
-          const visible = cats.filter(c => !c.hidden && !c.deleted);
+          const cats = json.data.category_groups.flatMap(function(g) { return g.categories || []; });
+          const visible = cats.filter(function(c) { return !c.hidden && !c.deleted; });
           pm.test("[QA-CAT-002] Has at least one visible category", function() {
               pm.expect(visible.length).to.be.greaterThan(0);
           });
@@ -120,7 +119,10 @@ cases:
               });
           }
     tags: [read]
-    notes: "Custom script because we need to traverse the nested structure."
+    notes: |
+      Custom script uses the top-level 'json' variable injected by the generator —
+      do not re-declare it. Arrow functions replaced with function() to avoid
+      strict-mode issues in some Newman versions.
 
   - id: QA-CAT-003
     title: "Get non-existent category returns 404 with error shape"
@@ -132,7 +134,7 @@ cases:
       - type: status
         value: 404
       - type: json_has_key
-        path: data.error
+        path: error
     tags: [error]
 
   - id: QA-CAT-004
