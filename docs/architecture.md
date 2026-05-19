@@ -151,6 +151,7 @@ Owns MCP-facing concerns:
 - tool metadata registry
 - raw and enriched tool registration
 - structured tool error boundary
+- deterministic MCP-native pagination envelopes for oversized list responses
 
 ### `cli/`
 
@@ -185,10 +186,15 @@ sequenceDiagram
     YNAB-->>Http: JSON response
     Http-->>YClient: parsed dict or YnabMcpException
     YClient-->>Tool: typed model
-    Tool-->>Boundary: model_dump()
+    Tool->>Tool: optional MCP-side pagination slice
+    Tool-->>Boundary: result dict
     Boundary-->>App: dict payload
     App-->>Client: MCP tool result
 ```
+
+Current implementation note:
+- the `transactions_list*` raw tools use stateless MCP-side `limit` and `offset` parameters to keep payloads under client size limits
+- YNAB route wrappers remain unchanged; the tool layer slices the already-filtered typed response and returns `items`, `count`, `total_available`, `has_more`, and optional `next_offset`
 
 ## Enriched Request Lifecycle
 
@@ -234,6 +240,8 @@ The intended boundary behavior is:
 - `YnabMcpException` becomes `{"error": ...}`
 - `ConfigError` becomes `validation_error`
 - unexpected exceptions become `internal_error`
+
+The same boundary also handles pagination validation failures, such as invalid `limit` or `offset` values.
 
 ## Tool Registration Flow
 

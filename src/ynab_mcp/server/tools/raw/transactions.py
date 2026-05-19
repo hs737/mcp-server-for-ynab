@@ -18,6 +18,7 @@ from ynab_mcp.server.app import mcp
 from ynab_mcp.server.context import get_app_context
 from ynab_mcp.server.registry import tool_registry
 from ynab_mcp.server.tools.boundary import tool_handler
+from ynab_mcp.server.tools.pagination import paginate_items
 
 
 def _reg(name: str, classification: str, summary: str) -> None:
@@ -45,7 +46,8 @@ _reg("transactions_trigger_import", "write", "Trigger YNAB import from linked ac
         "type: 'uncategorized' or 'unapproved' for filtered lists. "
         "Amounts are in milliunits (1000 = $1.00). "
         "Includes subtransactions for split transactions. "
-        "Supports delta sync via last_knowledge_of_server."
+        "Supports delta sync via last_knowledge_of_server. "
+        "Returns a paginated envelope with items, count, has_more, and next_offset."
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
@@ -54,6 +56,8 @@ async def transactions_list(
     plan_id: str | None = None,
     since_date: str | None = None,
     type: str | None = None,
+    limit: int = 100,
+    offset: int = 0,
     last_knowledge_of_server: int | None = None,
 ) -> dict[str, Any]:
     ctx = get_app_context()
@@ -64,12 +68,20 @@ async def transactions_list(
         type=type,
         last_knowledge_of_server=last_knowledge_of_server,
     )
-    return result.model_dump()
+    return paginate_items(
+        result.data.transactions,
+        limit=limit,
+        offset=offset,
+        server_knowledge=result.data.server_knowledge,
+    )
 
 
 @mcp.tool(
     name="transactions_list_by_account",
-    description=("[READ] List transactions for a specific account. Amounts are in milliunits. Supports delta sync."),
+    description=(
+        "[READ] List transactions for a specific account. Amounts are in milliunits. "
+        "Supports delta sync. Returns a paginated envelope with items, count, has_more, and next_offset."
+    ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
 @tool_handler
@@ -78,6 +90,8 @@ async def transactions_list_by_account(
     plan_id: str | None = None,
     since_date: str | None = None,
     type: str | None = None,
+    limit: int = 100,
+    offset: int = 0,
     last_knowledge_of_server: int | None = None,
 ) -> dict[str, Any]:
     ctx = get_app_context()
@@ -89,12 +103,20 @@ async def transactions_list_by_account(
         type=type,
         last_knowledge_of_server=last_knowledge_of_server,
     )
-    return result.model_dump()
+    return paginate_items(
+        result.data.transactions,
+        limit=limit,
+        offset=offset,
+        server_knowledge=result.data.server_knowledge,
+    )
 
 
 @mcp.tool(
     name="transactions_list_by_category",
-    description="[READ] List transactions for a specific category. Amounts in milliunits.",
+    description=(
+        "[READ] List transactions for a specific category. Amounts in milliunits. "
+        "Returns a paginated envelope with items, count, has_more, and next_offset."
+    ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
 @tool_handler
@@ -103,6 +125,8 @@ async def transactions_list_by_category(
     plan_id: str | None = None,
     since_date: str | None = None,
     type: str | None = None,
+    limit: int = 100,
+    offset: int = 0,
     last_knowledge_of_server: int | None = None,
 ) -> dict[str, Any]:
     ctx = get_app_context()
@@ -114,12 +138,20 @@ async def transactions_list_by_category(
         type=type,
         last_knowledge_of_server=last_knowledge_of_server,
     )
-    return result.model_dump()
+    return paginate_items(
+        result.data.transactions,
+        limit=limit,
+        offset=offset,
+        server_knowledge=result.data.server_knowledge,
+    )
 
 
 @mcp.tool(
     name="transactions_list_by_payee",
-    description="[READ] List transactions for a specific payee. Amounts in milliunits.",
+    description=(
+        "[READ] List transactions for a specific payee. Amounts in milliunits. "
+        "Returns a paginated envelope with items, count, has_more, and next_offset."
+    ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
 @tool_handler
@@ -128,6 +160,8 @@ async def transactions_list_by_payee(
     plan_id: str | None = None,
     since_date: str | None = None,
     type: str | None = None,
+    limit: int = 100,
+    offset: int = 0,
     last_knowledge_of_server: int | None = None,
 ) -> dict[str, Any]:
     ctx = get_app_context()
@@ -139,7 +173,12 @@ async def transactions_list_by_payee(
         type=type,
         last_knowledge_of_server=last_knowledge_of_server,
     )
-    return result.model_dump()
+    return paginate_items(
+        result.data.transactions,
+        limit=limit,
+        offset=offset,
+        server_knowledge=result.data.server_knowledge,
+    )
 
 
 @mcp.tool(
@@ -147,7 +186,8 @@ async def transactions_list_by_payee(
     description=(
         "[READ] List transactions for a specific month. "
         "month: ISO date string for the first day of the month (e.g. '2024-01-01'). "
-        "Amounts in milliunits."
+        "Amounts in milliunits. "
+        "Returns a paginated envelope with items, count, has_more, and next_offset."
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
@@ -157,6 +197,8 @@ async def transactions_list_by_month(
     plan_id: str | None = None,
     since_date: str | None = None,
     type: str | None = None,
+    limit: int = 100,
+    offset: int = 0,
     last_knowledge_of_server: int | None = None,
 ) -> dict[str, Any]:
     ctx = get_app_context()
@@ -168,7 +210,12 @@ async def transactions_list_by_month(
         type=type,
         last_knowledge_of_server=last_knowledge_of_server,
     )
-    return result.model_dump()
+    return paginate_items(
+        result.data.transactions,
+        limit=limit,
+        offset=offset,
+        server_knowledge=result.data.server_knowledge,
+    )
 
 
 @mcp.tool(

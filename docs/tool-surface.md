@@ -136,6 +136,11 @@ Guidance:
 - use milliunits for amounts
 - support explicit writes
 
+Current transaction-list note:
+- the `transactions_list*` raw tools now return an MCP-native pagination envelope with `items`, `count`, `has_more`, and `next_offset`
+- use `next_offset` as the next call's `offset` when the tool reports more results
+- this pagination is deterministic and stateless; it does not change YNAB's underlying API behavior
+
 ### Enriched tools
 
 - combine multiple raw reads

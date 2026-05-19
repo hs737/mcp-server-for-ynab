@@ -57,7 +57,7 @@ The current suite verifies a meaningful portion of the codebase, but the coverag
 Implemented today:
 - unit tests for config, HTTP client retry behavior, amount helpers, and shared errors
 - contract tests for the transactions client
-- integration tests for app creation and tool metadata/registration
+- integration tests for app creation, tool metadata/registration, structured error handling, and transaction pagination behavior
 - QA source assets and generated Postman collections
 
 Not yet fully implemented:
@@ -93,6 +93,7 @@ Currently covers:
 - shared error model
 - milliunit helpers
 - HTTP retry and error mapping behavior
+- pagination helper validation and envelope behavior
 
 Fastest layer:
 - yes
@@ -134,6 +135,8 @@ Currently covers:
 - app creation
 - tool registry population
 - family/classification metadata presence
+- structured tool-boundary error serialization
+- transaction list pagination envelopes and invalid pagination inputs
 
 Current gap:
 - the current integration suite does not yet exercise representative tool invocation through the MCP boundary as thoroughly as the architecture intends
