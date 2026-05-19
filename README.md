@@ -16,6 +16,7 @@ Read this page if you need:
 - a high-level view of the architecture
 
 Next reads:
+- [Client Setup](docs/client-setup.md)
 - [Architecture](docs/architecture.md)
 - [Repo Structure](docs/repo-structure.md)
 - [Tool Surface](docs/tool-surface.md)
@@ -91,30 +92,21 @@ Most users have one budget. If you set `YNAB_PLAN_ID`, tools that accept `plan_i
 make run-stdio
 ```
 
-### 5. Add to Your MCP Client
-
-For Claude Desktop, add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "ynab": {
-      "command": "uv",
-      "args": ["run", "--directory", "/path/to/ynab-mcp", "python", "-m", "ynab_mcp.cli.main", "stdio"],
-      "env": {
-        "YNAB_API_KEY": "your_token_here",
-        "YNAB_PLAN_ID": "your_budget_id_here"
-      }
-    }
-  }
-}
-```
-
-### 6. Verify
+### 5. Verify
 
 ```bash
 make smoke-stdio
 ```
+
+## Use with MCP Clients
+
+This repo works best today as a local `stdio` MCP server.
+
+- easiest local path: **Claude Desktop**
+- also suitable for: **Claude Code**, **Cursor**, and **Windsurf**
+- hosted connector path: **ChatGPT custom connectors** require a remote/public MCP deployment rather than the local PAT quick start
+
+For client-specific setup instructions, see [docs/client-setup.md](docs/client-setup.md).
 
 ## Tool Families
 
@@ -143,6 +135,7 @@ More detail: [Tool Surface](docs/tool-surface.md)
 
 If you are:
 
+- **trying to connect a client**: read [Client Setup](docs/client-setup.md)
 - **new to the repo**: read [Architecture](docs/architecture.md)
 - **adding code**: read [Contributing](CONTRIBUTING.md), [Repo Structure](docs/repo-structure.md), and [Agent Guidance](AGENTS.md)
 - **adding or changing tools**: read [Tool Surface](docs/tool-surface.md)

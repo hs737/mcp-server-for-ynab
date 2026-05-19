@@ -19,6 +19,10 @@ mindmap
       setup
       overview
       navigation
+    client-setup.md
+      Claude
+      ChatGPT
+      local vs hosted
     CONTRIBUTING.md
       workflow
       PRs
@@ -52,11 +56,12 @@ mindmap
 ## Recommended Reading Order
 
 1. [README.md](../README.md)
-2. [architecture.md](architecture.md)
-3. [CONTRIBUTING.md](../CONTRIBUTING.md)
-4. [AGENTS.md](../AGENTS.md)
-5. [testing.md](testing.md)
-6. [security.md](security.md)
+2. [client-setup.md](client-setup.md)
+3. [architecture.md](architecture.md)
+4. [CONTRIBUTING.md](../CONTRIBUTING.md)
+5. [AGENTS.md](../AGENTS.md)
+6. [testing.md](testing.md)
+7. [security.md](security.md)
 
 ## By Audience
 
@@ -64,6 +69,7 @@ mindmap
 
 Start with:
 - [README.md](../README.md)
+- [client-setup.md](client-setup.md)
 - [security.md](security.md)
 
 Use these to understand what the MCP is, how to run it, and what credentials it expects.
@@ -96,6 +102,15 @@ Front door for the repo:
 - setup
 - architecture snapshot
 - doc navigation
+
+### [client-setup.md](client-setup.md)
+
+End-user client setup guide:
+- Claude Desktop
+- Claude Code
+- Cursor
+- Windsurf
+- ChatGPT connector path
 
 ### [architecture.md](architecture.md)
 
