@@ -36,6 +36,12 @@ Shared command:
 uv run --directory /path/to/ynab-mcp python -m ynab_mcp.cli.main stdio
 ```
 
+Important:
+- `--directory` should point to the **repository root**
+- do **not** point it at `src/ynab_mcp`
+- correct example: `/path/to/ynab-mcp`
+- incorrect example: `/path/to/ynab-mcp/src/ynab_mcp`
+
 Shared environment:
 - `YNAB_API_KEY`
 - optional `YNAB_PLAN_ID`
@@ -65,6 +71,8 @@ Example:
 ```
 
 After saving the config, restart Claude Desktop and verify the server is available in the app’s MCP/extension tooling.
+
+The `--directory` value in the example must be the repo root, not the `src/ynab_mcp` package directory.
 
 ### Claude Code
 
@@ -148,6 +156,11 @@ Set `YNAB_PLAN_ID` in the client env or pass `plan_id` in tool calls when needed
 ### Wrong repo path
 
 If the client cannot launch the server, confirm `/path/to/ynab-mcp` points to the actual local checkout.
+
+Common mistake:
+- using `/path/to/ynab-mcp/src/ynab_mcp` instead of the repo root
+
+Use the repository root for `--directory`, because that is where `pyproject.toml`, dependencies, and project tooling are expected.
 
 ### `uv` not installed
 

@@ -101,3 +101,7 @@ def _run_http(host: str, port: int) -> None:
 
     app = create_app()
     app.run(transport="streamable-http")
+
+
+if __name__ == "__main__":
+    main()
