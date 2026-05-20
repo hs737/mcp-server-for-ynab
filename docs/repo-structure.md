@@ -20,6 +20,7 @@ Adjacent docs:
 ```text
 .
 ├── docs/            architecture, testing, security, structure, tool docs
+├── ynab-mcp-hosted/ temporary staging area for the future hosted OAuth repo
 ├── postman/         generated collections, environments, generation sources
 ├── scripts/         helper scripts for Postman generation and tooling
 ├── src/             product code
@@ -31,6 +32,8 @@ Adjacent docs:
 ```
 
 Local-only or non-product directories such as `.venv/`, `.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/`, `.agents/`, and `.claude/` should not be treated as product structure.
+The `ynab-mcp-hosted/` directory is product work, but it is intentionally not
+part of the core package. It is a cut-out-ready future repository.
 
 ## Relationship Overview
 
@@ -59,6 +62,7 @@ src/ynab_mcp/
 ├── auth/           auth abstraction and PAT provider
 ├── cli/            stdio/http entrypoints and smoke helper
 ├── config/         settings and environment loading
+├── embed.py        stable hosted-consumption surface for imported runtimes
 ├── enriched/       higher-level read-only analysis and bookkeeping logic
 ├── http_client/    outbound httpx wrapper for YNAB API calls
 ├── models/         shared errors, amount helpers, typed YNAB models
@@ -71,7 +75,7 @@ src/ynab_mcp/
 ```text
 src/ynab_mcp/server/
 ├── app.py              FastMCP application factory
-├── context.py          shared app context with initialized clients
+├── context.py          shared and request-scoped app context helpers
 ├── registry.py         tool metadata catalog
 └── tools/
     ├── boundary.py     structured error boundary for tool handlers
@@ -139,6 +143,7 @@ Do not edit generated JSON directly unless the generation process itself is bein
 
 - Do not add business logic to `cli/`; keep it in `enriched/`, `ynab_client/`, or `server/`.
 - Do not add YNAB endpoint wrappers directly to `server/tools/`; put HTTP-facing YNAB logic in `ynab_client/`.
+- Do not add hosted OAuth, session, or durable grant logic to the core package; keep it in `ynab-mcp-hosted/`.
 - Do not treat `.agents/` or `.claude/` as the primary shared documentation surface; use repo docs instead.
 - Do not place generated assets under `src/`.
 

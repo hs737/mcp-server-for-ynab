@@ -27,6 +27,14 @@ mcp = FastMCP(
 )
 
 
+def _register_tools() -> None:
+    """Import tool modules so they register themselves against the shared app."""
+    from ynab_mcp.server.tools import (
+        enriched,  # noqa: F401
+        raw,  # noqa: F401
+    )
+
+
 def create_app() -> FastMCP:
     """Initialize the application context and register all tools.
 
@@ -37,12 +45,13 @@ def create_app() -> FastMCP:
     settings.configure_logging()
     ctx = AppContext.from_settings(settings)
     set_app_context(ctx)
+    _register_tools()
 
-    # Import tool registration modules — each module registers tools against `mcp`
-    # when imported. Order determines the order tools appear in the catalog.
-    from ynab_mcp.server.tools import (
-        enriched,  # noqa: F401
-        raw,  # noqa: F401
-    )
+    return mcp
+
+
+def create_embedded_app() -> FastMCP:
+    """Return the shared FastMCP app for hosted runtimes that inject auth."""
+    _register_tools()
 
     return mcp

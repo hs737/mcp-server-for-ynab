@@ -15,43 +15,7 @@ Adjacent docs:
 - [Tool Surface](tool-surface.md)
 - [Testing](testing.md)
 - [Security](security.md)
-- [OAuth Architecture](oauth-architecture.md)
 - [Agent Guidance](../AGENTS.md)
-
-## Deployment Modes
-
-This repo is evolving from a local-first tool into a dual-mode product. Both modes expose the same logical tool surface. The auth and transport layers differ.
-
-### Current mode: local self-hosted (PAT)
-
-```mermaid
-flowchart LR
-    A["Local MCP client\n(Claude Desktop, etc.)"] -->|stdio| B["FastMCP server\n(local process)"]
-    B --> C["PAT auth\n(YNAB_API_KEY env var)"]
-    C --> D["YNAB API"]
-```
-
-- Auth: Personal Access Token from environment variable
-- Transport: stdio
-- Users: single user per process
-- Deployment: local machine
-
-### Planned mode: hosted OAuth (Cloudflare Worker)
-
-```mermaid
-flowchart LR
-    A["Public MCP client\n(any user)"] -->|HTTP| B["Cloudflare Worker"]
-    B --> C["OAuth token store\nper-user grant record"]
-    C --> D["YNAB API"]
-```
-
-- Auth: per-user OAuth access token + refresh token
-- Transport: streamable HTTP
-- Users: multi-user
-- Deployment: Cloudflare Worker
-- Status: planned — not yet implemented
-
-The OAuth design is documented in [OAuth Architecture](oauth-architecture.md). Implementation begins after the public/legal layer is in place.
 
 ## Product Model
 
@@ -136,8 +100,8 @@ Owns access token retrieval.
 Current implementation:
 - PAT-only via `PatAuthProvider`
 
-Planned future change:
-- OAuth provider can be added behind the same interface later
+Hosted runtimes may provide their own `AuthProvider` implementations outside
+this repo and inject them through the embed API.
 
 ### `http_client/`
 
@@ -184,10 +148,18 @@ These modules combine multiple raw reads into structured agent-friendly outputs.
 Owns MCP-facing concerns:
 - FastMCP application factory
 - shared app context
+- request-scoped app context override for embedded runtimes
 - tool metadata registry
 - raw and enriched tool registration
 - structured tool error boundary
 - deterministic MCP-native pagination envelopes for oversized list responses
+
+### `embed.py`
+
+Owns the small supported import surface for hosted runtimes:
+- create the shared FastMCP app without PAT startup wiring
+- build an `AppContext` from any `AuthProvider`
+- bind request-scoped context around hosted tool execution
 
 ### `cli/`
 
@@ -293,14 +265,20 @@ flowchart LR
     F --> G["overview_available_tools"]
 ```
 
+For hosted runtimes, `embed.create_mcp_app()` reuses the same registration path
+without forcing the PAT startup flow.
+
 ## AppContext and Shared Clients
 
-`server/context.py` creates a shared `AppContext` at startup. It contains:
+`server/context.py` creates a shared `AppContext` at startup for the PAT runtime.
+It also supports a request-scoped override for embedded hosted runtimes. An
+`AppContext` contains:
 - settings
 - one shared `YnabHttpClient`
 - initialized `ynab_client` instances for each resource family
 
-This keeps tool handlers thin and avoids recreating clients per call.
+This keeps tool handlers thin and keeps auth and client construction out of the
+tool modules themselves.
 
 ## Tool Metadata Model
 
