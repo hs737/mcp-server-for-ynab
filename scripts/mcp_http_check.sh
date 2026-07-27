@@ -79,6 +79,24 @@ if [ -n "$SESSION" ]; then pass "session id issued"; else fail "no Mcp-Session-I
 PROTOCOL=$(echo "$BODY" | "$PYTHON" -c 'import json,sys; print(json.load(sys.stdin)["result"]["protocolVersion"])' 2>/dev/null)
 if [ -n "$PROTOCOL" ]; then pass "protocolVersion negotiated ($PROTOCOL)"; else fail "no protocolVersion in result"; fi
 
+# serverInfo.version must be this package's version. The low-level server falls
+# back to the mcp SDK's version when its own is unset, which would report the
+# SDK version as the server's.
+SERVER_INFO=$(echo "$BODY" | "$PYTHON" -c '
+import json, sys
+from importlib.metadata import version
+info = json.load(sys.stdin)["result"]["serverInfo"]
+reported = info.get("version", "")
+print(reported, "sdk" if reported == version("mcp") else "own", info.get("name", ""))
+' 2>/dev/null)
+read -r REPORTED_VERSION VERSION_SOURCE SERVER_NAME <<<"$SERVER_INFO"
+check "serverInfo.name" "ynab-mcp" "$SERVER_NAME"
+if [ "$VERSION_SOURCE" = "own" ]; then
+  pass "serverInfo.version is the package version ($REPORTED_VERSION)"
+else
+  fail "serverInfo.version is the mcp SDK version ($REPORTED_VERSION)"
+fi
+
 echo
 echo "2. notifications/initialized"
 STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Content-Type: application/json" \

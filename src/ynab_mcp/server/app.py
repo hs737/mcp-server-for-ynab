@@ -10,10 +10,21 @@ the standalone `fastmcp` PyPI package. pyproject.toml pins `mcp>=1.27.1`.
 
 from __future__ import annotations
 
+from importlib.metadata import PackageNotFoundError, version
+
 from mcp.server.fastmcp import FastMCP
 
 from ynab_mcp.config import get_settings
 from ynab_mcp.server.context import AppContext, set_app_context
+
+
+def package_version() -> str:
+    """Return this package's version, as clients see it during initialize."""
+    try:
+        return version("ynab-mcp")
+    except PackageNotFoundError:  # running from a source tree without an install
+        return "0.0.0+unknown"
+
 
 mcp = FastMCP(
     name="ynab-mcp",
@@ -25,6 +36,12 @@ mcp = FastMCP(
         "All amounts are in milliunits: 1000 = $1.00."
     ),
 )
+
+# FastMCP takes no version argument, and the low-level server falls back to the
+# mcp SDK's own version when its version is unset — so without this, initialize
+# reports the SDK version as the server's version. Assigning it here is the only
+# hook the SDK offers.
+mcp._mcp_server.version = package_version()
 
 
 def _register_tools() -> None:
