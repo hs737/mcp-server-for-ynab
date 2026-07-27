@@ -43,14 +43,14 @@ def main() -> None:
     )
     http_parser.add_argument(
         "--host",
-        default="127.0.0.1",
-        help="Bind host. Default: 127.0.0.1. Use 0.0.0.0 with caution.",
+        default=None,
+        help="Bind host. Falls back to FASTMCP_HOST, then 127.0.0.1. Use 0.0.0.0 with caution.",
     )
     http_parser.add_argument(
         "--port",
         type=int,
-        default=8000,
-        help="Bind port. Default: 8000.",
+        default=None,
+        help="Bind port. Falls back to FASTMCP_PORT, then 8000.",
     )
 
     subparsers.add_parser("smoke", help="Validate configuration and tool registration, then exit.")
@@ -81,25 +81,47 @@ def _run_stdio() -> None:
     app.run(transport="stdio")
 
 
-def _run_http(host: str, port: int) -> None:
+DEFAULT_HOST = "127.0.0.1"
+DEFAULT_PORT = 8000
+
+
+def resolve_bind(host: str | None, port: int | None) -> tuple[str, int]:
+    """Resolve the HTTP bind address: CLI flag, then env var, then default.
+
+    FastMCP takes host and port as constructor arguments that default to
+    127.0.0.1:8000, and those arguments win over FASTMCP_HOST / FASTMCP_PORT.
+    Because the shared FastMCP instance in server.app is built without them,
+    setting the env vars here would do nothing — the caller must assign the
+    resolved values onto app.settings before run().
+    """
+    import os
+
+    resolved_host = host or os.environ.get("FASTMCP_HOST") or DEFAULT_HOST
+
+    if port is not None:
+        resolved_port = port
+    else:
+        env_port = os.environ.get("FASTMCP_PORT")
+        resolved_port = int(env_port) if env_port else DEFAULT_PORT
+
+    return resolved_host, resolved_port
+
+
+def _run_http(host: str | None, port: int | None) -> None:
     """Start the MCP server over streamable-HTTP.
 
     The MCP JSON-RPC endpoint is served at http://{host}:{port}/mcp.
     This is the MCP protocol over HTTP, not a REST API.
     YNAB tools are invoked the same way as over stdio — the only difference
     is the transport layer.
-
-    Configuration: FASTMCP_HOST and FASTMCP_PORT env vars override CLI flags.
     """
-    import os
-
-    # FastMCP reads host/port from FASTMCP_* env vars; CLI flags are the fallback.
-    os.environ.setdefault("FASTMCP_HOST", host)
-    os.environ.setdefault("FASTMCP_PORT", str(port))
+    resolved_host, resolved_port = resolve_bind(host, port)
 
     from ynab_mcp.server.app import create_app
 
     app = create_app()
+    app.settings.host = resolved_host
+    app.settings.port = resolved_port
     app.run(transport="streamable-http")
 
 
