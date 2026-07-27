@@ -22,6 +22,7 @@ flowchart TD
     A["Unit tests"] --> B["Contract tests"]
     B --> C["Integration tests"]
     C --> D["Postman / QA checks"]
+    C --> E["Live verification"]
 ```
 
 Interpretation:
@@ -29,6 +30,11 @@ Interpretation:
 - contract tests validate route wrappers and payloads
 - integration tests validate app assembly and MCP-facing behavior
 - Postman and QA assets exercise external verification workflows
+- live verification calls the real API and the real MCP transport
+
+Every layer above live verification runs against payloads we wrote. That is
+the layer's blind spot: a response model that disagrees with the real YNAB API
+passes all of them. Live verification is the only layer that can catch it.
 
 ## Commands
 
@@ -44,6 +50,8 @@ make check
 make smoke-stdio
 make run-stdio
 make run-http
+make verify-live
+make verify-mcp-http
 make postman-generate
 make postman-check
 make test-postman
@@ -60,10 +68,13 @@ Implemented today:
 - integration tests for app creation, tool metadata/registration, structured error handling, and transaction pagination behavior
 - QA source assets and generated Postman collections
 
+- live verification scripts for the real API and the MCP HTTP transport
+
 Not yet fully implemented:
 - broad contract coverage for every `ynab_client` resource
 - MCP-boundary integration tests that invoke representative tools and assert structured error payloads
-- comprehensive transport parity checks between stdio and HTTP
+- automated transport parity checks between stdio and HTTP; both transports are
+  exercised by the live verification scripts, but nothing asserts they agree
 
 This doc intentionally reflects the current suite rather than the ideal future suite.
 
@@ -113,11 +124,17 @@ Purpose:
 
 Currently covers:
 - transactions client behavior
+- money movements client behavior, driven by recorded live payloads
 - delta-sync parameters
 - typed transaction response parsing
 
 Current gap:
 - most other resource wrappers do not yet have the same contract coverage
+
+When the point of the test is that a model matches the real API, load a
+recorded payload from `tests/fixtures/` with `load_fixture()` instead of
+writing the dict by hand. A hand-written payload only proves the model agrees
+with itself.
 
 Best place to add:
 - new raw YNAB route coverage
@@ -167,6 +184,38 @@ Current behavior:
 
 These are slower and more operational than unit/contract tests.
 
+### Live verification
+
+Locations:
+- `scripts/live_read_sweep.py`
+- `scripts/mcp_http_check.sh`
+
+Purpose:
+- verify the response models still match what YNAB actually sends
+- verify an MCP client can connect, list tools, and invoke them
+
+Commands:
+
+```bash
+make verify-live       # every read-only tool against the live API
+make verify-mcp-http   # MCP HTTP handshake, driven by curl
+```
+
+`verify-live` drives the server as a real MCP client over stdio. It selects
+tools by the `readOnlyHint` annotation, so new read tools are swept
+automatically and writes are never invoked. Tools whose required argument has
+no value in the plan — a per-record tool for a resource the plan has none of —
+are reported as skipped rather than failed.
+
+`verify-mcp-http` starts the server on a throwaway port and walks the protocol
+by hand: initialize, `notifications/initialized`, `tools/list`, `tools/call`,
+an unknown-tool call, and a request with no session id. It asserts a session id
+is issued, every tool carries a schema and description, and an unknown tool
+comes back as a tool error rather than a transport failure.
+
+Both need real credentials, so neither is part of `make check`. Run them after
+changing a response model, adding a tool, or upgrading the `mcp` SDK.
+
 ## Which Tests Are Fast vs End-to-End
 
 | Layer | Speed | External dependencies | Notes |
@@ -186,10 +235,16 @@ Use them for:
 - known response payloads
 - edge-case input validation
 
+Load them with `load_fixture("name.json")` from `tests/conftest.py`.
+
 When adding fixtures:
 - keep them small
 - make the scenario obvious from the filename
 - prefer reusable payloads over one-off blobs
+- record response payloads from a live call and replace the identifiers, rather
+  than writing them from the model definition
+- cover the variants that matter: null fields, negative amounts, absent optional
+  relationships
 
 ## Async Testing
 

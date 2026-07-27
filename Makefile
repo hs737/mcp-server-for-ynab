@@ -1,5 +1,6 @@
 .PHONY: lint format typecheck test test-unit test-contract test-integration check \
         smoke-stdio run-stdio run-http \
+        verify-live verify-mcp-http \
         postman-generate postman-check \
         test-postman test-postman-operator
 
@@ -63,6 +64,24 @@ run-http-debug:
 
 smoke-stdio:
 	uv run python -m ynab_mcp.cli.smoke
+
+# ---------------------------------------------------------------------------
+# Live verification
+#
+# The test suite validates against payloads we wrote ourselves, so a response
+# model that disagrees with the real YNAB API passes it and still fails in
+# production. These two targets are the checks that close that gap. Both need
+# real credentials in .env and are therefore not part of `make check`.
+#
+# verify-live:      invoke every read-only tool against the live API
+# verify-mcp-http:  walk the MCP HTTP handshake with curl on a throwaway port
+# ---------------------------------------------------------------------------
+
+verify-live: .env
+	@set -a && . ./.env && set +a && uv run python scripts/live_read_sweep.py
+
+verify-mcp-http: .env
+	@set -a && . ./.env && set +a && ./scripts/mcp_http_check.sh
 
 # ---------------------------------------------------------------------------
 # Postman — generation and drift detection

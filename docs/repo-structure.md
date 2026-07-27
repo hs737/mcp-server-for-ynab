@@ -22,7 +22,7 @@ Adjacent docs:
 ├── docs/            architecture, testing, security, structure, tool docs
 ├── ynab-mcp-hosted/ temporary staging area for the future hosted OAuth repo
 ├── postman/         generated collections, environments, generation sources
-├── scripts/         helper scripts for Postman generation and tooling
+├── scripts/         Postman generation and live verification scripts
 ├── src/             product code
 ├── tests/           unit, contract, integration, and QA source assets
 ├── AGENTS.md        implementation guidance for AI agents
