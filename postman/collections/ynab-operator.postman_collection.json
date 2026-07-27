@@ -1879,7 +1879,7 @@
     {
       "id": "f122a115-9dc8-50f7-b84e-84cde034f7ab",
       "name": "Money Movements",
-      "description": "Money movements provide a view of how money flows between category groups.\nThis is an enriched view not available in the base transaction list.",
+      "description": "A money movement records budgeted funds moved between categories within a\nmonth. It is not a transaction: there is no date, payee, or account, and\nno money enters or leaves the plan. A null from_category_id or\nto_category_id means Ready to Assign.",
       "item": [
         {
           "id": "00dc9038-86b8-5555-9717-203499b3543c",
@@ -1906,14 +1906,14 @@
               ],
               "query": [
                 {
-                  "key": "month",
+                  "key": "last_knowledge_of_server",
                   "value": "",
-                  "description": "Optional ISO month date filter.",
+                  "description": "Optional delta sync marker from a previous response.",
                   "disabled": true
                 }
               ]
             },
-            "description": "Returns money movement summary across all months.\nUseful for understanding aggregate flows between categories."
+            "description": "Returns every money movement in the plan across all months.\nPass last_knowledge_of_server to fetch only what changed since that\npoint. There is no month or type filter on this route \u2014 use the\nper-month route to scope by month."
           },
           "response": []
         },
@@ -1944,14 +1944,14 @@
               ],
               "query": [
                 {
-                  "key": "type",
+                  "key": "last_knowledge_of_server",
                   "value": "",
-                  "description": "Optional type filter.",
+                  "description": "Optional delta sync marker from a previous response.",
                   "disabled": true
                 }
               ]
             },
-            "description": "Returns money movements for a specific month."
+            "description": "Returns money movements applied to a specific month."
           },
           "response": []
         },
@@ -1977,9 +1977,17 @@
                 "budgets",
                 "{{plan_id}}",
                 "money_movement_groups"
+              ],
+              "query": [
+                {
+                  "key": "last_knowledge_of_server",
+                  "value": "",
+                  "description": "Optional delta sync marker from a previous response.",
+                  "disabled": true
+                }
               ]
             },
-            "description": "Returns money movements grouped by category group."
+            "description": "Returns the groups that tie together movements made in a single\naction. A group carries no amount and does not embed its movements \u2014\njoin on money_movement_group_id."
           },
           "response": []
         },

@@ -2,12 +2,26 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from ynab_mcp.config.settings import reset_settings
+
+FIXTURES_DIR = Path(__file__).parent / "fixtures"
+
+
+def load_fixture(name: str) -> Any:
+    """Load a captured API payload from tests/fixtures.
+
+    Payloads under tests/fixtures are recorded from live YNAB responses with
+    identifiers replaced. Prefer them over hand-written dicts when the point of
+    the test is that the model matches what the API actually sends.
+    """
+    return json.loads((FIXTURES_DIR / name).read_text())
 
 
 @pytest.fixture(autouse=True)

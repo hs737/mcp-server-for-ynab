@@ -16,8 +16,8 @@ def _reg(name: str, summary: str) -> None:
     tool_registry.register(name, "money_movements", "read", "raw", summary)
 
 
-_reg("money_movements_list", "List all money movements. Supports delta sync.")
-_reg("money_movements_list_by_month", "List money movements for a specific month.")
+_reg("money_movements_list", "List all category-to-category fund moves. Supports delta sync.")
+_reg("money_movements_list_by_month", "List category-to-category fund moves for a specific month.")
 _reg("money_movement_groups_list", "List money movement groups. Supports delta sync.")
 _reg("money_movement_groups_list_by_month", "List money movement groups for a specific month.")
 
@@ -25,7 +25,9 @@ _reg("money_movement_groups_list_by_month", "List money movement groups for a sp
 @mcp.tool(
     name="money_movements_list",
     description=(
-        "[READ] List all money movements for a plan. "
+        "[READ] List all money movements for a plan. A money movement is budgeted funds moved "
+        "between categories within a month — it is not a transaction and has no payee or account. "
+        "A null from_category_id or to_category_id means Ready to Assign. "
         "Amounts are in milliunits (1000 = $1.00). "
         "Supports delta sync via last_knowledge_of_server."
     ),
@@ -45,8 +47,9 @@ async def money_movements_list(
 @mcp.tool(
     name="money_movements_list_by_month",
     description=(
-        "[READ] List money movements for a specific month. "
+        "[READ] List money movements (budgeted funds moved between categories) for a specific month. "
         "month: ISO date string for the first day of the month (e.g. '2024-01-01'). "
+        "A null from_category_id or to_category_id means Ready to Assign. "
         "Amounts are in milliunits (1000 = $1.00)."
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
@@ -66,8 +69,9 @@ async def money_movements_list_by_month(
 @mcp.tool(
     name="money_movement_groups_list",
     description=(
-        "[READ] List money movement groups for a plan. "
-        "Amounts are in milliunits (1000 = $1.00). "
+        "[READ] List money movement groups for a plan. A group ties together the movements made "
+        "in a single action; it carries no amount of its own. Join movements to a group on "
+        "money_movement_group_id. "
         "Supports delta sync via last_knowledge_of_server."
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
@@ -86,9 +90,9 @@ async def money_movement_groups_list(
 @mcp.tool(
     name="money_movement_groups_list_by_month",
     description=(
-        "[READ] List money movement groups for a specific month. "
-        "month: ISO date string for the first day of the month (e.g. '2024-01-01'). "
-        "Amounts are in milliunits (1000 = $1.00)."
+        "[READ] List money movement groups for a specific month. A group ties together the "
+        "movements made in a single action; it carries no amount of its own. "
+        "month: ISO date string for the first day of the month (e.g. '2024-01-01')."
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )

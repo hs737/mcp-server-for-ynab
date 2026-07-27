@@ -1,0 +1,23 @@
+{
+  "data": {
+    "money_movement_groups": [
+      {
+        "id": "mmg-1",
+        "group_created_at": "2025-01-29T11:30:44Z",
+        "month": "2025-02-01",
+        "note": null,
+        "performed_by_user_id": "user-1",
+        "deleted": false
+      },
+      {
+        "id": "mmg-2",
+        "group_created_at": "2026-07-04T13:39:49Z",
+        "month": "2026-07-01",
+        "note": "rebalancing",
+        "performed_by_user_id": "user-1",
+        "deleted": false
+      }
+    ],
+    "server_knowledge": 33730
+  }
+}

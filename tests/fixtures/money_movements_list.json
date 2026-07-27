@@ -1,0 +1,49 @@
+{
+  "data": {
+    "money_movements": [
+      {
+        "id": "mm-1",
+        "month": "2026-06-01",
+        "moved_at": "2026-06-13T14:39:50Z",
+        "note": null,
+        "money_movement_group_id": null,
+        "performed_by_user_id": "user-1",
+        "from_category_id": null,
+        "to_category_id": "cat-groceries",
+        "amount": 500000,
+        "amount_formatted": "$500.00",
+        "amount_currency": 500.0,
+        "deleted": false
+      },
+      {
+        "id": "mm-2",
+        "month": "2026-06-01",
+        "moved_at": "2026-06-14T09:02:11Z",
+        "note": "covering the overspend",
+        "money_movement_group_id": "mmg-1",
+        "performed_by_user_id": "user-1",
+        "from_category_id": "cat-dining",
+        "to_category_id": "cat-groceries",
+        "amount": -35000,
+        "amount_formatted": "-$35.00",
+        "amount_currency": -35.0,
+        "deleted": false
+      },
+      {
+        "id": "mm-3",
+        "month": "2026-07-01",
+        "moved_at": "2026-07-04T13:35:20Z",
+        "note": null,
+        "money_movement_group_id": "mmg-1",
+        "performed_by_user_id": "user-1",
+        "from_category_id": "cat-dining",
+        "to_category_id": null,
+        "amount": 1500000,
+        "amount_formatted": "$1500.00",
+        "amount_currency": 1500.0,
+        "deleted": false
+      }
+    ],
+    "server_knowledge": 33730
+  }
+}

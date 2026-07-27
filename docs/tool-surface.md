@@ -116,6 +116,20 @@ Typical uses:
 
 These are the main resource families an agent will use for exact reads and writes.
 
+#### Money movements are not transactions
+
+`money_movements` is the family most often misread. A money movement records
+budgeted funds moved between categories within a month. No money enters or
+leaves the plan, and the record has no date, payee, or account. Its fields are
+`month`, `moved_at`, `from_category_id`, `to_category_id`, `amount`, and
+`money_movement_group_id`.
+
+- a null `from_category_id` or `to_category_id` means Ready to Assign
+- a money movement group ties together the movements made in one action; it
+  carries no amount and does not embed its movements — join on
+  `money_movement_group_id`
+- to answer "where did the money go", use the transaction tools instead
+
 ### Niche / low-priority family
 
 - `payee_locations`

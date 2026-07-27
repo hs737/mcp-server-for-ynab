@@ -807,38 +807,50 @@ folders:
   # -------------------------------------------------------------------------
   - name: "Money Movements"
     description: |
-      Money movements provide a view of how money flows between category groups.
-      This is an enriched view not available in the base transaction list.
+      A money movement records budgeted funds moved between categories within a
+      month. It is not a transaction: there is no date, payee, or account, and
+      no money enters or leaves the plan. A null from_category_id or
+      to_category_id means Ready to Assign.
     routes:
       - name: "List Money Movements"
         method: GET
         path: /budgets/{{plan_id}}/money_movements
         classification: read
         description: |
-          Returns money movement summary across all months.
-          Useful for understanding aggregate flows between categories.
+          Returns every money movement in the plan across all months.
+          Pass last_knowledge_of_server to fetch only what changed since that
+          point. There is no month or type filter on this route — use the
+          per-month route to scope by month.
         query_params:
-          - key: month
+          - key: last_knowledge_of_server
             example: ""
-            description: "Optional ISO month date filter."
+            description: "Optional delta sync marker from a previous response."
             required: false
 
       - name: "List Money Movements for Month"
         method: GET
         path: /budgets/{{plan_id}}/months/{{month}}/money_movements
         classification: read
-        description: "Returns money movements for a specific month."
+        description: "Returns money movements applied to a specific month."
         query_params:
-          - key: type
+          - key: last_knowledge_of_server
             example: ""
-            description: "Optional type filter."
+            description: "Optional delta sync marker from a previous response."
             required: false
 
       - name: "List Money Movement Groups"
         method: GET
         path: /budgets/{{plan_id}}/money_movement_groups
         classification: read
-        description: "Returns money movements grouped by category group."
+        description: |
+          Returns the groups that tie together movements made in a single
+          action. A group carries no amount and does not embed its movements —
+          join on money_movement_group_id.
+        query_params:
+          - key: last_knowledge_of_server
+            example: ""
+            description: "Optional delta sync marker from a previous response."
+            required: false
 
       - name: "List Money Movement Groups for Month"
         method: GET
