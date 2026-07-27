@@ -140,25 +140,27 @@ class UpdateTransactionsWrapper(YnabBaseModel):
     transactions: list[UpdateTransaction]
 
 
-class BulkTransactionResult(YnabBaseModel):
+class BulkTransactionData(YnabBaseModel):
     """Result of a bulk transaction operation.
 
-    IMPORTANT: Bulk update is NOT atomic. transaction_ids_approved contains
-    transactions that were successfully created/updated. transaction_ids_duplicate
-    contains IDs that were skipped due to duplicate import_id values.
-    Always check both fields rather than assuming all-or-nothing success.
+    IMPORTANT: Bulk update is NOT atomic. `transaction_ids` lists what was
+    successfully created or updated, and `duplicate_import_ids` lists what was
+    skipped for having a duplicate import_id. Always check both rather than
+    assuming all-or-nothing success.
+
+    These fields sit directly on `data`. An earlier version nested them under a
+    `bulk` key, which the API has never returned on this route, so every bulk
+    call failed to parse.
     """
 
     transaction_ids: list[str]
-    duplicate_import_ids: list[str]
+    duplicate_import_ids: list[str] = []  # noqa: RUF012
+    transactions: list[Transaction] = []  # noqa: RUF012
+    server_knowledge: int | None = None
 
 
 class BulkTransactionResponse(YnabBaseModel):
     data: BulkTransactionData
-
-
-class BulkTransactionData(YnabBaseModel):
-    bulk: BulkTransactionResult
 
 
 class ImportResponse(YnabBaseModel):

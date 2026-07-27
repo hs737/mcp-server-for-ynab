@@ -68,9 +68,12 @@ class CategoriesClient(BaseClient):
         return MonthCategoryResponse.model_validate(data)
 
     async def create_group(self, plan_id: str, payload: SaveCategoryGroupWrapper) -> CategoryGroupResponse:
-        """POST /budgets/{id}/category-groups — [WRITE] Create a new category group."""
+        """POST /budgets/{id}/category_groups — [WRITE] Create a new category group.
+
+        The path segment is underscore-separated. A hyphen returns "Invalid URI".
+        """
         data = await self._http.post(
-            f"/budgets/{plan_id}/category-groups",
+            f"/budgets/{plan_id}/category_groups",
             json=payload.model_dump(exclude_none=True),
         )
         return CategoryGroupResponse.model_validate(data)
@@ -78,12 +81,12 @@ class CategoriesClient(BaseClient):
     async def update_group(
         self, plan_id: str, category_group_id: str, payload: SaveCategoryGroupWrapper
     ) -> CategoryGroupResponse:
-        """PATCH /budgets/{id}/category-groups/{id} — [WRITE] Update a category group.
+        """PATCH /budgets/{id}/category_groups/{id} — [WRITE] Update a category group.
 
         Note: YNAB does not support deleting category groups directly.
         """
         data = await self._http.patch(
-            f"/budgets/{plan_id}/category-groups/{category_group_id}",
+            f"/budgets/{plan_id}/category_groups/{category_group_id}",
             json=payload.model_dump(exclude_none=True),
         )
         return CategoryGroupResponse.model_validate(data)

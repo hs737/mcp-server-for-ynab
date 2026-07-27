@@ -44,7 +44,10 @@ class CategoryGroup(YnabBaseModel):
     name: str
     hidden: bool
     deleted: bool
-    categories: list[Category]
+    internal: bool | None = None
+    # Only the list route embeds categories. The create and update routes return
+    # the group on its own, so this must default rather than be required.
+    categories: list[Category] = []  # noqa: RUF012
 
 
 class CategoriesResponse(YnabBaseModel):
@@ -67,7 +70,8 @@ class CategoryData(YnabBaseModel):
 class SaveCategory(YnabBaseModel):
     name: str | None = None
     note: str | None = None
-    budgeted: int | None = None  # milliunits
+    category_group_id: str | None = None  # required when creating
+    budgeted: int | None = None  # milliunits; only honoured on the per-month route
 
 
 class SaveCategoryWrapper(YnabBaseModel):

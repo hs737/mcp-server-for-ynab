@@ -130,6 +130,19 @@ leaves the plan, and the record has no date, payee, or account. Its fields are
   `money_movement_group_id`
 - to answer "where did the money go", use the transaction tools instead
 
+#### Category writes have two separate routes
+
+Budgeted amounts are per-month, and only `categories_update_for_month` can set
+them. `categories_update` changes the name and note; YNAB accepts a `budgeted`
+field on that route and silently ignores it, so the tool no longer exposes one.
+
+`categories_create` requires a `category_group_id`. Get one from
+`categories_list` or create a group first with `category_groups_create`.
+
+Neither categories, category groups, accounts, nor payees can be deleted
+through the YNAB API. Only transactions and scheduled transactions have delete
+routes.
+
 ### Niche / low-priority family
 
 - `payee_locations`

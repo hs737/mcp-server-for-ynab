@@ -5,7 +5,11 @@ from __future__ import annotations
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
+from tests.conftest import load_fixture
+from ynab_mcp.models.ynab.transactions import UpdateTransaction, UpdateTransactionsWrapper
 from ynab_mcp.ynab_client.transactions import TransactionsClient
+
+BULK_UPDATE = load_fixture("transactions_bulk_update.json")
 
 
 def _make_client(response_data: dict[str, Any]) -> TransactionsClient:
@@ -102,6 +106,36 @@ async def test_server_knowledge_preserved() -> None:
     client = _make_client(_transactions_list_response())
     result = await client.list("plan-abc")
     assert result.data.server_knowledge == 1234
+
+
+async def test_bulk_update_parses_live_response_shape() -> None:
+    """The bulk fields sit directly on `data`, not under a `bulk` key.
+
+    The model previously required `data.bulk`, which this route has never
+    returned, so every bulk update failed to parse after a successful write.
+    """
+    http = MagicMock()
+    http.patch = AsyncMock(return_value=BULK_UPDATE)
+    client = TransactionsClient(http)
+
+    payload = UpdateTransactionsWrapper(
+        transactions=[UpdateTransaction(id="5e6ac6ef-702f-4f93-81d6-5d530b683b37", memo="bulk probe updated")]
+    )
+    result = await client.bulk_update("plan-abc", payload)
+
+    assert result.data.transaction_ids == ["5e6ac6ef-702f-4f93-81d6-5d530b683b37"]
+    assert result.data.duplicate_import_ids == []
+    assert len(result.data.transactions) == 1
+    assert result.data.transactions[0].memo == "bulk probe updated"
+    assert result.data.server_knowledge == 56
+
+
+async def test_bulk_update_uses_patch_on_the_collection() -> None:
+    http = MagicMock()
+    http.patch = AsyncMock(return_value=BULK_UPDATE)
+    client = TransactionsClient(http)
+    await client.bulk_update("plan-abc", UpdateTransactionsWrapper(transactions=[UpdateTransaction(id="t-1")]))
+    assert http.patch.call_args.args[0] == "/budgets/plan-abc/transactions"
 
 
 async def test_list_by_account_url() -> None:

@@ -1,0 +1,33 @@
+{
+  "data": {
+    "transaction_ids": ["5e6ac6ef-702f-4f93-81d6-5d530b683b37"],
+    "duplicate_import_ids": [],
+    "transactions": [
+      {
+        "id": "5e6ac6ef-702f-4f93-81d6-5d530b683b37",
+        "date": "2026-07-27",
+        "amount": -1000,
+        "memo": "bulk probe updated",
+        "cleared": "uncleared",
+        "approved": true,
+        "flag_color": null,
+        "account_id": "acct-1",
+        "account_name": "Sweep Account",
+        "payee_id": null,
+        "payee_name": null,
+        "category_id": null,
+        "category_name": null,
+        "transfer_account_id": null,
+        "transfer_transaction_id": null,
+        "matched_transaction_id": null,
+        "import_id": null,
+        "import_payee_name": null,
+        "import_payee_name_original": null,
+        "debt_transaction_type": null,
+        "deleted": false,
+        "subtransactions": []
+      }
+    ],
+    "server_knowledge": 56
+  }
+}

@@ -93,18 +93,25 @@ async def categories_get_for_month(
 
 @mcp.tool(
     name="categories_create",
-    description="[WRITE] Create a new category. budgeted amount is in milliunits (1000 = $1.00).",
+    description=(
+        "[WRITE] Create a new category inside a category group. "
+        "category_group_id is required — get one from categories_list or category_groups_create. "
+        "To set the category's budgeted amount, call categories_update_for_month afterwards."
+    ),
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False),
 )
 @tool_handler
 async def categories_create(
     name: str,
+    category_group_id: str,
     plan_id: str | None = None,
     note: str | None = None,
 ) -> dict[str, Any]:
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)
-    payload = SaveCategoryWrapper(category=SaveCategory(name=name, note=note))
+    payload = SaveCategoryWrapper(
+        category=SaveCategory(name=name, note=note, category_group_id=category_group_id)
+    )
     result = await ctx.categories.create(resolved, payload)
     return result.model_dump()
 
@@ -112,7 +119,9 @@ async def categories_create(
 @mcp.tool(
     name="categories_update",
     description=(
-        "[WRITE] Update a category. budgeted amount is in milliunits (1000 = $1.00). Only provided fields are updated."
+        "[WRITE] Update a category's name or note. Only provided fields are updated. "
+        "This route cannot change the budgeted amount — YNAB accepts the field and ignores it, "
+        "because budgeted amounts are per-month. Use categories_update_for_month instead."
     ),
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False),
 )
@@ -122,11 +131,10 @@ async def categories_update(
     plan_id: str | None = None,
     name: str | None = None,
     note: str | None = None,
-    budgeted: int | None = None,
 ) -> dict[str, Any]:
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)
-    payload = SaveCategoryWrapper(category=SaveCategory(name=name, note=note, budgeted=budgeted))
+    payload = SaveCategoryWrapper(category=SaveCategory(name=name, note=note))
     result = await ctx.categories.update(resolved, category_id, payload)
     return result.model_dump()
 
