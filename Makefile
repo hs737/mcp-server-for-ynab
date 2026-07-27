@@ -1,6 +1,6 @@
 .PHONY: lint format typecheck test test-unit test-contract test-integration check \
         smoke-stdio run-stdio run-http \
-        verify-live verify-mcp-http \
+        verify-live verify-write verify-mcp-http \
         postman-generate postman-check \
         test-postman test-postman-operator
 
@@ -74,11 +74,24 @@ smoke-stdio:
 # real credentials in .env and are therefore not part of `make check`.
 #
 # verify-live:      invoke every read-only tool against the live API
+# verify-write:     invoke every write tool against a disposable plan
 # verify-mcp-http:  walk the MCP HTTP handshake with curl on a throwaway port
+#
+# verify-write creates and deletes data. It requires an explicit plan id and
+# never falls back to YNAB_PLAN_ID:
+#
+#   make verify-write PLAN_ID=<disposable-plan-uuid>
 # ---------------------------------------------------------------------------
 
 verify-live: .env
 	@set -a && . ./.env && set +a && uv run python scripts/live_read_sweep.py
+
+verify-write: .env
+	@test -n "$(PLAN_ID)" || { \
+		echo "ERROR: set PLAN_ID to a disposable plan, e.g. make verify-write PLAN_ID=<uuid>"; \
+		exit 1; \
+	}
+	@set -a && . ./.env && set +a && uv run python scripts/live_write_sweep.py --plan-id $(PLAN_ID)
 
 verify-mcp-http: .env
 	@set -a && . ./.env && set +a && ./scripts/mcp_http_check.sh

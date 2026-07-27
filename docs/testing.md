@@ -51,6 +51,7 @@ make smoke-stdio
 make run-stdio
 make run-http
 make verify-live
+make verify-write PLAN_ID=<disposable-plan-uuid>
 make verify-mcp-http
 make postman-generate
 make postman-check
@@ -188,6 +189,7 @@ These are slower and more operational than unit/contract tests.
 
 Locations:
 - `scripts/live_read_sweep.py`
+- `scripts/live_write_sweep.py`
 - `scripts/mcp_http_check.sh`
 
 Purpose:
@@ -197,8 +199,9 @@ Purpose:
 Commands:
 
 ```bash
-make verify-live       # every read-only tool against the live API
-make verify-mcp-http   # MCP HTTP handshake, driven by curl
+make verify-live                     # every read-only tool against the live API
+make verify-write PLAN_ID=<uuid>     # every write tool against a disposable plan
+make verify-mcp-http                 # MCP HTTP handshake, driven by curl
 ```
 
 `verify-live` drives the server as a real MCP client over stdio. It selects
@@ -207,14 +210,28 @@ automatically and writes are never invoked. Tools whose required argument has
 no value in the plan — a per-record tool for a resource the plan has none of —
 are reported as skipped rather than failed.
 
+`verify-write` exercises every write tool against a plan you name explicitly. It
+never falls back to `YNAB_PLAN_ID`, and it refuses to run against a plan whose
+name does not look disposable unless you pass `--force`. It builds its own
+account, category group, category, and payee, then deletes the transactions and
+scheduled transactions it created. YNAB has no delete endpoint for accounts,
+categories, groups, or payees, so that scaffolding accumulates in the test plan
+by design.
+
 `verify-mcp-http` starts the server on a throwaway port and walks the protocol
 by hand: initialize, `notifications/initialized`, `tools/list`, `tools/call`,
 an unknown-tool call, and a request with no session id. It asserts a session id
-is issued, every tool carries a schema and description, and an unknown tool
-comes back as a tool error rather than a transport failure.
+is issued, `serverInfo.version` is this package's version rather than the SDK's,
+every tool carries a schema and description, and an unknown tool comes back as a
+tool error rather than a transport failure.
 
-Both need real credentials, so neither is part of `make check`. Run them after
+All three need real credentials, so none is part of `make check`. Run them after
 changing a response model, adding a tool, or upgrading the `mcp` SDK.
+
+A passing sweep proves a call was accepted and parsed. It does not prove the
+write took effect: YNAB accepts `budgeted` on the category update route and
+silently ignores it. After a write sweep, read the plan back and confirm the
+values changed.
 
 ## Which Tests Are Fast vs End-to-End
 
