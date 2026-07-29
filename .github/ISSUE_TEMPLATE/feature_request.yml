@@ -1,0 +1,42 @@
+name: Feature request
+description: Propose a new tool, or a change to an existing one
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do
+      description: Describe the budgeting task, not the implementation.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of tool
+      options:
+        - Raw — a direct YNAB API route
+        - Enriched — a read-only workflow built from several reads
+        - Not sure
+    validations:
+      required: true
+
+  - type: input
+    id: endpoint
+    attributes:
+      label: YNAB endpoint, if you know it
+      placeholder: GET /budgets/{id}/months/{month}/categories/{category_id}
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you do today instead
+      description: Which existing tools you combine, and where that falls short.
+
+  - type: checkboxes
+    id: writes
+    attributes:
+      label: Does this need to write
+      options:
+        - label: This would create, update, or delete budget data
+          required: false

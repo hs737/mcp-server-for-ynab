@@ -1,0 +1,72 @@
+name: Bug report
+description: A tool returns the wrong result, fails, or does something unexpected
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Do not paste your YNAB personal access token, real account numbers, or
+        real balances.** Redact identifiers before pasting any payload.
+
+  - type: input
+    id: tool
+    attributes:
+      label: Which tool
+      description: The MCP tool name, e.g. transactions_bulk_update
+      placeholder: transactions_bulk_update
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected to happen
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What actually happened
+      description: |
+        Include the tool's response. Note that this server reports failures as a
+        structured error payload inside a successful MCP response, so look for an
+        "error" key rather than an MCP-level failure.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Call ... with ...
+        2. ...
+    validations:
+      required: true
+
+  - type: input
+    id: client
+    attributes:
+      label: MCP client
+      placeholder: Claude Desktop 1.2.3 / Claude Code / Cursor
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: 0.1.0, or the commit SHA
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I removed my token and any real financial data from this report
+          required: true
+        - label: I checked whether the write tool actually applied the change in YNAB (a parsed response does not prove the write landed)
+          required: false
