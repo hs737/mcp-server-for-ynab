@@ -1,0 +1,20 @@
+version: 2
+
+updates:
+  # The mcp SDK is the dependency most likely to break this project: 2.0 removed
+  # mcp.server.fastmcp, which the server is built on, so the constraint is
+  # pinned below 2. Dependabot will open a PR when a new 1.x lands; a major
+  # version bump needs a migration, not a version bump.
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      dev-dependencies:
+        patterns: ["ruff", "mypy", "pytest*"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"

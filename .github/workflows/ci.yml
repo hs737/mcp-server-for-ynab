@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [master]
 
+# Pull requests from forks run with a read-only token and no secrets.
+permissions:
+  contents: read
+
 jobs:
   check:
     name: Lint, typecheck, test
