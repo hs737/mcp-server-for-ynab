@@ -118,9 +118,7 @@ async def test_bulk_update_parses_live_response_shape() -> None:
     http.patch = AsyncMock(return_value=BULK_UPDATE)
     client = TransactionsClient(http)
 
-    payload = UpdateTransactionsWrapper(
-        transactions=[UpdateTransaction(id="txn-bulk-1", memo="bulk probe updated")]
-    )
+    payload = UpdateTransactionsWrapper(transactions=[UpdateTransaction(id="txn-bulk-1", memo="bulk probe updated")])
     result = await client.bulk_update("plan-abc", payload)
 
     assert result.data.transaction_ids == ["txn-bulk-1"]

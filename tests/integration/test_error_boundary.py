@@ -61,9 +61,7 @@ async def test_missing_plan_id_on_enriched_tool_returns_validation_error(ynab_en
 
 async def test_auth_failure_returns_structured_error(ynab_env: None) -> None:
     mock_ctx = MagicMock()
-    mock_ctx.plans.list = AsyncMock(
-        side_effect=YnabMcpException(YnabMcpError.auth_failure("Token expired"))
-    )
+    mock_ctx.plans.list = AsyncMock(side_effect=YnabMcpException(YnabMcpError.auth_failure("Token expired")))
 
     from ynab_mcp.server.tools.raw.plans import plans_list
 
@@ -79,9 +77,7 @@ async def test_auth_failure_returns_structured_error(ynab_env: None) -> None:
 async def test_not_found_returns_structured_error(ynab_env: None) -> None:
     mock_ctx = MagicMock()
     mock_ctx.settings.resolve_plan_id = MagicMock(return_value="plan-123")
-    mock_ctx.accounts.get = AsyncMock(
-        side_effect=YnabMcpException(YnabMcpError.not_found("account"))
-    )
+    mock_ctx.accounts.get = AsyncMock(side_effect=YnabMcpException(YnabMcpError.not_found("account")))
 
     from ynab_mcp.server.tools.raw.accounts import accounts_get
 
@@ -94,9 +90,7 @@ async def test_not_found_returns_structured_error(ynab_env: None) -> None:
 
 async def test_rate_limited_preserves_retry_after(ynab_env: None) -> None:
     mock_ctx = MagicMock()
-    mock_ctx.plans.list = AsyncMock(
-        side_effect=YnabMcpException(YnabMcpError.rate_limited(retry_after=30))
-    )
+    mock_ctx.plans.list = AsyncMock(side_effect=YnabMcpException(YnabMcpError.rate_limited(retry_after=30)))
 
     from ynab_mcp.server.tools.raw.plans import plans_list
 

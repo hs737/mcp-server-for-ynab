@@ -109,9 +109,7 @@ async def categories_create(
 ) -> dict[str, Any]:
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)
-    payload = SaveCategoryWrapper(
-        category=SaveCategory(name=name, note=note, category_group_id=category_group_id)
-    )
+    payload = SaveCategoryWrapper(category=SaveCategory(name=name, note=note, category_group_id=category_group_id))
     result = await ctx.categories.create(resolved, payload)
     return result.model_dump()
 

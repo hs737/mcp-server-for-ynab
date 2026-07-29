@@ -70,7 +70,7 @@ class Sweep:
         except TimeoutError:
             self.results.append((name, "TIMEOUT", f"no response in {CALL_TIMEOUT_SECONDS}s"))
             return None
-        except Exception as exc:  # noqa: BLE001 - the point is to report, not raise
+        except Exception as exc:
             self.results.append((name, "EXCEPTION", f"{type(exc).__name__}: {exc}"))
             return None
 

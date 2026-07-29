@@ -23,4 +23,11 @@ This repository is **Python**. Skills under `skills/` assume:
 | `requesting-code-review` | Structured review before merge |
 | `writing-clearly-and-concisely` | Human-facing prose |
 
-Installed third-party skills are recorded in `.skill-lock.json`.
+## Third-party skills
+
+Skills installed from other repositories are recorded in `.skill-lock.json` but
+their content is **not** committed here — they carry their own upstream licenses,
+and vendoring them would redistribute someone else's work from an Apache-2.0
+repo. Reinstall them from the lock file if you want them locally.
+
+The skills tracked in this repository are its own.

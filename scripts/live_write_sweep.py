@@ -52,7 +52,7 @@ class WriteSweep:
             if record:
                 self.results.append((name, "TIMEOUT", f"no response in {CALL_TIMEOUT_SECONDS}s"))
             return None
-        except Exception as exc:  # noqa: BLE001 - report rather than abort the sweep
+        except Exception as exc:
             if record:
                 self.results.append((name, "EXCEPTION", f"{type(exc).__name__}: {exc}"))
             return None
@@ -148,7 +148,9 @@ async def run(plan_id: str, force: bool) -> int:
 
         # --- updates on the scaffolding ----------------------------------
         if group_id:
-            await sweep.call("category_groups_update", {"category_group_id": group_id, "name": f"Sweep Group {stamp} v2"})
+            await sweep.call(
+                "category_groups_update", {"category_group_id": group_id, "name": f"Sweep Group {stamp} v2"}
+            )
         if category_id:
             await sweep.call("categories_update", {"category_id": category_id, "name": f"Sweep Category {stamp} v2"})
             await sweep.call(

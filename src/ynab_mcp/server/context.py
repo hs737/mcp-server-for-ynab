@@ -50,8 +50,7 @@ class StaticPlanResolver:
         resolved = plan_id or self.default_plan_id
         if not resolved:
             raise ConfigError(
-                "plan_id is required but was not provided and no default plan is configured "
-                "for this runtime context."
+                "plan_id is required but was not provided and no default plan is configured for this runtime context."
             )
         return resolved
 
