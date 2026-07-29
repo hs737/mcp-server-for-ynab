@@ -119,11 +119,11 @@ async def test_bulk_update_parses_live_response_shape() -> None:
     client = TransactionsClient(http)
 
     payload = UpdateTransactionsWrapper(
-        transactions=[UpdateTransaction(id="5e6ac6ef-702f-4f93-81d6-5d530b683b37", memo="bulk probe updated")]
+        transactions=[UpdateTransaction(id="txn-bulk-1", memo="bulk probe updated")]
     )
     result = await client.bulk_update("plan-abc", payload)
 
-    assert result.data.transaction_ids == ["5e6ac6ef-702f-4f93-81d6-5d530b683b37"]
+    assert result.data.transaction_ids == ["txn-bulk-1"]
     assert result.data.duplicate_import_ids == []
     assert len(result.data.transactions) == 1
     assert result.data.transactions[0].memo == "bulk probe updated"
