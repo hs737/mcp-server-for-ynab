@@ -39,7 +39,7 @@ AI agents should inspect transfer fields before modifying linked transactions.
 
 Public OAuth, callback handling, durable grant storage, and session identity do
 not belong in this repo. They belong in the separate hosted runtime that imports
-`ynab-mcp` as a library.
+`mcp-server-for-ynab` as a library.
 
 The only core responsibility for hosted auth is the embed boundary:
 - accept any `AuthProvider` implementation

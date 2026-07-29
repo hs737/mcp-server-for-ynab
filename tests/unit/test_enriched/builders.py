@@ -12,20 +12,20 @@ from datetime import date, timedelta
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
-from ynab_mcp.models.ynab.accounts import Account, AccountsData, AccountsResponse
-from ynab_mcp.models.ynab.categories import (
+from mcp_server_for_ynab.models.ynab.accounts import Account, AccountsData, AccountsResponse
+from mcp_server_for_ynab.models.ynab.categories import (
     CategoriesData,
     CategoriesResponse,
     Category,
     CategoryGroup,
 )
-from ynab_mcp.models.ynab.months import Month, MonthData, MonthResponse
-from ynab_mcp.models.ynab.scheduled_transactions import (
+from mcp_server_for_ynab.models.ynab.months import Month, MonthData, MonthResponse
+from mcp_server_for_ynab.models.ynab.scheduled_transactions import (
     ScheduledTransaction,
     ScheduledTransactionsData,
     ScheduledTransactionsResponse,
 )
-from ynab_mcp.models.ynab.transactions import Transaction, TransactionsData, TransactionsResponse
+from mcp_server_for_ynab.models.ynab.transactions import Transaction, TransactionsData, TransactionsResponse
 
 
 def category(

@@ -56,7 +56,7 @@ if [ -z "${YNAB_API_KEY:-}" ]; then
 fi
 
 echo "Starting server on ${HOST}:${PORT}"
-"$PYTHON" -m ynab_mcp.cli.main http --host "$HOST" --port "$PORT" > "$LOG" 2>&1 &
+"$PYTHON" -m mcp_server_for_ynab.cli.main http --host "$HOST" --port "$PORT" > "$LOG" 2>&1 &
 SERVER_PID=$!
 
 for _ in $(seq 1 60); do
@@ -90,7 +90,7 @@ reported = info.get("version", "")
 print(reported, "sdk" if reported == version("mcp") else "own", info.get("name", ""))
 ' 2>/dev/null)
 read -r REPORTED_VERSION VERSION_SOURCE SERVER_NAME <<<"$SERVER_INFO"
-check "serverInfo.name" "ynab-mcp" "$SERVER_NAME"
+check "serverInfo.name" "mcp-server-for-ynab" "$SERVER_NAME"
 if [ "$VERSION_SOURCE" = "own" ]; then
   pass "serverInfo.version is the package version ($REPORTED_VERSION)"
 else

@@ -5,9 +5,9 @@ from unittest.mock import patch
 
 import pytest
 
+from mcp_server_for_ynab.models.errors import ErrorType
+from mcp_server_for_ynab.models.ynab.transactions import TransactionsResponse
 from tests.conftest import make_mock_ctx
-from ynab_mcp.models.errors import ErrorType
-from ynab_mcp.models.ynab.transactions import TransactionsResponse
 
 
 def _transaction(idx: int, *, with_subtransaction: bool = False) -> dict[str, Any]:
@@ -68,7 +68,7 @@ def _transactions_response(total: int) -> TransactionsResponse:
 
 @pytest.fixture(autouse=True)
 def _setup_app(ynab_env: None) -> None:
-    from ynab_mcp.server.app import create_app
+    from mcp_server_for_ynab.server.app import create_app
 
     create_app()
 
@@ -77,9 +77,9 @@ async def test_transactions_list_returns_paginated_envelope(ynab_env: None) -> N
     mock_ctx = make_mock_ctx()
     mock_ctx.transactions.list.return_value = _transactions_response(135)
 
-    from ynab_mcp.server.tools.raw.transactions import transactions_list
+    from mcp_server_for_ynab.server.tools.raw.transactions import transactions_list
 
-    with patch("ynab_mcp.server.tools.raw.transactions.get_app_context", return_value=mock_ctx):
+    with patch("mcp_server_for_ynab.server.tools.raw.transactions.get_app_context", return_value=mock_ctx):
         result = await transactions_list(plan_id="plan-123")
 
     assert "error" not in result
@@ -98,9 +98,9 @@ async def test_transactions_list_supports_follow_up_pages(ynab_env: None) -> Non
     mock_ctx = make_mock_ctx()
     mock_ctx.transactions.list.return_value = _transactions_response(135)
 
-    from ynab_mcp.server.tools.raw.transactions import transactions_list
+    from mcp_server_for_ynab.server.tools.raw.transactions import transactions_list
 
-    with patch("ynab_mcp.server.tools.raw.transactions.get_app_context", return_value=mock_ctx):
+    with patch("mcp_server_for_ynab.server.tools.raw.transactions.get_app_context", return_value=mock_ctx):
         result = await transactions_list(plan_id="plan-123", limit=25, offset=125)
 
     assert result == {
@@ -118,9 +118,9 @@ async def test_transactions_list_by_account_passes_filters_and_paginates(ynab_en
     mock_ctx = make_mock_ctx()
     mock_ctx.transactions.list_by_account.return_value = _transactions_response(3)
 
-    from ynab_mcp.server.tools.raw.transactions import transactions_list_by_account
+    from mcp_server_for_ynab.server.tools.raw.transactions import transactions_list_by_account
 
-    with patch("ynab_mcp.server.tools.raw.transactions.get_app_context", return_value=mock_ctx):
+    with patch("mcp_server_for_ynab.server.tools.raw.transactions.get_app_context", return_value=mock_ctx):
         result = await transactions_list_by_account(
             account_id="account-123",
             plan_id="plan-123",
@@ -149,9 +149,9 @@ async def test_invalid_limit_returns_validation_error(ynab_env: None) -> None:
     mock_ctx = make_mock_ctx()
     mock_ctx.transactions.list.return_value = _transactions_response(3)
 
-    from ynab_mcp.server.tools.raw.transactions import transactions_list
+    from mcp_server_for_ynab.server.tools.raw.transactions import transactions_list
 
-    with patch("ynab_mcp.server.tools.raw.transactions.get_app_context", return_value=mock_ctx):
+    with patch("mcp_server_for_ynab.server.tools.raw.transactions.get_app_context", return_value=mock_ctx):
         result = await transactions_list(plan_id="plan-123", limit=0)
 
     assert result["error"]["error_type"] == ErrorType.VALIDATION_ERROR

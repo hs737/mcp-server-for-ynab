@@ -12,7 +12,7 @@ hand: the model and the fixture are the same guess.
 
 ## Use When
 
-- Adding or editing a model under `src/ynab_mcp/models/ynab/`
+- Adding or editing a model under `src/mcp_server_for_ynab/models/ynab/`
 - Adding a raw tool or a `ynab_client` wrapper for a new route
 - Upgrading the `mcp` SDK, or changing transport/CLI startup
 - Reviewing a claim that a tool "works" when only unit tests were run

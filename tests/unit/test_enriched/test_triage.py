@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from mcp_server_for_ynab.enriched.triage import triage_summary, triage_unapproved, triage_uncategorized
 from tests.unit.test_enriched.builders import make_ctx, transaction, transactions_response
-from ynab_mcp.enriched.triage import triage_summary, triage_unapproved, triage_uncategorized
 
 
 async def test_uncategorized_requests_the_right_queue() -> None:

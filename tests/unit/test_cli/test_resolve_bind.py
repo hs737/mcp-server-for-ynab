@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pytest
 
-from ynab_mcp.cli.main import DEFAULT_HOST, DEFAULT_PORT, resolve_bind
+from mcp_server_for_ynab.cli.main import DEFAULT_HOST, DEFAULT_PORT, resolve_bind
 
 
 def test_defaults_when_nothing_is_set(monkeypatch: pytest.MonkeyPatch) -> None:

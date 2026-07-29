@@ -8,8 +8,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from ynab_mcp.http_client.client import YnabHttpClient, _redact_headers
-from ynab_mcp.models.errors import ErrorType, YnabMcpException
+from mcp_server_for_ynab.http_client.client import YnabHttpClient, _redact_headers
+from mcp_server_for_ynab.models.errors import ErrorType, YnabMcpException
 
 
 def _make_client() -> YnabHttpClient:
@@ -97,7 +97,7 @@ async def test_retries_on_500() -> None:
 
     with (
         patch.object(client, "_get_client", new=AsyncMock(return_value=mock_httpx)),
-        patch("ynab_mcp.http_client.client.asyncio.sleep", new=AsyncMock()),
+        patch("mcp_server_for_ynab.http_client.client.asyncio.sleep", new=AsyncMock()),
     ):
         result = await client.get("/budgets")
 
@@ -112,7 +112,7 @@ async def test_raises_transport_error_after_max_retries() -> None:
 
     with (
         patch.object(client, "_get_client", new=AsyncMock(return_value=mock_httpx)),
-        patch("ynab_mcp.http_client.client.asyncio.sleep", new=AsyncMock()),
+        patch("mcp_server_for_ynab.http_client.client.asyncio.sleep", new=AsyncMock()),
         pytest.raises(YnabMcpException) as exc_info,
     ):
         await client.get("/budgets")

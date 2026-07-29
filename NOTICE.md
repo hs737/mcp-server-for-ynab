@@ -1,7 +1,7 @@
-ynab-mcp
-Copyright 2026 the ynab-mcp authors
+mcp-server-for-ynab
+Copyright 2026 the mcp-server-for-ynab authors
 
-This product includes software developed by the ynab-mcp authors and is
+This product includes software developed by the mcp-server-for-ynab authors and is
 licensed under the Apache License, Version 2.0.
 
 We are not affiliated, associated, or in any way officially connected with

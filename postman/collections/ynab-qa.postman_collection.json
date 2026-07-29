@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "27822b25-7d98-5357-860b-584f8ecbc4e8",
     "name": "YNAB API \u2014 QA",
-    "description": "QA collection for the YNAB API as consumed by ynab-mcp.\n\nGenerated from:\n  - tests/qa/features/*.feature  (human-readable scenarios)\n  - tests/qa/cases/*.yaml        (executable case definitions)\n  - tests/fixtures/*.json        (request body fixtures)\n\nTotal cases: 31\n\nDO NOT hand-edit this file. Edit the source files and regenerate:\n  uv run python scripts/generate_qa_collection.py\n\nRun with Newman:\n  newman run postman/collections/ynab-qa.postman_collection.json \\\n    --environment postman/environments/ynab-qa.postman_environment.json \\\n    --folder 'Auth And Plans'\n\nCI smoke check (read-only cases):\n  newman run ... --folder 'Auth And Plans' --folder 'Transactions Read'",
+    "description": "QA collection for the YNAB API as consumed by mcp-server-for-ynab.\n\nGenerated from:\n  - tests/qa/features/*.feature  (human-readable scenarios)\n  - tests/qa/cases/*.yaml        (executable case definitions)\n  - tests/fixtures/*.json        (request body fixtures)\n\nTotal cases: 31\n\nDO NOT hand-edit this file. Edit the source files and regenerate:\n  uv run python scripts/generate_qa_collection.py\n\nRun with Newman:\n  newman run postman/collections/ynab-qa.postman_collection.json \\\n    --environment postman/environments/ynab-qa.postman_environment.json \\\n    --folder 'Auth And Plans'\n\nCI smoke check (read-only cases):\n  newman run ... --folder 'Auth And Plans' --folder 'Transactions Read'",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [

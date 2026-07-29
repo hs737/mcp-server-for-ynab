@@ -10,7 +10,7 @@
 collection:
   name: "YNAB API — Operator"
   description: |
-    Human-facing operational collection for the YNAB API as consumed by ynab-mcp.
+    Human-facing operational collection for the YNAB API as consumed by mcp-server-for-ynab.
 
     Use this collection to:
     - Discover what routes exist and what they return

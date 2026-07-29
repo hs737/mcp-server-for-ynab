@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from ynab_mcp.models.errors import ErrorType, YnabMcpError, YnabMcpException
+from mcp_server_for_ynab.models.errors import ErrorType, YnabMcpError, YnabMcpException
 
 
 def test_auth_failure_factory() -> None:

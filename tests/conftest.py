@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from ynab_mcp.config.settings import reset_settings
+from mcp_server_for_ynab.config.settings import reset_settings
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 

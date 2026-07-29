@@ -15,9 +15,9 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from pydantic import ValidationError
 
+from mcp_server_for_ynab.models.ynab.money_movements import MoneyMovementsResponse
+from mcp_server_for_ynab.ynab_client.money_movements import MoneyMovementsClient
 from tests.conftest import load_fixture
-from ynab_mcp.models.ynab.money_movements import MoneyMovementsResponse
-from ynab_mcp.ynab_client.money_movements import MoneyMovementsClient
 
 MOVEMENTS = load_fixture("money_movements_list.json")
 GROUPS = load_fixture("money_movement_groups_list.json")

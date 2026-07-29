@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from ynab_mcp.config.settings import ConfigError, Settings, get_settings
+from mcp_server_for_ynab.config.settings import ConfigError, Settings, get_settings
 
 
 def test_requires_api_key(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -13,8 +13,8 @@ from unittest.mock import AsyncMock, patch
 import httpx
 import pytest
 
-from ynab_mcp.http_client.client import YnabHttpClient
-from ynab_mcp.models.errors import ErrorType, YnabMcpException
+from mcp_server_for_ynab.http_client.client import YnabHttpClient
+from mcp_server_for_ynab.models.errors import ErrorType, YnabMcpException
 
 
 def _auth() -> AsyncMock:
@@ -39,7 +39,7 @@ async def test_retries_after_the_server_specified_delay() -> None:
 
     with (
         patch.object(httpx.AsyncClient, "request", new=AsyncMock(side_effect=responses)),
-        patch("ynab_mcp.http_client.client.asyncio.sleep", new=AsyncMock()) as sleep,
+        patch("mcp_server_for_ynab.http_client.client.asyncio.sleep", new=AsyncMock()) as sleep,
     ):
         result = await client.get("/budgets")
 
@@ -53,7 +53,7 @@ async def test_waits_a_default_when_no_retry_after_header() -> None:
 
     with (
         patch.object(httpx.AsyncClient, "request", new=AsyncMock(side_effect=responses)),
-        patch("ynab_mcp.http_client.client.asyncio.sleep", new=AsyncMock()) as sleep,
+        patch("mcp_server_for_ynab.http_client.client.asyncio.sleep", new=AsyncMock()) as sleep,
     ):
         await client.get("/budgets")
 
@@ -66,7 +66,7 @@ async def test_does_not_wait_out_a_long_rolling_window() -> None:
 
     with (
         patch.object(httpx.AsyncClient, "request", new=AsyncMock(return_value=_response(429, retry_after="1800"))),
-        patch("ynab_mcp.http_client.client.asyncio.sleep", new=AsyncMock()) as sleep,
+        patch("mcp_server_for_ynab.http_client.client.asyncio.sleep", new=AsyncMock()) as sleep,
         pytest.raises(YnabMcpException) as exc,
     ):
         await client.get("/budgets")
@@ -81,7 +81,7 @@ async def test_gives_up_after_the_retry_budget() -> None:
 
     with (
         patch.object(httpx.AsyncClient, "request", new=AsyncMock(return_value=_response(429, retry_after="1"))),
-        patch("ynab_mcp.http_client.client.asyncio.sleep", new=AsyncMock()) as sleep,
+        patch("mcp_server_for_ynab.http_client.client.asyncio.sleep", new=AsyncMock()) as sleep,
         pytest.raises(YnabMcpException) as exc,
     ):
         await client.get("/budgets")
@@ -96,7 +96,7 @@ async def test_malformed_retry_after_falls_back_to_the_default() -> None:
 
     with (
         patch.object(httpx.AsyncClient, "request", new=AsyncMock(side_effect=responses)),
-        patch("ynab_mcp.http_client.client.asyncio.sleep", new=AsyncMock()) as sleep,
+        patch("mcp_server_for_ynab.http_client.client.asyncio.sleep", new=AsyncMock()) as sleep,
     ):
         await client.get("/budgets")
 

@@ -116,6 +116,26 @@ Typical uses:
 
 These are the main resource families an agent will use for exact reads and writes.
 
+#### Write tools are absent unless enabled
+
+Set `YNAB_ALLOW_WRITES=1` to register them. Without it, the write tools do not
+reach FastMCP at all: they are missing from `tools/list` and from
+`overview_available_tools`, so an agent has no way to discover or call them.
+
+The registry follows the same rule, so the catalog never advertises a tool the
+server will not run.
+
+#### History and rollback
+
+The `history` family records every write with the state that preceded it, and
+can put a plan back. `history_list` and `history_show` are reads and are always
+available; `history_revert` and `history_revert_to` are writes and follow the
+same opt-in as everything else.
+
+Creating an account, category, category group, or payee cannot be undone —
+YNAB has no delete route for them. Those entries are recorded as non-revertible
+with the reason, and a rollback reports them rather than skipping them.
+
 #### Money movements are not transactions
 
 `money_movements` is the family most often misread. A money movement records

@@ -1,6 +1,9 @@
-# ynab-mcp
+# MCP for YNAB
 
 An AI-first [Model Context Protocol](https://modelcontextprotocol.io/) server for [YNAB](https://ynab.com). It exposes the YNAB API as MCP tools for AI agents, then adds enriched read-only tools for orientation, triage, and bookkeeping workflows.
+
+**Read-only by default.** Write tools are not registered unless you opt in with
+`YNAB_ALLOW_WRITES=1`. See [Write Tools](#write-tools).
 
 This repo is structured so a contributor or AI agent can answer three questions quickly:
 - where the MCP server lives
@@ -54,11 +57,11 @@ Every tool is labeled `read` or `write`. Enriched tools do not perform hidden wr
 
 The code is centered around a small set of layers:
 
-- `src/ynab_mcp/server/`: FastMCP app, tool metadata, tool registration, error boundary
-- `src/ynab_mcp/ynab_client/`: one async wrapper module per YNAB resource family
-- `src/ynab_mcp/http_client/`: outbound `httpx` wrapper with retries, redaction, and error normalization
-- `src/ynab_mcp/models/`: typed YNAB shapes, shared error model, milliunit helpers
-- `src/ynab_mcp/enriched/`: higher-level read-only workflows built on top of raw clients
+- `src/mcp_server_for_ynab/server/`: FastMCP app, tool metadata, tool registration, error boundary
+- `src/mcp_server_for_ynab/ynab_client/`: one async wrapper module per YNAB resource family
+- `src/mcp_server_for_ynab/http_client/`: outbound `httpx` wrapper with retries, redaction, and error normalization
+- `src/mcp_server_for_ynab/models/`: typed YNAB shapes, shared error model, milliunit helpers
+- `src/mcp_server_for_ynab/enriched/`: higher-level read-only workflows built on top of raw clients
 - `tests/`: unit, contract, integration, and QA/Postman source assets
 
 For the full tree and “where do I put X?” guidance, read [Repo Structure](docs/repo-structure.md).
@@ -73,7 +76,7 @@ Go to [app.ynab.com/settings/developer](https://app.ynab.com/settings/developer)
 
 ```bash
 git clone <repo-url>
-cd ynab-mcp
+cd mcp-server-for-ynab
 uv sync
 ```
 
@@ -132,8 +135,52 @@ Start with `overview_available_tools`. It returns the current tool catalog group
 | `transactions` | raw | Transaction CRUD and import trigger |
 | `scheduled_transactions` | raw | Scheduled transaction management |
 | `money_movements` | raw | Money movement data |
+| `history` | enriched | Review and roll back writes this server made |
 
 More detail: [Tool Surface](docs/tool-surface.md)
+
+## Write Tools
+
+Write tools are **not registered unless you opt in**:
+
+```bash
+YNAB_ALLOW_WRITES=1
+```
+
+Without it the server is read-only, and the write tools are absent from
+`tools/list` — an agent cannot call what it cannot see. This is deliberate: the
+server holds a credential that can modify real financial records, and refusing a
+call at execution time would still advertise the capability.
+
+### Every write is recorded, and most can be undone
+
+When writes are enabled, each one records the state that existed *before* it.
+YNAB has no history endpoint, so this is the only way to get an overwritten
+value back.
+
+| Tool | Purpose |
+|------|---------|
+| `history_list` | Recent writes, newest first, each marked revertible or not |
+| `history_show` | One entry in full, including the before state |
+| `history_revert` | Undo one write |
+| `history_revert_to` | Roll the plan back to its state at a chosen entry |
+
+`history_revert_to` undoes everything after the entry you name, newest first,
+because overlapping edits to the same record only compose correctly in reverse.
+Reverting is itself recorded, so a revert can be reverted.
+
+**What cannot be undone.** YNAB has no delete route for accounts, categories,
+category groups, or payees, so creating one is permanent. Those operations are
+recorded as non-revertible with the reason, and a rollback reports them under
+`blocked` rather than skipping them silently — an incomplete rollback that
+claims success is worse than one that tells you what it left behind. A
+recreated transaction also gets a new id and loses any bank-import link.
+
+### Writes are checked, not assumed
+
+Tools that change a value re-read it afterwards and report a `verification`
+block. A 200 response is not proof: YNAB accepts `budgeted` on the category
+update route, returns 200, and ignores it. Verification is what catches that.
 
 ## Where to Read Next
 
@@ -187,7 +234,19 @@ make test-postman-operator
 |----------|----------|-------------|
 | `YNAB_API_KEY` | Yes | YNAB personal access token |
 | `YNAB_PLAN_ID` | Recommended | Default plan ID to make `plan_id` optional on most tools |
+| `YNAB_ALLOW_WRITES` | No | Register write tools. Off means read-only |
+| `YNAB_HISTORY_PATH` | No | Write history file, default `~/.mcp-for-ynab/history.jsonl` |
+| `YNAB_RATE_LIMIT_PER_HOUR` | No | Client-side request budget, default `190` of YNAB's 200 |
+| `YNAB_RATE_WARN_THRESHOLD` | No | Warn when this many requests remain, default `50` |
 | `LOG_LEVEL` | No | Logging verbosity, default `INFO` |
+
+### Rate limits
+
+YNAB allows 200 requests per hour per token, and a single enriched tool can
+spend several. The server tracks its own usage in a rolling hour and stops
+just below YNAB's ceiling, so the limit you hit is local and clearly reported
+rather than a 429 in the middle of a workflow. Call `overview_request_budget`
+to see what is left; it costs no API requests.
 
 ## Amount Convention
 

@@ -5,9 +5,9 @@ from __future__ import annotations
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
+from mcp_server_for_ynab.models.ynab.transactions import UpdateTransaction, UpdateTransactionsWrapper
+from mcp_server_for_ynab.ynab_client.transactions import TransactionsClient
 from tests.conftest import load_fixture
-from ynab_mcp.models.ynab.transactions import UpdateTransaction, UpdateTransactionsWrapper
-from ynab_mcp.ynab_client.transactions import TransactionsClient
 
 BULK_UPDATE = load_fixture("transactions_bulk_update.json")
 

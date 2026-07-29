@@ -1,5 +1,5 @@
 [project]
-name = "ynab-mcp"
+name = "mcp-server-for-ynab"
 version = "0.1.0"
 description = "AI-first MCP server for YNAB budget management"
 requires-python = ">=3.12"
@@ -11,14 +11,14 @@ dependencies = [
 ]
 
 [project.scripts]
-ynab-mcp = "ynab_mcp.cli.main:main"
+mcp-server-for-ynab = "mcp_server_for_ynab.cli.main:main"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/ynab_mcp"]
+packages = ["src/mcp_server_for_ynab"]
 
 [dependency-groups]
 dev = [
@@ -49,7 +49,7 @@ select = [
 ignore = ["B008"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["ynab_mcp"]
+known-first-party = ["mcp_server_for_ynab"]
 
 [tool.mypy]
 python_version = "3.12"

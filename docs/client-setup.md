@@ -1,6 +1,6 @@
 # Client Setup
 
-This document explains how to connect `ynab-mcp` to the major current MCP clients.
+This document explains how to connect `mcp-server-for-ynab` to the major current MCP clients.
 
 ## What this document is for
 
@@ -33,14 +33,14 @@ These clients are the best fit for the current local PAT-based mode.
 Shared command:
 
 ```bash
-uv run --directory /path/to/ynab-mcp python -m ynab_mcp.cli.main stdio
+uv run --directory /path/to/mcp-server-for-ynab python -m mcp_server_for_ynab.cli.main stdio
 ```
 
 Important:
 - `--directory` should point to the **repository root**
-- do **not** point it at `src/ynab_mcp`
-- correct example: `/path/to/ynab-mcp`
-- incorrect example: `/path/to/ynab-mcp/src/ynab_mcp`
+- do **not** point it at `src/mcp_server_for_ynab`
+- correct example: `/path/to/mcp-server-for-ynab`
+- incorrect example: `/path/to/mcp-server-for-ynab/src/mcp_server_for_ynab`
 
 Shared environment:
 - `YNAB_API_KEY`
@@ -60,7 +60,7 @@ Example:
   "mcpServers": {
     "ynab": {
       "command": "uv",
-      "args": ["run", "--directory", "/path/to/ynab-mcp", "python", "-m", "ynab_mcp.cli.main", "stdio"],
+      "args": ["run", "--directory", "/path/to/mcp-server-for-ynab", "python", "-m", "mcp_server_for_ynab.cli.main", "stdio"],
       "env": {
         "YNAB_API_KEY": "your_token_here",
         "YNAB_PLAN_ID": "your_plan_id_here"
@@ -72,7 +72,7 @@ Example:
 
 After saving the config, restart Claude Desktop and verify the server is available in the app’s MCP/extension tooling.
 
-The `--directory` value in the example must be the repo root, not the `src/ynab_mcp` package directory.
+The `--directory` value in the example must be the repo root, not the `src/mcp_server_for_ynab` package directory.
 
 ### Claude Code
 
@@ -80,7 +80,7 @@ Claude Code supports MCP servers and can use the same local `stdio` command shap
 
 Use the current Claude Code MCP setup flow from Anthropic and register this repo as a local MCP server with:
 - command: `uv`
-- args: `run --directory /path/to/ynab-mcp python -m ynab_mcp.cli.main stdio`
+- args: `run --directory /path/to/mcp-server-for-ynab python -m mcp_server_for_ynab.cli.main stdio`
 - env:
   - `YNAB_API_KEY`
   - optional `YNAB_PLAN_ID`
@@ -93,7 +93,7 @@ Cursor supports MCP servers and can launch a local `stdio` command.
 
 Configure an MCP server in Cursor using:
 - command: `uv`
-- args: `run --directory /path/to/ynab-mcp python -m ynab_mcp.cli.main stdio`
+- args: `run --directory /path/to/mcp-server-for-ynab python -m mcp_server_for_ynab.cli.main stdio`
 - env:
   - `YNAB_API_KEY`
   - optional `YNAB_PLAN_ID`
@@ -106,7 +106,7 @@ Windsurf supports MCP integrations for local tools and data sources.
 
 Configure a local MCP server/plugin using:
 - command: `uv`
-- args: `run --directory /path/to/ynab-mcp python -m ynab_mcp.cli.main stdio`
+- args: `run --directory /path/to/mcp-server-for-ynab python -m mcp_server_for_ynab.cli.main stdio`
 - env:
   - `YNAB_API_KEY`
   - optional `YNAB_PLAN_ID`
@@ -153,10 +153,10 @@ Set `YNAB_PLAN_ID` in the client env or pass `plan_id` in tool calls when needed
 
 ### Wrong repo path
 
-If the client cannot launch the server, confirm `/path/to/ynab-mcp` points to the actual local checkout.
+If the client cannot launch the server, confirm `/path/to/mcp-server-for-ynab` points to the actual local checkout.
 
 Common mistake:
-- using `/path/to/ynab-mcp/src/ynab_mcp` instead of the repo root
+- using `/path/to/mcp-server-for-ynab/src/mcp_server_for_ynab` instead of the repo root
 
 Use the repository root for `--directory`, because that is where `pyproject.toml`, dependencies, and project tooling are expected.
 
@@ -169,7 +169,7 @@ Install `uv` first. The documented command assumes `uv` is available on your sys
 Test the command yourself first:
 
 ```bash
-uv run --directory /path/to/ynab-mcp python -m ynab_mcp.cli.main stdio
+uv run --directory /path/to/mcp-server-for-ynab python -m mcp_server_for_ynab.cli.main stdio
 ```
 
 If that fails locally, the client will not be able to launch it either.

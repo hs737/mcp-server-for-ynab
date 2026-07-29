@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from mcp_server_for_ynab.enriched.analysis import overspent_categories, target_funding_gaps, upcoming_scheduled_risks
 from tests.unit.test_enriched.builders import (
     categories_response,
     category,
@@ -11,7 +12,6 @@ from tests.unit.test_enriched.builders import (
     scheduled,
     scheduled_response,
 )
-from ynab_mcp.enriched.analysis import overspent_categories, target_funding_gaps, upcoming_scheduled_risks
 
 
 async def test_overspent_lists_only_negative_balances() -> None:

@@ -1,6 +1,6 @@
 # Architecture
 
-This document describes the current implementation of `ynab-mcp`.
+This document describes the current implementation of `mcp-server-for-ynab`.
 
 ## What this document is for
 
@@ -19,7 +19,7 @@ Adjacent docs:
 
 ## Product Model
 
-`ynab-mcp` is an MCP server for AI agents. It exposes:
+`mcp-server-for-ynab` is an MCP server for AI agents. It exposes:
 - raw tools that mirror the YNAB API closely
 - enriched tools that consolidate common read workflows into more discoverable agent-facing operations
 
@@ -71,7 +71,7 @@ flowchart TD
 ## Package Layout
 
 ```text
-src/ynab_mcp/
+src/mcp_server_for_ynab/
 ├── auth/           auth abstraction and PAT provider
 ├── cli/            stdio/http entrypoints and smoke helper
 ├── config/         settings and environment loading

@@ -16,14 +16,14 @@ from __future__ import annotations
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
-from ynab_mcp.models.ynab.categories import (
+from mcp_server_for_ynab.models.ynab.categories import (
     CategoryGroupResponse,
     SaveCategory,
     SaveCategoryGroup,
     SaveCategoryGroupWrapper,
     SaveCategoryWrapper,
 )
-from ynab_mcp.ynab_client.categories import CategoriesClient
+from mcp_server_for_ynab.ynab_client.categories import CategoriesClient
 
 
 def _group_response() -> dict[str, Any]:

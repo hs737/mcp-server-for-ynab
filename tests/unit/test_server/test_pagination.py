@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from ynab_mcp.config.settings import ConfigError
-from ynab_mcp.server.tools.pagination import DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT, paginate_items
+from mcp_server_for_ynab.config.settings import ConfigError
+from mcp_server_for_ynab.server.tools.pagination import DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT, paginate_items
 
 
 def test_paginate_items_uses_defaults() -> None:

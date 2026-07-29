@@ -1,4 +1,4 @@
-# Agent skills (ynab-mcp)
+# Agent skills (mcp-server-for-ynab)
 
 This repository is **Python**. Skills under `skills/` assume:
 

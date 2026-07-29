@@ -7,7 +7,7 @@ Treat security reports here as higher-stakes than a typical developer tool.
 
 Report privately. Do not open a public issue for a security problem.
 
-Use GitHub's [private vulnerability reporting](https://github.com/hs737/ynab-mcp/security/advisories/new)
+Use GitHub's [private vulnerability reporting](https://github.com/hs737/mcp-server-for-ynab/security/advisories/new)
 on this repository. Expect an acknowledgement within 7 days.
 
 Please include:
@@ -50,7 +50,18 @@ If you ran this server and want to revoke access, delete the token at
 
 ## Write Tools
 
-This server exposes tools that create, update, and delete real budget data.
-There is no undo. Before granting an agent access to a plan you care about,
-consider pointing it at a throwaway plan first — `make verify-write` deliberately
-refuses to run against a plan whose name does not look disposable.
+The server is read-only unless you set `YNAB_ALLOW_WRITES=1`. Without it the
+write tools are not registered, so they do not appear in `tools/list` and an
+agent cannot invoke them.
+
+When writes are enabled, each one records the state before it, and
+`history_revert` / `history_revert_to` can put a plan back. Two limits are worth
+knowing before you rely on that:
+
+- creating an account, category, category group, or payee is permanent — YNAB
+  has no delete route for them
+- a recreated transaction gets a new id and loses any bank-import link
+
+Before granting an agent access to a plan you care about, consider pointing it
+at a throwaway plan first — `make verify-write` deliberately refuses to run
+against a plan whose name does not look disposable.

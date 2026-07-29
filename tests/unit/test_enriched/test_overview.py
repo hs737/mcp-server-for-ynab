@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from mcp_server_for_ynab.enriched.overview import budget_snapshot, cash_position, month_health
 from tests.unit.test_enriched.builders import (
     account,
     accounts_response,
@@ -10,7 +11,6 @@ from tests.unit.test_enriched.builders import (
     make_ctx,
     month,
 )
-from ynab_mcp.enriched.overview import budget_snapshot, cash_position, month_health
 
 
 async def test_snapshot_passes_month_totals_through_unchanged() -> None:

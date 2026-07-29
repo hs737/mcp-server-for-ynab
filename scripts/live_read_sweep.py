@@ -144,7 +144,7 @@ class Sweep:
 async def run(month: str) -> int:
     params = StdioServerParameters(
         command=sys.executable,
-        args=["-m", "ynab_mcp.cli.main", "stdio"],
+        args=["-m", "mcp_server_for_ynab.cli.main", "stdio"],
         env=dict(os.environ),
         cwd=str(REPO_ROOT),
     )

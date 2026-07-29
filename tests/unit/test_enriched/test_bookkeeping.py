@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from tests.unit.test_enriched.builders import make_ctx, transaction, transactions_response
-from ynab_mcp.enriched.bookkeeping import (
+from mcp_server_for_ynab.enriched.bookkeeping import (
     categorization_suggestions,
     memo_annotation_suggestions,
     transaction_history,
 )
+from tests.unit.test_enriched.builders import make_ctx, transaction, transactions_response
 
 
 async def test_suggestion_confidence_reflects_payee_history() -> None:

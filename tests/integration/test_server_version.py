@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from importlib.metadata import version
 
-from ynab_mcp.server.app import mcp, package_version
+from mcp_server_for_ynab.server.app import mcp, package_version
 
 
 def test_initialize_reports_the_package_version() -> None:
@@ -23,6 +23,11 @@ def test_reported_version_is_not_the_sdk_version() -> None:
     assert options.server_version != version("mcp")
 
 
-def test_server_name_is_unchanged() -> None:
+def test_server_name_complies_with_ynab_naming_rules() -> None:
+    """YNAB: an application name may not contain "YNAB" unless preceded by "for"."""
     options = mcp._mcp_server.create_initialization_options()
-    assert options.server_name == "ynab-mcp"
+    assert options.server_name == "mcp-for-ynab"
+
+    lowered = options.server_name.lower()
+    if "ynab" in lowered:
+        assert "for-ynab" in lowered or "for ynab" in lowered

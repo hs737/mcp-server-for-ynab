@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for contributing to `ynab-mcp`.
+Thanks for contributing to `mcp-server-for-ynab`.
 
 This project is designed to be understandable and maintainable by both humans and AI agents. Good contributions improve the code, tests, and docs together.
 
@@ -45,7 +45,7 @@ Setup:
 
 ```bash
 git clone <repo-url>
-cd ynab-mcp
+cd mcp-server-for-ynab
 uv sync
 cp .env.example .env
 ```
@@ -70,26 +70,26 @@ Typical workflow:
 ### Raw YNAB route behavior
 
 Use:
-- `src/ynab_mcp/ynab_client/`
-- `src/ynab_mcp/models/ynab/`
-- `src/ynab_mcp/server/tools/raw/`
+- `src/mcp_server_for_ynab/ynab_client/`
+- `src/mcp_server_for_ynab/models/ynab/`
+- `src/mcp_server_for_ynab/server/tools/raw/`
 - `tests/contract/`
 
 ### Enriched AI-facing workflows
 
 Use:
-- `src/ynab_mcp/enriched/`
-- `src/ynab_mcp/server/tools/enriched.py`
+- `src/mcp_server_for_ynab/enriched/`
+- `src/mcp_server_for_ynab/server/tools/enriched.py`
 - `tests/unit/`
 - `tests/integration/` when MCP-boundary behavior matters
 
 ### Shared platform behavior
 
 Use:
-- `src/ynab_mcp/http_client/`
-- `src/ynab_mcp/server/`
-- `src/ynab_mcp/config/`
-- `src/ynab_mcp/auth/`
+- `src/mcp_server_for_ynab/http_client/`
+- `src/mcp_server_for_ynab/server/`
+- `src/mcp_server_for_ynab/config/`
+- `src/mcp_server_for_ynab/auth/`
 
 ### Docs and diagrams
 

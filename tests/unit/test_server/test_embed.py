@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from ynab_mcp.config.settings import ConfigError
-from ynab_mcp.embed import StaticPlanResolver, bind_app_context, create_app_context, create_mcp_app
-from ynab_mcp.server.context import get_app_context, set_app_context
+from mcp_server_for_ynab.config.settings import ConfigError
+from mcp_server_for_ynab.embed import StaticPlanResolver, bind_app_context, create_app_context, create_mcp_app
+from mcp_server_for_ynab.server.context import get_app_context, set_app_context
 
 
 class FakeAuthProvider:

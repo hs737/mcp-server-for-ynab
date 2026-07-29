@@ -486,7 +486,7 @@ def _generate() -> dict[str, Any]:
             "_postman_id": _stable_id("collection.qa"),
             "name": "YNAB API — QA",
             "description": (
-                "QA collection for the YNAB API as consumed by ynab-mcp.\n\n"
+                "QA collection for the YNAB API as consumed by mcp-server-for-ynab.\n\n"
                 "Generated from:\n"
                 "  - tests/qa/features/*.feature  (human-readable scenarios)\n"
                 "  - tests/qa/cases/*.yaml        (executable case definitions)\n"

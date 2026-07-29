@@ -105,10 +105,15 @@ async def confirm_disposable(sweep: WriteSweep, force: bool) -> str | None:
 
 
 async def run(plan_id: str, force: bool) -> int:
+    # Write tools are not registered unless writes are enabled, so the sweep
+    # must opt in explicitly. Doing it here rather than expecting it in the
+    # caller's environment keeps the opt-in scoped to this subprocess.
+    env = {**os.environ, "YNAB_ALLOW_WRITES": "1"}
+
     params = StdioServerParameters(
         command=sys.executable,
-        args=["-m", "ynab_mcp.cli.main", "stdio"],
-        env=dict(os.environ),
+        args=["-m", "mcp_server_for_ynab.cli.main", "stdio"],
+        env=env,
         cwd=str(REPO_ROOT),
     )
 
@@ -222,6 +227,29 @@ async def run(plan_id: str, force: bool) -> int:
                 },
             )
             await sweep.call("scheduled_transactions_delete", {"scheduled_transaction_id": scheduled_id})
+
+        # --- history and revert ---------------------------------------------
+        # Prove the round trip end to end: make a change, revert it, and read
+        # the value back to confirm the revert actually restored it.
+        if category_id:
+            await sweep.call(
+                "categories_update_for_month",
+                {"month": month, "category_id": category_id, "budgeted": 77_000},
+            )
+            listing = await sweep.call("history_list", {"limit": 5})
+            entries = (listing or {}).get("entries", [])
+            budget_entry = next((e for e in entries if e["operation"] == "category_month_budget"), None)
+
+            if budget_entry:
+                await sweep.call("history_show", {"entry_id": budget_entry["id"]})
+                await sweep.call("history_revert", {"entry_id": budget_entry["id"]})
+
+                after = await sweep.call("categories_get_for_month", {"month": month, "category_id": category_id})
+                restored = _dig(after, "data", "category", "budgeted")
+                if restored == 77_000:
+                    sweep.results.append(("history_revert(effect)", "ERROR", "budget still 77000 after revert"))
+                else:
+                    sweep.results.append(("history_revert(effect)", "ok", ""))
 
         # --- import trigger and cleanup ------------------------------------
         await sweep.call("transactions_trigger_import", {})

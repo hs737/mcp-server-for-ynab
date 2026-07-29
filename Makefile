@@ -54,16 +54,16 @@ check: lint typecheck test postman-check
 # ---------------------------------------------------------------------------
 
 run-stdio:
-	uv run python -m ynab_mcp.cli.main stdio
+	uv run python -m mcp_server_for_ynab.cli.main stdio
 
 run-http:
-	uv run python -m ynab_mcp.cli.main http
+	uv run python -m mcp_server_for_ynab.cli.main http
 
 run-http-debug:
-	FASTMCP_LOG_LEVEL=DEBUG uv run python -m ynab_mcp.cli.main http
+	FASTMCP_LOG_LEVEL=DEBUG uv run python -m mcp_server_for_ynab.cli.main http
 
 smoke-stdio:
-	uv run python -m ynab_mcp.cli.smoke
+	uv run python -m mcp_server_for_ynab.cli.smoke
 
 # ---------------------------------------------------------------------------
 # Live verification

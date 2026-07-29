@@ -6,7 +6,7 @@ This document explains how the repository is organized and where to add new work
 
 Read this page if you need:
 - the top-level repo layout
-- the `src/ynab_mcp` package layout
+- the `src/mcp_server_for_ynab` package layout
 - guidance on where to add code, tests, docs, or generated assets
 
 Adjacent docs:
@@ -46,7 +46,7 @@ flowchart TD
     B --> E["tool-surface.md"]
     B --> F["testing.md"]
     B --> G["security.md"]
-    H["src/"] --> I["ynab_mcp package"]
+    H["src/"] --> I["mcp_server_for_ynab package"]
     J["tests/"] --> K["unit"]
     J --> L["contract"]
     J --> M["integration"]
@@ -59,7 +59,7 @@ flowchart TD
 ## Product Code Tree
 
 ```text
-src/ynab_mcp/
+src/mcp_server_for_ynab/
 ├── auth/           auth abstraction and PAT provider
 ├── cli/            stdio/http entrypoints and smoke helper
 ├── config/         settings and environment loading
@@ -74,7 +74,7 @@ src/ynab_mcp/
 ## Server Subtree
 
 ```text
-src/ynab_mcp/server/
+src/mcp_server_for_ynab/server/
 ├── app.py              FastMCP application factory
 ├── context.py          shared and request-scoped app context helpers
 ├── registry.py         tool metadata catalog
@@ -89,26 +89,26 @@ src/ynab_mcp/server/
 ### Add a new raw tool
 
 Add or update:
-- typed models in `src/ynab_mcp/models/ynab/`
-- async wrapper in `src/ynab_mcp/ynab_client/`
-- MCP tool registration in `src/ynab_mcp/server/tools/raw/`
+- typed models in `src/mcp_server_for_ynab/models/ynab/`
+- async wrapper in `src/mcp_server_for_ynab/ynab_client/`
+- MCP tool registration in `src/mcp_server_for_ynab/server/tools/raw/`
 - contract test in `tests/contract/`
 - integration test if the tool behavior is important at the MCP boundary
 
 ### Add a new enriched tool
 
 Add or update:
-- logic in `src/ynab_mcp/enriched/`
-- registration in `src/ynab_mcp/server/tools/enriched.py`
+- logic in `src/mcp_server_for_ynab/enriched/`
+- registration in `src/mcp_server_for_ynab/server/tools/enriched.py`
 - unit tests for logic
 - integration tests if boundary behavior matters
 
 ### Add a new YNAB model
 
 Use:
-- `src/ynab_mcp/models/ynab/` for YNAB request/response shapes
-- `src/ynab_mcp/models/errors.py` for shared error contract changes
-- `src/ynab_mcp/models/amounts.py` for amount conversion logic
+- `src/mcp_server_for_ynab/models/ynab/` for YNAB request/response shapes
+- `src/mcp_server_for_ynab/models/errors.py` for shared error contract changes
+- `src/mcp_server_for_ynab/models/amounts.py` for amount conversion logic
 
 ### Add contract tests
 

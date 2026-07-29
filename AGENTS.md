@@ -19,7 +19,7 @@ Adjacent docs:
 
 ## Mission
 
-`ynab-mcp` is an MCP server for AI agents to interact with YNAB budgets. It exposes the YNAB API through raw tools and adds enriched AI-friendly helpers on top. The goal is safe, explicit budget management rather than autonomous financial decision-making.
+`mcp-server-for-ynab` is an MCP server for AI agents to interact with YNAB budgets. It exposes the YNAB API through raw tools and adds enriched AI-friendly helpers on top. The goal is safe, explicit budget management rather than autonomous financial decision-making.
 
 ## Start Here If You Are Modifying the Repo
 
@@ -32,7 +32,7 @@ Adjacent docs:
 ## Architecture Map
 
 ```text
-src/ynab_mcp/
+src/mcp_server_for_ynab/
 ├── auth/         auth abstraction + PAT implementation
 ├── cli/          stdio/http entrypoints and smoke helper
 ├── config/       env loading, runtime validation, default plan resolution
@@ -67,7 +67,7 @@ sequenceDiagram
 ```
 
 If you need to follow a tool:
-- start in `src/ynab_mcp/server/tools/`
+- start in `src/mcp_server_for_ynab/server/tools/`
 - find the corresponding `ynab_client` resource wrapper
 - then trace through `http_client/client.py`
 

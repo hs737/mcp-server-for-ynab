@@ -17,7 +17,7 @@ Read this page if you need:
 
 ```mermaid
 mindmap
-  root((ynab-mcp docs))
+  root((mcp-server-for-ynab docs))
     README.md
       setup
       overview
@@ -127,7 +127,7 @@ System view of the current implementation:
 
 Practical map of where things live:
 - top-level directories
-- `src/ynab_mcp` subtree
+- `src/mcp_server_for_ynab` subtree
 - where to add code by concern
 
 ### [tool-surface.md](tool-surface.md)
