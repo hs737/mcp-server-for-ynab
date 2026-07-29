@@ -62,9 +62,12 @@ async def month_health(ctx: AppContext, plan_id: str, month: str | None = None) 
 
     cats_in_month = m.categories
     overspent = [c for c in cats_in_month if c.balance < 0 and not c.deleted and not c.hidden]
+    # goal_under_funded is positive when the goal is short. Filtering for
+    # negatives here reported zero underfunded goals for every plan.
     underfunded = [
-        c for c in cats_in_month if c.goal_under_funded and c.goal_under_funded < 0 and not c.deleted and not c.hidden
+        c for c in cats_in_month if c.goal_under_funded and c.goal_under_funded > 0 and not c.deleted and not c.hidden
     ]
+    underfunded.sort(key=lambda c: c.goal_under_funded or 0, reverse=True)
 
     return {
         "scope": "month_health",

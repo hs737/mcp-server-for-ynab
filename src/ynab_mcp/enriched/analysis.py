@@ -51,14 +51,16 @@ async def target_funding_gaps(ctx: AppContext, plan_id: str, month: str | None =
     """List categories with unmet funding goals for a given month.
 
     goal_under_funded is the YNAB field expressing how much more needs to be
-    budgeted to meet the goal target this month.
+    budgeted to meet the goal target this month. It is POSITIVE when the goal is
+    short — 35388340 means $35,388.34 still needs to be budgeted. Filtering for
+    negative values here silently returned an empty list for every plan.
     """
     target_month = month or (date.today().isoformat()[:7] + "-01")
     month_resp = await ctx.months.get(plan_id, target_month)
     cats = month_resp.data.month.categories
 
-    gaps = [c for c in cats if c.goal_under_funded and c.goal_under_funded < 0 and not c.deleted and not c.hidden]
-    gaps.sort(key=lambda c: c.goal_under_funded or 0)
+    gaps = [c for c in cats if c.goal_under_funded and c.goal_under_funded > 0 and not c.deleted and not c.hidden]
+    gaps.sort(key=lambda c: c.goal_under_funded or 0, reverse=True)  # largest shortfall first
 
     total_gap = sum(c.goal_under_funded or 0 for c in gaps)
     return {

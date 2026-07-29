@@ -35,5 +35,12 @@ Thumbs.db
 *.swp
 
 # Claude Code runtime
-.agents/
 .claude/
+
+# Third-party agent skills are installed, not vendored. They are recorded in
+# .agents/.skill-lock.json and carry their own upstream licenses; redistributing
+# their content from this repo would ship someone else's work without it.
+.agents/skills/find-skills/
+.agents/skills/writing-clearly-and-concisely/
+.agents/skills/requesting-code-review/
+.agents/skills/karpathy-guidelines/
