@@ -27,6 +27,14 @@ _RETRYABLE_STATUS_CODES = {500, 502, 503, 504}
 _MAX_RETRIES = 3
 _BACKOFF_BASE = 0.5  # seconds
 
+# YNAB allows 200 requests per hour per token. A single enriched tool can spend
+# several, so hitting 429 during normal use is expected rather than exceptional.
+# Wait when the server tells us how long, but only for a short, bounded pause —
+# a rolling-window limit can report a retry-after of many minutes, and an agent
+# waiting silently that long is worse than a clear error it can act on.
+_MAX_RATE_LIMIT_WAIT_SECONDS = 30
+_DEFAULT_RATE_LIMIT_WAIT_SECONDS = 5
+
 
 def _redact_headers(headers: httpx.Headers) -> dict[str, str]:
     """Return a copy of headers with Authorization redacted for logging.
@@ -128,6 +136,22 @@ class YnabHttpClient:
                         retry_after = int(raw_retry)
                     except ValueError:
                         pass
+
+                wait = retry_after if retry_after is not None else _DEFAULT_RATE_LIMIT_WAIT_SECONDS
+                if attempt < _MAX_RETRIES and wait <= _MAX_RATE_LIMIT_WAIT_SECONDS:
+                    logger.warning(
+                        "Rate limited on %s %s (attempt %d/%d), retrying in %ds",
+                        method,
+                        path,
+                        attempt + 1,
+                        _MAX_RETRIES,
+                        wait,
+                    )
+                    await asyncio.sleep(wait)
+                    continue
+
+                # Out of attempts, or the wait is too long to sit on. Surface
+                # retry_after so the caller can decide when to come back.
                 raise YnabMcpException(YnabMcpError.rate_limited(retry_after=retry_after))
 
             if response.status_code in _RETRYABLE_STATUS_CODES:
