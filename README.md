@@ -107,9 +107,10 @@ This repo works best today as a local `stdio` MCP server.
 - hosted connector path: **ChatGPT custom connectors** require a remote/public MCP deployment rather than the local PAT quick start
 
 For client-specific setup instructions, see [docs/client-setup.md](docs/client-setup.md).
-The hosted/public connector runtime now lives separately under
-[`ynab-mcp-hosted/`](ynab-mcp-hosted/README.md) so OAuth and public-app concerns
-stay out of the core MCP package.
+A hosted/public connector is **not implemented**. The intent is for it to live
+in its own repository so OAuth and public-app concerns stay out of this package;
+the core exposes an embed surface for that purpose. Today this is a local,
+personal-access-token server only.
 
 ## Tool Families
 
@@ -205,8 +206,8 @@ The current implementation uses:
 - built-in stdio and streamable HTTP transports from the current FastMCP stack
 
 Hosted runtimes should import the core package through its embed surface instead
-of adding OAuth, session, or database code to this repo. The temporary
-`ynab-mcp-hosted/` directory is the staging area for that separate hosted repo.
+of adding OAuth, session, or database code to this repo. No hosted runtime
+exists yet.
 
 If architecture and implementation ever diverge, the source of truth should be [Architecture](docs/architecture.md), updated to reflect the actual code.
 

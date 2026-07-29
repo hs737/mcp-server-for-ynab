@@ -20,7 +20,7 @@ Adjacent docs:
 ```text
 .
 ├── docs/            architecture, testing, security, structure, tool docs
-├── ynab-mcp-hosted/ temporary staging area for the future hosted OAuth repo
+├── .agents/         agent skills for contributors and AI assistants
 ├── postman/         generated collections, environments, generation sources
 ├── scripts/         Postman generation and live verification scripts
 ├── src/             product code
@@ -31,9 +31,10 @@ Adjacent docs:
 └── pyproject.toml   Python packaging and tool config
 ```
 
-Local-only or non-product directories such as `.venv/`, `.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/`, `.agents/`, and `.claude/` should not be treated as product structure.
-The `ynab-mcp-hosted/` directory is product work, but it is intentionally not
-part of the core package. It is a cut-out-ready future repository.
+Local-only or non-product directories such as `.venv/`, `.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/`, and `.claude/` should not be treated as product structure.
+
+A hosted OAuth runtime is not implemented. When it is built, it belongs in its
+own repository consuming this package's embed surface, not in this tree.
 
 ## Relationship Overview
 
@@ -143,7 +144,7 @@ Do not edit generated JSON directly unless the generation process itself is bein
 
 - Do not add business logic to `cli/`; keep it in `enriched/`, `ynab_client/`, or `server/`.
 - Do not add YNAB endpoint wrappers directly to `server/tools/`; put HTTP-facing YNAB logic in `ynab_client/`.
-- Do not add hosted OAuth, session, or durable grant logic to the core package; keep it in `ynab-mcp-hosted/`.
+- Do not add hosted OAuth, session, or durable grant logic to the core package; it belongs in a separate hosted repository.
 - Do not treat `.agents/` or `.claude/` as the primary shared documentation surface; use repo docs instead.
 - Do not place generated assets under `src/`.
 

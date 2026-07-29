@@ -129,9 +129,9 @@ To use this repo with ChatGPT as a custom connector, you will need a hosted/publ
 - branding/domain compliance
 - likely OAuth for a real public multi-user connector
 
-That hosted path is a separate deployment track from the current local quick start.
-In this workspace it is being staged under `ynab-mcp-hosted/`, and after
-extraction it should live in its own repository.
+That hosted path is a separate deployment track from the current local quick
+start, and it has not been built. Only the local personal-access-token setup
+described above works today.
 
 ## Which Client Should I Use?
 

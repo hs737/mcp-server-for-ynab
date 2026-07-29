@@ -2,8 +2,8 @@
 
 This page is the map for the repository documentation.
 
-Hosted OAuth and public-app docs now live under
-[`ynab-mcp-hosted/`](../ynab-mcp-hosted/README.md), not in this core docs tree.
+Hosted OAuth and public-app work is not implemented and is not documented here.
+This tree covers the local, personal-access-token server.
 
 ## What this document is for
 
