@@ -7,10 +7,13 @@ from typing import Any
 from mcp.types import ToolAnnotations
 
 from mcp_server_for_ynab.history import capture, journal
+from mcp_server_for_ynab.models.errors import ErrorType, YnabMcpError, YnabMcpException
 from mcp_server_for_ynab.models.ynab.transactions import (
     ClearedStatus,
     FlagColor,
+    SaveSubTransaction,
     SaveTransaction,
+    SaveTransactionsWrapper,
     SaveTransactionWrapper,
     UpdateTransaction,
     UpdateTransactionsWrapper,
@@ -33,7 +36,8 @@ _reg("transactions_list_by_category", "read", "List transactions for a specific 
 _reg("transactions_list_by_payee", "read", "List transactions for a specific payee.")
 _reg("transactions_list_by_month", "read", "List transactions for a specific month.")
 _reg("transactions_get", "read", "Get a single transaction including subtransactions.")
-_reg("transactions_create", "write", "Create a transaction. [WRITE]")
+_reg("transactions_create", "write", "Create a transaction, optionally split. [WRITE]")
+_reg("transactions_create_many", "write", "Create several transactions in one request. [WRITE]")
 _reg("transactions_update", "write", "Update a transaction. [WRITE]")
 _reg("transactions_bulk_update", "write", "Update multiple transactions. Partial success. [WRITE]")
 _reg("transactions_delete", "write", "Delete a transaction. Transfer-aware. [WRITE]")
@@ -244,8 +248,12 @@ async def transactions_get(transaction_id: str, plan_id: str | None = None) -> d
         "[WRITE] Create a single transaction. "
         "amount: milliunits (1000 = $1.00). Negative for outflow, positive for inflow. "
         "For transfers: set payee_id to the transfer_payee_id of the target account. "
-        "For splits: provide subtransactions whose amounts sum to the parent amount. "
-        "date: ISO date string (e.g. '2024-01-15')."
+        "date: ISO date string (e.g. '2024-01-15'). "
+        "For a split, pass subtransactions as a list of objects with amount (required, milliunits) "
+        "and optionally category_id, payee_id, payee_name, and memo. Their amounts must sum exactly "
+        "to the parent amount, and the parent's category_id is ignored — each part carries its own. "
+        "Example: amount -50000 with subtransactions "
+        "[{'amount': -30000, 'category_id': 'groceries-id'}, {'amount': -20000, 'category_id': 'household-id'}]."
     ),
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False),
 )
@@ -263,9 +271,28 @@ async def transactions_create(
     approved: bool | None = None,
     flag_color: str | None = None,
     import_id: str | None = None,
+    subtransactions: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)
+
+    parts = [SaveSubTransaction.model_validate(s) for s in subtransactions] if subtransactions else None
+    if parts:
+        # YNAB rejects a mismatched split with a generic 400. Checking here costs
+        # nothing and tells the caller the two numbers, which is what they need.
+        total = sum(p.amount for p in parts)
+        if total != amount:
+            raise YnabMcpException(
+                YnabMcpError(
+                    error_type=ErrorType.VALIDATION_ERROR,
+                    message=(
+                        f"Split amounts must sum to the parent amount. "
+                        f"Subtransactions total {total} milliunits, parent is {amount}. "
+                        f"Difference: {amount - total}."
+                    ),
+                )
+            )
+
     payload = SaveTransactionWrapper(
         transaction=SaveTransaction(
             account_id=account_id,
@@ -273,12 +300,13 @@ async def transactions_create(
             amount=amount,
             payee_id=payee_id,
             payee_name=payee_name,
-            category_id=category_id,
+            category_id=None if parts else category_id,
             memo=memo,
             cleared=ClearedStatus(cleared) if cleared else None,
             approved=approved,
             flag_color=FlagColor(flag_color) if flag_color else None,
             import_id=import_id,
+            subtransactions=parts,
         )
     )
     result = await ctx.transactions.create(resolved, payload)
@@ -293,6 +321,84 @@ async def transactions_create(
     )
 
     return {**result.model_dump(), "history_entry_id": entry.id}
+
+
+@write_tool(
+    name="transactions_create_many",
+    description=(
+        "[WRITE] Create several transactions in one request. Prefer this over repeated "
+        "transactions_create calls: it costs one request against YNAB's hourly limit instead of one "
+        "per transaction. "
+        "transactions: a list of objects each needing account_id, date, and amount (milliunits), and "
+        "optionally payee_id, payee_name, category_id, memo, cleared, approved, flag_color, import_id, "
+        "and subtransactions for a split. "
+        "IMPORTANT: this is NOT atomic. A transaction whose import_id already exists is skipped, and "
+        "its id is returned in duplicate_import_ids. Check the verification block: created_count tells "
+        "you how many were actually created."
+    ),
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False),
+)
+@tool_handler
+async def transactions_create_many(
+    transactions: list[dict[str, Any]],
+    plan_id: str | None = None,
+) -> dict[str, Any]:
+    ctx = get_app_context()
+    resolved = ctx.settings.resolve_plan_id(plan_id)
+
+    if not transactions:
+        raise YnabMcpException(
+            YnabMcpError(
+                error_type=ErrorType.VALIDATION_ERROR,
+                message="transactions is empty. Pass at least one transaction to create.",
+            )
+        )
+
+    to_create = [SaveTransaction.model_validate(t) for t in transactions]
+
+    for index, txn in enumerate(to_create):
+        if txn.subtransactions:
+            total = sum(p.amount for p in txn.subtransactions)
+            if total != txn.amount:
+                raise YnabMcpException(
+                    YnabMcpError(
+                        error_type=ErrorType.VALIDATION_ERROR,
+                        message=(
+                            f"Split amounts must sum to the parent amount. "
+                            f"Transaction at index {index} has subtransactions totalling {total} "
+                            f"milliunits against a parent of {txn.amount}."
+                        ),
+                    )
+                )
+
+    result = await ctx.transactions.create_many(resolved, SaveTransactionsWrapper(transactions=to_create))
+
+    created_ids = result.data.transaction_ids
+    duplicates = result.data.duplicate_import_ids
+
+    entry = journal.record(
+        operation="transaction_bulk_create",
+        tool="transactions_create_many",
+        plan_id=resolved,
+        before=None,
+        after={"transaction_ids": created_ids},
+        note=f"{len(created_ids)} created from {len(to_create)} requested.",
+    )
+
+    verification: dict[str, Any] = {
+        "requested_count": len(to_create),
+        "created_count": len(created_ids),
+        "verified": len(created_ids) == len(to_create),
+    }
+    if duplicates:
+        verification["duplicate_import_ids"] = duplicates
+        verification["warning"] = (
+            "These transactions already existed under the same import_id and were skipped, not created."
+        )
+    elif len(created_ids) != len(to_create):
+        verification["warning"] = f"YNAB created {len(created_ids)} of {len(to_create)} requested transactions."
+
+    return {**result.model_dump(), "history_entry_id": entry.id, "verification": verification}
 
 
 @write_tool(

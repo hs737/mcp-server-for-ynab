@@ -1,0 +1,88 @@
+name: Release
+
+# Publishes to PyPI when a version tag is pushed:
+#
+#   git tag v0.1.0 && git push origin v0.1.0
+#
+# Authentication uses PyPI Trusted Publishing (OIDC), so no API token is stored
+# in this repository. Configure it once at
+# https://pypi.org/manage/account/publishing/ with:
+#
+#   PyPI project name:  mcp-server-for-ynab
+#   Owner:              hs737
+#   Repository:         mcp-server-for-ynab
+#   Workflow:           release.yml
+#   Environment:        pypi
+#
+# The tag must match the version in pyproject.toml. The job checks this and
+# stops rather than publishing a version that disagrees with the tag — a wrong
+# version cannot be replaced on PyPI, only yanked.
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build:
+    name: Build and verify
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check the tag matches the project version
+        run: |
+          project_version="$(uv run python -c 'import tomllib,pathlib; print(tomllib.loads(pathlib.Path("pyproject.toml").read_text())["project"]["version"])')"
+          tag_version="${GITHUB_REF_NAME#v}"
+          echo "pyproject: $project_version, tag: $tag_version"
+          if [ "$project_version" != "$tag_version" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match pyproject version $project_version"
+            exit 1
+          fi
+
+      - name: Run the test suite
+        run: |
+          uv sync --all-groups
+          uv run pytest
+
+      - name: Build
+        run: uv build
+
+      - name: Verify the built wheel installs and starts on its own
+        env:
+          YNAB_API_KEY: fake-token-for-startup
+        run: |
+          uv venv /tmp/release-check
+          uv pip install --python /tmp/release-check/bin/python dist/*.whl
+          /tmp/release-check/bin/mcp-server-for-ynab smoke
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+
+    environment:
+      name: pypi
+      url: https://pypi.org/p/mcp-server-for-ynab
+
+    permissions:
+      id-token: write # required for trusted publishing
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish
+        uses: pypa/gh-action-pypi-publish@release/v1

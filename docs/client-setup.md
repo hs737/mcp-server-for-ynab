@@ -33,18 +33,17 @@ These clients are the best fit for the current local PAT-based mode.
 Shared command:
 
 ```bash
-uv run --directory /path/to/mcp-server-for-ynab python -m mcp_server_for_ynab.cli.main stdio
+uvx mcp-server-for-ynab stdio
 ```
 
-Important:
-- `--directory` should point to the **repository root**
-- do **not** point it at `src/mcp_server_for_ynab`
-- correct example: `/path/to/mcp-server-for-ynab`
-- incorrect example: `/path/to/mcp-server-for-ynab/src/mcp_server_for_ynab`
-
 Shared environment:
-- `YNAB_API_KEY`
-- optional `YNAB_PLAN_ID`
+- `YNAB_API_KEY` (required)
+- `YNAB_PLAN_ID` (recommended)
+- `YNAB_ALLOW_WRITES=1` (optional; without it the server is read-only)
+
+Running from a clone instead? Use `uv run --directory /path/to/mcp-server-for-ynab
+python -m mcp_server_for_ynab.cli.main stdio`, where `--directory` points at the
+repository root and not at `src/mcp_server_for_ynab`.
 
 ### Claude Desktop
 
@@ -54,6 +53,28 @@ Config file:
 - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
 
 Example:
+
+```json
+{
+  "mcpServers": {
+    "ynab": {
+      "command": "uvx",
+      "args": ["mcp-server-for-ynab", "stdio"],
+      "env": {
+        "YNAB_API_KEY": "your_token_here",
+        "YNAB_PLAN_ID": "your_plan_id_here"
+      }
+    }
+  }
+}
+```
+
+No clone and no checkout to keep up to date — `uvx` fetches the published
+package. To allow writes, add `"YNAB_ALLOW_WRITES": "1"` to `env`; without it the
+server is read-only and the write tools are not offered to the model.
+
+<details>
+<summary>From a local clone instead</summary>
 
 ```json
 {
@@ -70,20 +91,23 @@ Example:
 }
 ```
 
-After saving the config, restart Claude Desktop and verify the server is available in the app’s MCP/extension tooling.
+`--directory` must point at the repository root, not `src/mcp_server_for_ynab`.
 
-The `--directory` value in the example must be the repo root, not the `src/mcp_server_for_ynab` package directory.
+</details>
+
+After saving the config, restart Claude Desktop and verify the server is available in the app’s MCP/extension tooling.
 
 ### Claude Code
 
 Claude Code supports MCP servers and can use the same local `stdio` command shape as Claude Desktop.
 
 Use the current Claude Code MCP setup flow from Anthropic and register this repo as a local MCP server with:
-- command: `uv`
-- args: `run --directory /path/to/mcp-server-for-ynab python -m mcp_server_for_ynab.cli.main stdio`
+- command: `uvx`
+- args: `mcp-server-for-ynab stdio`
 - env:
   - `YNAB_API_KEY`
   - optional `YNAB_PLAN_ID`
+  - optional `YNAB_ALLOW_WRITES=1` to enable write tools
 
 If Claude Code offers import-from-Claude-Desktop or shared MCP configuration, the same payload can be reused.
 
@@ -92,11 +116,12 @@ If Claude Code offers import-from-Claude-Desktop or shared MCP configuration, th
 Cursor supports MCP servers and can launch a local `stdio` command.
 
 Configure an MCP server in Cursor using:
-- command: `uv`
-- args: `run --directory /path/to/mcp-server-for-ynab python -m mcp_server_for_ynab.cli.main stdio`
+- command: `uvx`
+- args: `mcp-server-for-ynab stdio`
 - env:
   - `YNAB_API_KEY`
   - optional `YNAB_PLAN_ID`
+  - optional `YNAB_ALLOW_WRITES=1` to enable write tools
 
 Exact UI labels in Cursor may evolve, but the command and env payload remain the same.
 
@@ -105,11 +130,12 @@ Exact UI labels in Cursor may evolve, but the command and env payload remain the
 Windsurf supports MCP integrations for local tools and data sources.
 
 Configure a local MCP server/plugin using:
-- command: `uv`
-- args: `run --directory /path/to/mcp-server-for-ynab python -m mcp_server_for_ynab.cli.main stdio`
+- command: `uvx`
+- args: `mcp-server-for-ynab stdio`
 - env:
   - `YNAB_API_KEY`
   - optional `YNAB_PLAN_ID`
+  - optional `YNAB_ALLOW_WRITES=1` to enable write tools
 
 Exact UI labels may change, but this repo is still just a local `stdio` MCP server from the client’s perspective.
 

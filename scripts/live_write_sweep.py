@@ -183,6 +183,85 @@ async def run(plan_id: str, force: bool) -> int:
             )
             transaction_id = _dig(created, "data", "transaction", "id")
 
+        # A split, verified by reading the parts back rather than trusting the
+        # create response.
+        split_id = None
+        if account_id and category_id:
+            split = await sweep.call(
+                "transactions_create",
+                {
+                    "account_id": account_id,
+                    "date": today,
+                    "amount": -50_000,
+                    "memo": "split created by live_write_sweep",
+                    "subtransactions": [
+                        {"amount": -30_000, "category_id": category_id, "memo": "part one"},
+                        {"amount": -20_000, "category_id": category_id, "memo": "part two"},
+                    ],
+                },
+            )
+            split_id = _dig(split, "data", "transaction", "id")
+
+            if split_id:
+                fetched = await sweep.call("transactions_get", {"transaction_id": split_id})
+                parts = _dig(fetched, "data", "transaction", "subtransactions") or []
+                if len(parts) == 2 and sum(p["amount"] for p in parts) == -50_000:
+                    sweep.results.append(("transactions_create(split effect)", "ok", ""))
+                else:
+                    sweep.results.append(
+                        ("transactions_create(split effect)", "ERROR", f"expected 2 parts summing -50000, got {parts}")
+                    )
+
+        # A mismatched split must be refused before anything is sent.
+        if account_id:
+            bad = await sweep.call(
+                "transactions_create",
+                {
+                    "account_id": account_id,
+                    "date": today,
+                    "amount": -50_000,
+                    "subtransactions": [{"amount": -30_000}, {"amount": -15_000}],
+                },
+                record=False,
+            )
+            # `call` returns None when the tool reported an error, which is what
+            # we want here: the arithmetic guard should have rejected it.
+            status = "ok" if bad is None else "ERROR"
+            sweep.results.append(
+                ("transactions_create(bad split rejected)", status, "" if bad is None else "mismatched split accepted")
+            )
+
+        bulk_ids: list[str] = []
+        if account_id:
+            many = await sweep.call(
+                "transactions_create_many",
+                {
+                    "transactions": [
+                        {
+                            "account_id": account_id,
+                            "date": today,
+                            "amount": -1_100,
+                            "memo": "bulk create one",
+                        },
+                        {
+                            "account_id": account_id,
+                            "date": today,
+                            "amount": -2_200,
+                            "memo": "bulk create two",
+                        },
+                    ]
+                },
+            )
+            bulk_ids = _dig(many, "data", "transaction_ids") or []
+            verified = _dig(many, "verification", "verified")
+            sweep.results.append(
+                (
+                    "transactions_create_many(effect)",
+                    "ok" if verified and len(bulk_ids) == 2 else "ERROR",
+                    "" if verified else f"created {len(bulk_ids)} of 2",
+                )
+            )
+
         if transaction_id and account_id:
             await sweep.call(
                 "transactions_update",
@@ -254,8 +333,8 @@ async def run(plan_id: str, force: bool) -> int:
         # --- import trigger and cleanup ------------------------------------
         await sweep.call("transactions_trigger_import", {})
 
-        if transaction_id:
-            await sweep.call("transactions_delete", {"transaction_id": transaction_id})
+        for created_id in filter(None, [transaction_id, split_id, *bulk_ids]):
+            await sweep.call("transactions_delete", {"transaction_id": created_id})
 
     failures = [r for r in sweep.results if r[1] != "ok"]
     for name, status, detail in sweep.results:

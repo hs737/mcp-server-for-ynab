@@ -39,3 +39,39 @@ jobs:
 
       - name: Integration tests
         run: uv run pytest tests/integration -v
+
+  package:
+    name: Install from the wheel, without the lockfile
+    runs-on: ubuntu-latest
+
+    # The test suite runs against uv.lock, which pins every dependency. Users
+    # installing from PyPI get a fresh resolution instead, so a dependency range
+    # that is too loose is invisible to every other job here. That is not
+    # hypothetical: an unbounded `mcp` requirement resolved to 2.x, which
+    # removed mcp.server.fastmcp, and the published package would have failed at
+    # import for everyone while CI stayed green.
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build the distribution
+        run: uv build
+
+      - name: Install the wheel into a clean environment
+        run: |
+          uv venv /tmp/pkg-check
+          uv pip install --python /tmp/pkg-check/bin/python dist/*.whl
+
+      - name: Start the server as an installed package
+        env:
+          YNAB_API_KEY: fake-token-for-startup
+        run: /tmp/pkg-check/bin/mcp-server-for-ynab smoke
+
+      - name: Confirm the console script is on PATH via uvx
+        env:
+          YNAB_API_KEY: fake-token-for-startup
+        run: uvx --from dist/*.whl mcp-server-for-ynab smoke

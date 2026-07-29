@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from pathlib import Path
 
 
 def main() -> None:
@@ -55,12 +56,42 @@ def main() -> None:
 
     subparsers.add_parser("smoke", help="Validate configuration and tool registration, then exit.")
 
+    history_parser = subparsers.add_parser(
+        "history",
+        help="Inspect, export, or delete the local write history. Needs no credentials.",
+    )
+    history_group = history_parser.add_mutually_exclusive_group(required=True)
+    history_group.add_argument(
+        "--show",
+        action="store_true",
+        help="Print where the history is stored and how many entries it holds.",
+    )
+    history_group.add_argument(
+        "--export",
+        metavar="PATH",
+        help="Write the full history to PATH as JSON. Use - for stdout.",
+    )
+    history_group.add_argument(
+        "--delete",
+        action="store_true",
+        help="Delete the history file. This also removes the ability to revert past writes.",
+    )
+    history_parser.add_argument(
+        "--yes",
+        action="store_true",
+        help="Skip the confirmation prompt for --delete.",
+    )
+
     args = parser.parse_args()
 
     if args.command == "smoke":
         from mcp_server_for_ynab.cli.smoke import run_smoke
 
         run_smoke()
+        return
+
+    if args.command == "history":
+        _run_history(show=args.show, export=args.export, delete=args.delete, assume_yes=args.yes)
         return
 
     if args.command == "http":
@@ -83,6 +114,55 @@ def _run_stdio() -> None:
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8000
+
+
+def _run_history(*, show: bool, export: str | None, delete: bool, assume_yes: bool) -> None:
+    """Inspect, export, or delete the local write history.
+
+    This server stores exactly one thing: the record of writes it performed, on
+    the machine that ran it. Exporting and deleting it needs no credentials and
+    no agent, because someone who wants their data back or gone should not have
+    to run an LLM to get it.
+    """
+    import json
+
+    from mcp_server_for_ynab.history import journal
+
+    path = journal.history_path()
+
+    if show:
+        entries = journal.load()
+        print(f"history file: {path}")
+        print(f"exists: {path.exists()}")
+        print(f"entries: {len(entries)}")
+        if entries:
+            print(f"oldest: {entries[0].at}")
+            print(f"newest: {entries[-1].at}")
+        print("\nThis file is the only data this server stores. It never leaves your machine.")
+        return
+
+    if export is not None:
+        payload = json.dumps([entry.detail() for entry in journal.load()], indent=2)
+        if export == "-":
+            print(payload)
+        else:
+            destination = Path(export).expanduser()
+            destination.write_text(payload + "\n")
+            print(f"Exported {len(journal.load())} entries to {destination}")
+        return
+
+    if delete:
+        if not path.exists():
+            print(f"Nothing to delete: {path} does not exist.")
+            return
+        if not assume_yes:
+            print(f"This deletes {path} and with it the ability to revert past writes.")
+            answer = input("Type 'delete' to confirm: ").strip()
+            if answer != "delete":
+                print("Cancelled. Nothing was deleted.")
+                return
+        path.unlink()
+        print(f"Deleted {path}")
 
 
 def resolve_bind(host: str | None, port: int | None) -> tuple[str, int]:

@@ -74,13 +74,33 @@ Go to [app.ynab.com/settings/developer](https://app.ynab.com/settings/developer)
 
 ### 2. Install
 
+Nothing to clone. With [uv](https://docs.astral.sh/uv/):
+
 ```bash
-git clone <repo-url>
-cd mcp-server-for-ynab
-uv sync
+uvx mcp-server-for-ynab smoke
 ```
 
+`uvx` fetches the package and runs it in a throwaway environment. The `smoke`
+subcommand checks configuration and tool registration, then exits — a safe first
+command.
+
+<details>
+<summary>From a clone, for development</summary>
+
+```bash
+git clone https://github.com/hs737/mcp-server-for-ynab
+cd mcp-server-for-ynab
+uv sync
+make smoke-stdio
+```
+
+</details>
+
 ### 3. Configure
+
+Set `YNAB_API_KEY` in the environment, or in your MCP client's config (see
+[Client Setup](docs/client-setup.md)). For local development, copy the example
+file:
 
 ```bash
 cp .env.example .env
@@ -89,17 +109,16 @@ cp .env.example .env
 
 Most users have one budget. If you set `YNAB_PLAN_ID`, tools that accept `plan_id` can default to it.
 
+The server starts **read-only**. Set `YNAB_ALLOW_WRITES=1` when you want an agent
+to be able to change budget data — see [Write Tools](#write-tools).
+
 ### 4. Run Over stdio
 
 ```bash
-make run-stdio
+YNAB_API_KEY=... uvx mcp-server-for-ynab stdio
 ```
 
-### 5. Verify
-
-```bash
-make smoke-stdio
-```
+From a clone, `make run-stdio` does the same thing.
 
 ## Use with MCP Clients
 
@@ -279,3 +298,18 @@ Apache License 2.0. See [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md).
 We are not affiliated, associated, or in any way officially connected with YNAB or any of its subsidiaries or affiliates. The official YNAB website can be found at [https://www.ynab.com](https://www.ynab.com).
 
 The names YNAB and You Need A Budget, as well as related names, tradenames, marks, trademarks, emblems, and images are registered trademarks of YNAB.
+
+## Your Data
+
+This server stores exactly one thing on your machine: a record of the writes it
+made, used by `history_revert`. Nothing is sent anywhere except `api.ynab.com`,
+and there is no telemetry.
+
+```bash
+uvx mcp-server-for-ynab history --show          # where it is, how much is there
+uvx mcp-server-for-ynab history --export out.json
+uvx mcp-server-for-ynab history --delete        # also removes the ability to revert
+```
+
+These need no credentials and no agent: getting your data back, or gone, should
+not require running an LLM.

@@ -13,6 +13,7 @@ This repository is **Python**. Skills under `skills/` assume:
 | `python-api-docs` | Docstrings, type hints, public API and tool descriptions |
 | `contract-sync` | Pydantic models, OpenAPI, schemas, generated artifacts |
 | `live-api-verification` | Response models, new routes, transport changes, "does it work" claims |
+| `ynab-platform-compliance` | Naming, branding, disclaimers, privacy policy, OAuth, rate limits |
 | `data-access-discipline` | DB schema, queries, transactions (if used) |
 | `docs-honesty` | README and docs match implementation |
 | `local-workflow-reproducibility` | Local dev, env, seeds, repeatable commands |
