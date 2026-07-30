@@ -180,8 +180,13 @@ class YnabHttpClient:
                 error_body: dict[str, Any] = {}
                 try:
                     error_body = response.json()
-                except Exception:
-                    pass
+                except ValueError:
+                    # YNAB returns a JSON error body on its own 4xx/5xx, but a
+                    # proxy or gateway in front of it may return HTML. Fall back
+                    # to the bare status code rather than masking the real error
+                    # with a parse failure. Catching Exception here would also
+                    # swallow genuine bugs in this error path.
+                    logger.debug("Non-JSON error body on %s %s (status %d)", method, path, response.status_code)
                 error_detail = error_body.get("error", {})
                 raise YnabMcpException(
                     YnabMcpError.from_ynab_response(

@@ -14,8 +14,13 @@ build/
 # uv.lock is committed for reproducible installs
 
 # Environment
+# .env~ and .env.bak are editor backups of a real token file and match neither
+# .env nor .env.*, so they are listed explicitly. A backup that leaks is as bad
+# as the original.
 .env
 .env.*
+.env~
+.env.bak
 !.env.example
 
 # Testing / coverage
@@ -33,6 +38,7 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+*~
 
 # Claude Code runtime
 .claude/
