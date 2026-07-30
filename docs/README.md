@@ -23,9 +23,9 @@ mindmap
       overview
       navigation
     client-setup.md
-      Claude
-      ChatGPT
-      local vs hosted
+      per-client configs
+      verification
+      troubleshooting
     CONTRIBUTING.md
       workflow
       PRs
@@ -109,11 +109,10 @@ Front door for the repo:
 ### [client-setup.md](client-setup.md)
 
 End-user client setup guide:
-- Claude Desktop
-- Claude Code
-- Cursor
-- Windsurf
-- ChatGPT connector path
+- copy-paste config for Claude Code, Claude Desktop, Cursor, VS Code, Codex CLI, and Gemini CLI
+- generic stdio config for every other client
+- MCP Inspector for debugging
+- verification steps and troubleshooting
 
 ### [architecture.md](architecture.md)
 
