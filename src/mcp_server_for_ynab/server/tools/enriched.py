@@ -92,7 +92,7 @@ async def overview_request_budget() -> dict[str, Any]:
     annotations=ToolAnnotations(readOnlyHint=True),
 )
 @tool_handler
-async def overview_available_tools(plan_id: str | None = None) -> dict[str, Any]:
+async def overview_available_tools() -> dict[str, Any]:
     by_family = tool_registry.by_family()
     families = {
         family: [

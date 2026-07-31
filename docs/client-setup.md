@@ -1,58 +1,87 @@
 # Client Setup
 
-This document explains how to connect `mcp-server-for-ynab` to the major current MCP clients.
+Connect `mcp-server-for-ynab` to your MCP client. Each section below is a
+copy-paste command or config block.
 
-## What this document is for
+Jump to your client:
 
-Read this page if you need:
-- client-specific setup instructions
-- the difference between local `stdio` use and hosted remote use
-- a compatibility summary across major MCP clients
-- troubleshooting tips for common setup issues
+| Client | Setup |
+|--------|-------|
+| [Claude Code](https://claude.com/product/claude-code) | [one command](#claude-code) |
+| [Claude Desktop](https://claude.ai/download) | [config file](#claude-desktop) |
+| [Cursor](https://cursor.com) | [one-click link](#cursor) |
+| [VS Code](https://code.visualstudio.com) (GitHub Copilot) | [one command](#vs-code) |
+| [Codex CLI](https://developers.openai.com/codex) | [one command](#codex-cli) |
+| [Gemini CLI](https://github.com/google-gemini/gemini-cli) | [one command](#gemini-cli) |
+| [Windsurf](https://windsurf.com), [Zed](https://zed.dev), others | [generic stdio config](#other-stdio-clients) |
+| [MCP Inspector](https://github.com/modelcontextprotocol/inspector) | [debugging](#mcp-inspector) |
 
 Related docs:
-- [README.md](../README.md)
-- [Architecture](architecture.md)
+- [README](../README.md)
 - [Security](security.md)
-- [Contributing](../CONTRIBUTING.md)
+- [Tool Surface](tool-surface.md)
+- [Architecture](architecture.md)
 
-## Client Support Matrix
+## Before You Start
 
-| Client | Current support path | Transport | Best use case | Notes |
-|--------|----------------------|-----------|---------------|-------|
-| Claude Desktop | Supported now | `stdio` | Easiest local setup | Best personal/local quick start |
-| Claude Code | Supported now | `stdio` | CLI and dev workflow | Uses the same local server command |
-| Cursor | Supported now | `stdio` | Coding workflow | Configure as an MCP server in Cursor |
-| Windsurf | Supported now | `stdio` | Coding workflow | Configure as an MCP plugin/server |
-| ChatGPT custom connectors | Hosted path only | remote MCP | Public or hosted connector workflow | Requires a remote endpoint and public app requirements |
+You need two things.
 
-## Local stdio Clients
-
-These clients are the best fit for the current local PAT-based mode.
-
-Shared command:
+**1. `uv`**, which provides the `uvx` command that runs the server:
 
 ```bash
-uvx mcp-server-for-ynab stdio
+# macOS and Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# macOS with Homebrew
+brew install uv
+
+# Windows
+winget install --id=astral-sh.uv -e
 ```
 
-Shared environment:
-- `YNAB_API_KEY` (required)
-- `YNAB_PLAN_ID` (recommended)
-- `YNAB_ALLOW_WRITES=1` (optional; without it the server is read-only)
+**2. A YNAB personal access token.** Generate one at
+[app.ynab.com/settings/developer](https://app.ynab.com/settings/developer). The
+token can read and modify every budget in your account, so treat it like a
+password — see [Security](security.md).
 
-Running from a clone instead? Use `uv run --directory /path/to/mcp-server-for-ynab
-python -m mcp_server_for_ynab.cli.main stdio`, where `--directory` points at the
-repository root and not at `src/mcp_server_for_ynab`.
+Optionally, grab your plan ID — YNAB calls it a budget ID. Open your budget in a
+browser and copy the UUID from the address bar. Setting `YNAB_PLAN_ID` makes
+`plan_id` optional on most tools, which is worth doing if you have one budget.
 
-### Claude Desktop
+Check that both work before touching any client config:
 
-Claude Desktop is the easiest current path for local personal use.
+```bash
+YNAB_API_KEY=your_token uvx mcp-server-for-ynab smoke
+```
 
-Config file:
-- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+Expected output:
 
-Example:
+```
+smoke: checking environment and startup...
+smoke: YNAB_API_KEY present (length=64)
+smoke: YNAB_PLAN_ID not set (plan_id required per-call)
+smoke: app created, 44 tools registered
+smoke: tool registry has 44 entries across families: ['accounts', 'analysis', ...]
+smoke: OK
+```
+
+`smoke` validates configuration and tool registration, then exits. It makes no
+YNAB API calls and changes nothing.
+
+## What Every Client Needs
+
+All clients run the same local process. Only the file format differs.
+
+| Field | Value |
+|-------|-------|
+| Command | `uvx` |
+| Arguments | `mcp-server-for-ynab stdio` |
+| Transport | `stdio` |
+| Required env | `YNAB_API_KEY` |
+| Recommended env | `YNAB_PLAN_ID` |
+| Optional env | `YNAB_ALLOW_WRITES=1` to register write tools |
+
+Most clients accept this JSON:
 
 ```json
 {
@@ -61,145 +90,402 @@ Example:
       "command": "uvx",
       "args": ["mcp-server-for-ynab", "stdio"],
       "env": {
-        "YNAB_API_KEY": "your_token_here",
-        "YNAB_PLAN_ID": "your_plan_id_here"
+        "YNAB_API_KEY": "your_ynab_token",
+        "YNAB_PLAN_ID": "your_plan_id"
       }
     }
   }
 }
 ```
 
-No clone and no checkout to keep up to date — `uvx` fetches the published
-package. To allow writes, add `"YNAB_ALLOW_WRITES": "1"` to `env`; without it the
-server is read-only and the write tools are not offered to the model.
+Without `YNAB_ALLOW_WRITES`, the server is read-only and the 19 write tools are
+never registered. See [Enabling Writes](#enabling-writes).
 
-<details>
-<summary>From a local clone instead</summary>
+## Claude Code
+
+Add the server with one command:
+
+```bash
+claude mcp add --env YNAB_API_KEY=your_ynab_token --env YNAB_PLAN_ID=your_plan_id \
+  --transport stdio --scope user ynab -- uvx mcp-server-for-ynab stdio
+```
+
+`--scope user` makes the server available in every project. Use `--scope
+project` instead to write it to a `.mcp.json` your team shares, or omit the flag
+to limit it to the current project. Everything after `--` is the command Claude
+Code runs.
+
+Verify:
+
+```bash
+claude mcp list
+```
+
+Look for `ynab: ... - ✔ Connected`. Inside a session, `/mcp` shows the same
+thing.
+
+To share the server with a repository, commit a `.mcp.json` at its root — but
+read the token from your environment rather than committing it:
+
+```json
+{
+  "mcpServers": {
+    "ynab": {
+      "command": "uvx",
+      "args": ["mcp-server-for-ynab", "stdio"],
+      "env": {
+        "YNAB_API_KEY": "${YNAB_API_KEY}"
+      }
+    }
+  }
+}
+```
+
+Remove the server with `claude mcp remove ynab`.
+
+## Claude Desktop
+
+Open **Settings → Developer → Edit Config**, or edit the file directly:
+
+- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "ynab": {
+      "command": "uvx",
+      "args": ["mcp-server-for-ynab", "stdio"],
+      "env": {
+        "YNAB_API_KEY": "your_ynab_token",
+        "YNAB_PLAN_ID": "your_plan_id"
+      }
+    }
+  }
+}
+```
+
+Restart Claude Desktop, then check the tools icon in the message box for the
+`ynab` server.
+
+If the server fails to start here but works in your terminal, Claude Desktop
+probably cannot find `uvx` — see
+[the client cannot find `uvx`](#the-client-cannot-find-uvx).
+
+## Cursor
+
+Click to install, then fill in your token when Cursor opens the config:
+
+[**Add to Cursor**](https://cursor.com/install-mcp?name=ynab&config=eyJjb21tYW5kIjoidXZ4IiwiYXJncyI6WyJtY3Atc2VydmVyLWZvci15bmFiIiwic3RkaW8iXSwiZW52Ijp7IllOQUJfQVBJX0tFWSI6IllPVVJfWU5BQl9UT0tFTiJ9fQ%3D%3D)
+
+Or edit the config yourself — `~/.cursor/mcp.json` for every project, or
+`.cursor/mcp.json` for one:
+
+```json
+{
+  "mcpServers": {
+    "ynab": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["mcp-server-for-ynab", "stdio"],
+      "env": {
+        "YNAB_API_KEY": "your_ynab_token",
+        "YNAB_PLAN_ID": "your_plan_id"
+      }
+    }
+  }
+}
+```
+
+Cursor also reads `envFile`, so you can point at a `.env` instead of pasting the
+token:
+
+```json
+{
+  "mcpServers": {
+    "ynab": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["mcp-server-for-ynab", "stdio"],
+      "envFile": "/absolute/path/to/.env"
+    }
+  }
+}
+```
+
+Confirm the server under **Settings → MCP**.
+
+## VS Code
+
+With GitHub Copilot installed, add the server from the command line:
+
+```bash
+code --add-mcp '{"name":"ynab","command":"uvx","args":["mcp-server-for-ynab","stdio"],"env":{"YNAB_API_KEY":"your_ynab_token"}}'
+```
+
+To keep the token out of the config, use a `.vscode/mcp.json` that prompts for
+it instead. VS Code asks once and stores it in secret storage:
+
+```json
+{
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "ynab-token",
+      "description": "YNAB personal access token",
+      "password": true
+    }
+  ],
+  "servers": {
+    "ynab": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["mcp-server-for-ynab", "stdio"],
+      "env": {
+        "YNAB_API_KEY": "${input:ynab-token}"
+      }
+    }
+  }
+}
+```
+
+Note the top-level key is `servers`, not `mcpServers`. Open Copilot Chat in
+agent mode and use the tools picker to confirm the `ynab` tools are listed.
+
+## Codex CLI
+
+```bash
+codex mcp add ynab --env YNAB_API_KEY=your_ynab_token --env YNAB_PLAN_ID=your_plan_id \
+  -- uvx mcp-server-for-ynab stdio
+```
+
+Or edit `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.ynab]
+command = "uvx"
+args = ["mcp-server-for-ynab", "stdio"]
+
+[mcp_servers.ynab.env]
+YNAB_API_KEY = "your_ynab_token"
+YNAB_PLAN_ID = "your_plan_id"
+```
+
+To keep the token out of the file, forward it from your shell environment
+instead:
+
+```toml
+[mcp_servers.ynab]
+command = "uvx"
+args = ["mcp-server-for-ynab", "stdio"]
+env_vars = ["YNAB_API_KEY", "YNAB_PLAN_ID"]
+```
+
+Verify with `codex mcp list`.
+
+## Gemini CLI
+
+```bash
+gemini mcp add -s user -e YNAB_API_KEY=your_ynab_token -e YNAB_PLAN_ID=your_plan_id \
+  ynab uvx mcp-server-for-ynab stdio
+```
+
+Or edit `~/.gemini/settings.json` for every project, or `.gemini/settings.json`
+for one:
+
+```json
+{
+  "mcpServers": {
+    "ynab": {
+      "command": "uvx",
+      "args": ["mcp-server-for-ynab", "stdio"],
+      "env": {
+        "YNAB_API_KEY": "$YNAB_API_KEY",
+        "YNAB_PLAN_ID": "$YNAB_PLAN_ID"
+      }
+    }
+  }
+}
+```
+
+Gemini CLI expands `$VAR` and `${VAR}` in `env`, so the values above come from
+your shell rather than the file. Verify with `/mcp` in a session.
+
+Leave `trust` unset. Setting it to `true` skips the confirmation dialog on every
+tool call, which is the wrong default for a server holding a financial
+credential.
+
+## Other stdio Clients
+
+Windsurf, Zed, and most other MCP clients launch a local command the same way.
+Give them:
+
+- command: `uvx`
+- args: `mcp-server-for-ynab stdio`
+- env: `YNAB_API_KEY`, optionally `YNAB_PLAN_ID` and `YNAB_ALLOW_WRITES=1`
+
+Client UIs and config paths change often, so follow the client's own MCP
+documentation for where the file lives. From the client's perspective this is an
+ordinary local stdio server with no special requirements.
+
+Zed is the one common exception to the JSON shape above: it nests the command
+under a `context_servers` key rather than `mcpServers`. Check Zed's current MCP
+docs for the exact schema.
+
+## MCP Inspector
+
+To see the tools, call them by hand, and read raw responses:
+
+```bash
+YNAB_API_KEY=your_ynab_token npx @modelcontextprotocol/inspector uvx mcp-server-for-ynab stdio
+```
+
+The Inspector opens in a browser. The **Tools** tab lists all 44 read-only tools
+and lets you run one with arguments you choose. `overview_available_tools` is a
+good first call — it returns the tool catalog grouped by family and costs no
+YNAB API requests.
+
+If the server reports a missing `YNAB_API_KEY`, add it in the Inspector's
+**Environment Variables** panel and reconnect. The Inspector does not always
+forward the whole parent environment to the process it spawns.
+
+This is the fastest way to tell a server problem apart from a client problem. If
+the Inspector works and your client does not, the fault is in the client config.
+
+## Verify It Works
+
+Ask your client:
+
+> Using the ynab tools, call overview_available_tools and tell me how many tools are registered.
+
+A working read-only setup reports 44 tools. With `YNAB_ALLOW_WRITES=1`, it
+reports 63.
+
+Then try a real read:
+
+> What's my current cash position across all accounts?
+
+## Enabling Writes
+
+The server starts read-only. Write tools are not registered unless you opt in:
+
+```json
+"env": {
+  "YNAB_API_KEY": "your_ynab_token",
+  "YNAB_ALLOW_WRITES": "1"
+}
+```
+
+Note the string `"1"`, not the number `1`. Environment variables are strings,
+and some clients reject a config that uses a number here.
+
+Without it, the write tools are absent from `tools/list` entirely, so an agent
+cannot call them. Every write is recorded before it happens and most can be
+undone with `history_revert`. Read [Write Tools](../README.md#write-tools)
+before turning this on.
+
+## Running from a Clone
+
+For development, point the client at your checkout instead of the published
+package:
 
 ```json
 {
   "mcpServers": {
     "ynab": {
       "command": "uv",
-      "args": ["run", "--directory", "/path/to/mcp-server-for-ynab", "python", "-m", "mcp_server_for_ynab.cli.main", "stdio"],
+      "args": [
+        "run",
+        "--directory",
+        "/absolute/path/to/mcp-server-for-ynab",
+        "python",
+        "-m",
+        "mcp_server_for_ynab.cli.main",
+        "stdio"
+      ],
       "env": {
-        "YNAB_API_KEY": "your_token_here",
-        "YNAB_PLAN_ID": "your_plan_id_here"
+        "YNAB_API_KEY": "your_ynab_token"
       }
     }
   }
 }
 ```
 
-`--directory` must point at the repository root, not `src/mcp_server_for_ynab`.
+`--directory` must point at the repository root — the directory holding
+`pyproject.toml` — not at `src/mcp_server_for_ynab`.
 
-</details>
+## ChatGPT Custom Connectors
 
-After saving the config, restart Claude Desktop and verify the server is available in the app’s MCP/extension tooling.
+Not supported. ChatGPT connectors call a remote HTTPS endpoint; they cannot
+launch a local stdio process, and no hosted deployment of this server exists.
 
-### Claude Code
-
-Claude Code supports MCP servers and can use the same local `stdio` command shape as Claude Desktop.
-
-Use the current Claude Code MCP setup flow from Anthropic and register this repo as a local MCP server with:
-- command: `uvx`
-- args: `mcp-server-for-ynab stdio`
-- env:
-  - `YNAB_API_KEY`
-  - optional `YNAB_PLAN_ID`
-  - optional `YNAB_ALLOW_WRITES=1` to enable write tools
-
-If Claude Code offers import-from-Claude-Desktop or shared MCP configuration, the same payload can be reused.
-
-### Cursor
-
-Cursor supports MCP servers and can launch a local `stdio` command.
-
-Configure an MCP server in Cursor using:
-- command: `uvx`
-- args: `mcp-server-for-ynab stdio`
-- env:
-  - `YNAB_API_KEY`
-  - optional `YNAB_PLAN_ID`
-  - optional `YNAB_ALLOW_WRITES=1` to enable write tools
-
-Exact UI labels in Cursor may evolve, but the command and env payload remain the same.
-
-### Windsurf
-
-Windsurf supports MCP integrations for local tools and data sources.
-
-Configure a local MCP server/plugin using:
-- command: `uvx`
-- args: `mcp-server-for-ynab stdio`
-- env:
-  - `YNAB_API_KEY`
-  - optional `YNAB_PLAN_ID`
-  - optional `YNAB_ALLOW_WRITES=1` to enable write tools
-
-Exact UI labels may change, but this repo is still just a local `stdio` MCP server from the client’s perspective.
-
-## Hosted / Remote Clients
-
-### ChatGPT Custom Connectors
-
-ChatGPT custom connectors use MCP, but they expect a remotely reachable endpoint rather than launching a local `stdio` process.
-
-Important distinction:
-- the current repo’s local PAT-based quick start is **not** the same thing as a ChatGPT connector deployment
-- ChatGPT cannot use the local `stdio` flow directly
-
-To use this repo with ChatGPT as a custom connector, you will need a hosted/public path such as:
-- a public HTTPS MCP endpoint
-- public-facing privacy/legal pages
-- branding/domain compliance
-- likely OAuth for a real public multi-user connector
-
-That hosted path is a separate deployment track from the current local quick
-start, and it has not been built. Only the local personal-access-token setup
-described above works today.
-
-## Which Client Should I Use?
-
-- **Claude Desktop**: best local quick start for personal use
-- **Claude Code**: best if you want MCP access inside a CLI/dev workflow
-- **Cursor**: best for editor-based coding workflows
-- **Windsurf**: best for editor-based coding workflows in Windsurf
-- **ChatGPT**: best for a future hosted public connector path, not the current local PAT setup
+Building one would need a public HTTPS MCP endpoint, OAuth in place of personal
+access tokens, and public-app compliance work. That belongs in a separate
+repository, which is why this package exposes an embed surface rather than
+carrying OAuth and session code. See [Architecture](architecture.md).
 
 ## Troubleshooting
 
-### `YNAB_API_KEY` missing
+### The client cannot find `uvx`
 
-Make sure the client config passes `YNAB_API_KEY` into the MCP server environment.
+The most common failure, and it affects desktop apps in particular. Apps
+launched from Finder or the Start menu do not inherit your shell `PATH`, so
+`uvx` resolves in your terminal but not in the client.
 
-### `YNAB_PLAN_ID` not set and no explicit `plan_id` provided
-
-Set `YNAB_PLAN_ID` in the client env or pass `plan_id` in tool calls when needed.
-
-### Wrong repo path
-
-If the client cannot launch the server, confirm `/path/to/mcp-server-for-ynab` points to the actual local checkout.
-
-Common mistake:
-- using `/path/to/mcp-server-for-ynab/src/mcp_server_for_ynab` instead of the repo root
-
-Use the repository root for `--directory`, because that is where `pyproject.toml`, dependencies, and project tooling are expected.
-
-### `uv` not installed
-
-Install `uv` first. The documented command assumes `uv` is available on your system path.
-
-### Local client cannot launch the command
-
-Test the command yourself first:
+Find the absolute path:
 
 ```bash
-uv run --directory /path/to/mcp-server-for-ynab python -m mcp_server_for_ynab.cli.main stdio
+which uvx     # macOS and Linux, e.g. /Users/you/.local/bin/uvx
+where uvx     # Windows
 ```
 
-If that fails locally, the client will not be able to launch it either.
+Then use that path as `command`:
 
-### ChatGPT cannot use the local server
+```json
+"command": "/Users/you/.local/bin/uvx"
+```
 
-That is expected. ChatGPT custom connectors require a remote/public MCP endpoint rather than a local `stdio` command.
+Write the path out in full. `~` is not expanded in these config files.
+
+### `YNAB_API_KEY is required for PAT auth but is not set`
+
+The client did not pass the variable through. Env vars exported in your shell do
+not reach a client-launched process — put the token in the client's own `env`
+block, or use a mechanism the client supports for reading it, such as Cursor's
+`envFile` or Codex's `env_vars`.
+
+### `plan_id is required`
+
+Either set `YNAB_PLAN_ID` in the client's `env`, or pass `plan_id` explicitly on
+each tool call. The ID is the UUID in your YNAB browser URL. `plans_list`
+returns every plan ID on the account, so you can also just ask the agent for it.
+
+### The write tools are missing
+
+That is the default. Set `YNAB_ALLOW_WRITES=1` — see
+[Enabling Writes](#enabling-writes).
+
+### `Local request budget exhausted`
+
+YNAB allows 200 requests per hour per token, and this server stops at 190 so the
+limit you hit is a clear local error rather than a 429 mid-workflow. Call
+`overview_request_budget` for how many requests remain, and, once the budget is
+spent, how many seconds until the next one frees up. It costs no requests.
+Raise the ceiling with `YNAB_RATE_LIMIT_PER_HOUR` if you understand the
+tradeoff.
+
+### The server fails to start, and the client only says "failed"
+
+Run the same command yourself. Client error panels rarely show the real reason:
+
+```bash
+YNAB_API_KEY=your_ynab_token uvx mcp-server-for-ynab smoke
+```
+
+If that fails, the client cannot work either, and the output tells you why. If
+it succeeds, the problem is the client config — usually the `uvx` path or a
+missing env var.
+
+For more detail, raise the log level with `LOG_LEVEL=DEBUG` in the client's
+`env`. Logs go to stderr, which most clients surface in an MCP log panel.
+Credentials are redacted.
