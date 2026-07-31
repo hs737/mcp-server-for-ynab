@@ -26,7 +26,13 @@ dependencies = [
     # requirement resolves to 2.x on a fresh install and fails at import with
     # "No module named 'mcp.server.fastmcp'" — invisible locally, because the
     # lockfile pins 1.x. Migrating to the 2.x server API is its own change.
-    "mcp>=1.27.1,<2",
+    #
+    # The lower bound is a security floor. 1.27.1 and earlier carry
+    # GHSA-jpw9-pfvf-9f58, where the HTTP transports serve session requests
+    # without verifying the authenticated principal. End users install with
+    # uvx, which resolves from this file and never reads uv.lock, so raising
+    # the lockfile alone would leave them on the vulnerable SDK.
+    "mcp>=1.28.1,<2",
     "pydantic>=2.13.4",
 ]
 
