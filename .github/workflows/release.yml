@@ -61,7 +61,7 @@ jobs:
           uv pip install --python /tmp/release-check/bin/python dist/*.whl
           /tmp/release-check/bin/mcp-server-for-ynab smoke
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: dist
           path: dist/
