@@ -1,3 +1,5 @@
+<!-- mcp-name: io.github.hs737/mcp-server-for-ynab -->
+
 # MCP Server for YNAB
 
 [![PyPI](https://img.shields.io/pypi/v/mcp-server-for-ynab?logo=pypi&logoColor=white&label=PyPI)](https://pypi.org/project/mcp-server-for-ynab/)

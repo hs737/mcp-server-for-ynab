@@ -175,12 +175,80 @@ def mcpb_manifest(version: str) -> dict[str, Any]:
     }
 
 
+# The registry namespace is fixed by how ownership is proven: GitHub-based
+# authentication only permits names under the authenticating account.
+MCP_REGISTRY_NAME = "io.github.hs737/mcp-server-for-ynab"
+
+# The registry caps descriptions at 100 characters, shorter than the one the
+# install surfaces use. Kept as its own string rather than truncating the other,
+# so a future edit cannot silently push it back over the limit.
+REGISTRY_DESCRIPTION = "Connect your AI assistant to YNAB. Read-only by default, with reversible opt-in writes."
+
+
+def registry_manifest(version: str) -> dict[str, Any]:
+    """The official MCP Registry entry.
+
+    Ownership is verified by finding an `mcp-name:` marker in the package
+    description on PyPI, which is this repository's README. The marker and this
+    name must agree, so both are generated from the same constant — a mismatch
+    fails the publish with a message about verification rather than about names.
+    """
+    return {
+        "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+        "name": MCP_REGISTRY_NAME,
+        "title": "MCP Server for YNAB",
+        "description": REGISTRY_DESCRIPTION,
+        "version": version,
+        "repository": {
+            "url": "https://github.com/hs737/mcp-server-for-ynab",
+            "source": "github",
+        },
+        "websiteUrl": "https://github.com/hs737/mcp-server-for-ynab#readme",
+        "packages": [
+            {
+                "registryType": "pypi",
+                "identifier": "mcp-server-for-ynab",
+                "version": version,
+                "transport": {"type": "stdio"},
+                "runtimeHint": "uvx",
+                "environmentVariables": [
+                    {
+                        "name": "YNAB_API_KEY",
+                        "description": "YNAB personal access token from app.ynab.com/settings/developer.",
+                        "isRequired": True,
+                        "isSecret": True,
+                        "format": "string",
+                    },
+                    {
+                        "name": "YNAB_PLAN_ID",
+                        "description": "Default plan (budget) id, so tools do not need it passed on every call.",
+                        "isRequired": False,
+                        "isSecret": False,
+                        "format": "string",
+                    },
+                    {
+                        "name": "YNAB_ALLOW_WRITES",
+                        "description": (
+                            "Set to 1 to register the write tools. Unset means read-only, and the write "
+                            "tools are absent from tools/list entirely."
+                        ),
+                        "isRequired": False,
+                        "isSecret": False,
+                        "format": "string",
+                    },
+                ],
+            }
+        ],
+    }
+
+
 def targets(version: str) -> dict[Path, dict[str, Any]]:
     return {
         REPO_ROOT / ".claude-plugin" / "marketplace.json": marketplace_manifest(version),
         REPO_ROOT / ".claude-plugin" / "plugin.json": plugin_manifest(version),
         REPO_ROOT / ".mcp.json": mcp_config(version),
         REPO_ROOT / "packaging" / "mcpb" / "manifest.json": mcpb_manifest(version),
+        REPO_ROOT / "server.json": registry_manifest(version),
     }
 
 
@@ -195,6 +263,15 @@ def main() -> int:
 
     version = str(project()["version"])
     stale: list[Path] = []
+
+    readme = REPO_ROOT / "README.md"
+    marker = f"mcp-name: {MCP_REGISTRY_NAME}"
+    if marker not in readme.read_text():
+        print(
+            f"ERROR: README.md is missing the registry ownership marker.\n  Expected to find: {marker}",
+            file=sys.stderr,
+        )
+        return 1
 
     for path, payload in targets(version).items():
         expected = render(payload)

@@ -121,3 +121,30 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release upload "$GITHUB_REF_NAME" bundle/*.mcpb --clobber
+
+  registry:
+    name: Publish to the MCP Registry
+    needs: publish
+    runs-on: ubuntu-latest
+
+    # Also after the PyPI upload, and for a stricter reason than the bundle:
+    # the registry verifies ownership by reading the mcp-name marker out of the
+    # package description on PyPI. Publishing first means that description
+    # exists and carries the marker; publishing before it would fail
+    # verification rather than fail loudly.
+    permissions:
+      id-token: write # OIDC, so no registry token is stored in this repository
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install mcp-publisher
+        run: |
+          curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
+
+      - name: Authenticate
+        run: ./mcp-publisher login github-oidc
+
+      - name: Publish
+        run: ./mcp-publisher publish
