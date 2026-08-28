@@ -111,11 +111,31 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # so the annotated tag message is available for the notes
 
       - uses: actions/download-artifact@v8
         with:
           name: bundle
           path: bundle/
+
+      # `gh release upload` requires the release to exist, and pushing a tag
+      # does not create one. Create it here from the tag's own annotation, which
+      # keeps the release notes and the tag message the same text and stops the
+      # Changelog project URL pointing at an empty page.
+      - name: Create the release if it does not exist
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "Release $GITHUB_REF_NAME already exists."
+            exit 0
+          fi
+          title="$(git tag -l --format='%(contents:subject)' "$GITHUB_REF_NAME")"
+          gh release create "$GITHUB_REF_NAME" \
+            --verify-tag \
+            --title "${title:-$GITHUB_REF_NAME}" \
+            --notes-from-tag
 
       - name: Upload the bundle to the release
         env:
