@@ -7,7 +7,11 @@ agents always receive a structured dict on failure instead of a raw exception.
 Error precedence:
   1. YnabMcpException — already has a typed YnabMcpError payload; emit as-is.
   2. ConfigError      — missing/invalid configuration; emit as validation_error.
-  3. Any other Exception — unexpected; emit as internal_error and log the
+  3. ValidationError  — the caller's arguments failed a model constraint, such
+                        as a memo past YNAB's 500-character cap; emit as
+                        validation_error, because it is the caller's input that
+                        is wrong and an agent can fix it and retry.
+  4. Any other Exception — unexpected; emit as internal_error and log the
                            full traceback for debugging.
 """
 
@@ -17,6 +21,8 @@ import functools
 import logging
 from collections.abc import Callable, Coroutine
 from typing import Any
+
+from pydantic import ValidationError
 
 from mcp_server_for_ynab.config.settings import ConfigError
 from mcp_server_for_ynab.models.errors import ErrorType, YnabMcpError, YnabMcpException
@@ -51,6 +57,21 @@ def tool_handler[**P](fn: _AsyncToolFn[P]) -> _AsyncToolFn[P]:
                 message=str(exc),
             )
             logger.warning("Tool %s config error: %s", fn.__name__, exc)
+            return {"error": error.model_dump()}
+        except ValidationError as exc:
+            # Reported as a validation error rather than an internal one: the
+            # input is the thing that is wrong, and an agent told which field
+            # and which limit can correct the call itself.
+            details = [
+                {"field": ".".join(str(part) for part in problem["loc"]), "problem": problem["msg"]}
+                for problem in exc.errors()
+            ]
+            error = YnabMcpError(
+                error_type=ErrorType.VALIDATION_ERROR,
+                message=f"Invalid arguments for {fn.__name__}: {exc.error_count()} field(s) failed validation.",
+                details={"fields": details},
+            )
+            logger.warning("Tool %s validation error: %s", fn.__name__, details)
             return {"error": error.model_dump()}
         except Exception as exc:
             error = YnabMcpError(

@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from mcp_server_for_ynab.models.ynab.common import YnabBaseModel
+from pydantic import Field
+
+from mcp_server_for_ynab.models.ynab.common import DecodedTextModel, YnabBaseModel
+from mcp_server_for_ynab.models.ynab.limits import MEMO_MAX, TRANSACTION_PAYEE_NAME_MAX
 
 
 class ClearedStatus(StrEnum):
@@ -20,7 +23,7 @@ class FlagColor(StrEnum):
     PURPLE = "purple"
 
 
-class SubTransaction(YnabBaseModel):
+class SubTransaction(DecodedTextModel):
     id: str
     transaction_id: str
     amount: int  # milliunits — negative for outflow, positive for inflow
@@ -34,7 +37,7 @@ class SubTransaction(YnabBaseModel):
     deleted: bool
 
 
-class TransactionBase(YnabBaseModel):
+class TransactionBase(DecodedTextModel):
     """Fields common to both transaction summary and detail."""
 
     id: str
@@ -91,9 +94,9 @@ class TransactionData(YnabBaseModel):
 class SaveSubTransaction(YnabBaseModel):
     amount: int  # milliunits
     payee_id: str | None = None
-    payee_name: str | None = None
+    payee_name: str | None = Field(default=None, max_length=TRANSACTION_PAYEE_NAME_MAX)
     category_id: str | None = None
-    memo: str | None = None
+    memo: str | None = Field(default=None, max_length=MEMO_MAX)
 
 
 class SaveTransaction(YnabBaseModel):
@@ -101,9 +104,9 @@ class SaveTransaction(YnabBaseModel):
     date: str  # ISO date YYYY-MM-DD
     amount: int  # milliunits
     payee_id: str | None = None
-    payee_name: str | None = None
+    payee_name: str | None = Field(default=None, max_length=TRANSACTION_PAYEE_NAME_MAX)
     category_id: str | None = None
-    memo: str | None = None
+    memo: str | None = Field(default=None, max_length=MEMO_MAX)
     cleared: ClearedStatus | None = None
     approved: bool | None = None
     flag_color: FlagColor | None = None
@@ -127,9 +130,9 @@ class UpdateTransaction(YnabBaseModel):
     date: str | None = None
     amount: int | None = None  # milliunits
     payee_id: str | None = None
-    payee_name: str | None = None
+    payee_name: str | None = Field(default=None, max_length=TRANSACTION_PAYEE_NAME_MAX)
     category_id: str | None = None
-    memo: str | None = None
+    memo: str | None = Field(default=None, max_length=MEMO_MAX)
     cleared: ClearedStatus | None = None
     approved: bool | None = None
     flag_color: FlagColor | None = None

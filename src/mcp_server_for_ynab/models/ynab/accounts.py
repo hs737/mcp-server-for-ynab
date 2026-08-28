@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from mcp_server_for_ynab.models.ynab.common import YnabBaseModel
+from mcp_server_for_ynab.models.ynab.common import DecodedTextModel, YnabBaseModel
 
 
 class AccountType(StrEnum):
@@ -21,7 +21,7 @@ class AccountType(StrEnum):
     OTHER_DEBT = "otherDebt"
 
 
-class Account(YnabBaseModel):
+class Account(DecodedTextModel):
     id: str
     name: str
     type: AccountType

@@ -1,9 +1,12 @@
 from __future__ import annotations
 
-from mcp_server_for_ynab.models.ynab.common import YnabBaseModel
+from pydantic import Field
+
+from mcp_server_for_ynab.models.ynab.common import DecodedTextModel, YnabBaseModel
+from mcp_server_for_ynab.models.ynab.limits import PAYEE_NAME_MAX
 
 
-class Payee(YnabBaseModel):
+class Payee(DecodedTextModel):
     id: str
     name: str
     transfer_account_id: str | None = None
@@ -28,7 +31,7 @@ class PayeeData(YnabBaseModel):
 
 
 class SavePayee(YnabBaseModel):
-    name: str
+    name: str = Field(max_length=PAYEE_NAME_MAX)
 
 
 class SavePayeeWrapper(YnabBaseModel):

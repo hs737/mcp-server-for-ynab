@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from mcp_server_for_ynab.models.ynab.categories import Category
-from mcp_server_for_ynab.models.ynab.common import YnabBaseModel
+from mcp_server_for_ynab.models.ynab.common import DecodedTextModel, YnabBaseModel
 
 
-class Month(YnabBaseModel):
+class Month(DecodedTextModel):
     month: str  # ISO date string YYYY-MM-DD (first of the month)
     note: str | None = None
     income: int  # milliunits
@@ -16,7 +16,7 @@ class Month(YnabBaseModel):
     categories: list[Category] = []  # noqa: RUF012
 
 
-class MonthSummary(YnabBaseModel):
+class MonthSummary(DecodedTextModel):
     month: str
     note: str | None = None
     income: int  # milliunits

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from mcp_server_for_ynab.models.ynab.common import YnabBaseModel
+from mcp_server_for_ynab.models.ynab.common import DecodedTextModel, YnabBaseModel
 
 
 class CurrencyFormat(YnabBaseModel):
@@ -14,7 +14,7 @@ class CurrencyFormat(YnabBaseModel):
     display_symbol: bool
 
 
-class Plan(YnabBaseModel):
+class Plan(DecodedTextModel):
     id: str
     name: str
     last_modified_on: str | None = None
@@ -25,7 +25,7 @@ class Plan(YnabBaseModel):
     accounts: list[dict[str, object]] | None = None
 
 
-class PlanSummary(YnabBaseModel):
+class PlanSummary(DecodedTextModel):
     id: str
     name: str
     last_modified_on: str | None = None

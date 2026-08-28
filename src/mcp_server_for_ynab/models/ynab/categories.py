@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from mcp_server_for_ynab.models.ynab.common import YnabBaseModel
+from pydantic import Field
+
+from mcp_server_for_ynab.models.ynab.common import DecodedTextModel, YnabBaseModel
+from mcp_server_for_ynab.models.ynab.limits import CATEGORY_GROUP_NAME_MAX, CATEGORY_NAME_MAX
 
 
 class GoalType(StrEnum):
@@ -13,7 +16,7 @@ class GoalType(StrEnum):
     DEBT = "DEBT"
 
 
-class Category(YnabBaseModel):
+class Category(DecodedTextModel):
     id: str
     category_group_id: str
     category_group_name: str | None = None
@@ -39,7 +42,7 @@ class Category(YnabBaseModel):
     deleted: bool
 
 
-class CategoryGroup(YnabBaseModel):
+class CategoryGroup(DecodedTextModel):
     id: str
     name: str
     hidden: bool
@@ -68,7 +71,7 @@ class CategoryData(YnabBaseModel):
 
 
 class SaveCategory(YnabBaseModel):
-    name: str | None = None
+    name: str | None = Field(default=None, max_length=CATEGORY_NAME_MAX)
     note: str | None = None
     category_group_id: str | None = None  # required when creating
     budgeted: int | None = None  # milliunits; only honoured on the per-month route
@@ -79,7 +82,7 @@ class SaveCategoryWrapper(YnabBaseModel):
 
 
 class SaveCategoryGroup(YnabBaseModel):
-    name: str
+    name: str = Field(max_length=CATEGORY_GROUP_NAME_MAX)
 
 
 class SaveCategoryGroupWrapper(YnabBaseModel):

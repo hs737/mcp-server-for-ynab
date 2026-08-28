@@ -73,3 +73,23 @@ def test_model_dump_is_serializable() -> None:
     data = YnabMcpError.auth_failure().model_dump()
     assert isinstance(data, dict)
     assert data["error_type"] == "auth_failure"
+
+
+async def test_invalid_arguments_are_reported_as_validation_not_internal() -> None:
+    """An agent told which field is wrong can fix the call; "internal error" cannot be acted on."""
+    from pydantic import BaseModel, Field
+
+    from mcp_server_for_ynab.server.tools.boundary import tool_handler
+
+    class Model(BaseModel):
+        memo: str = Field(max_length=5)
+
+    @tool_handler
+    async def tool() -> dict[str, object]:
+        Model(memo="far too long")
+        return {}
+
+    result = await tool()
+
+    assert result["error"]["error_type"] == "validation_error"
+    assert result["error"]["details"]["fields"][0]["field"] == "memo"

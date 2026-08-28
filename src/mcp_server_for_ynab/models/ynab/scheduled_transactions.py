@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from mcp_server_for_ynab.models.ynab.common import YnabBaseModel
+from pydantic import Field
+
+from mcp_server_for_ynab.models.ynab.common import DecodedTextModel, YnabBaseModel
+from mcp_server_for_ynab.models.ynab.limits import MEMO_MAX, TRANSACTION_PAYEE_NAME_MAX
 from mcp_server_for_ynab.models.ynab.transactions import FlagColor, SubTransaction
 
 
@@ -22,7 +25,7 @@ class Frequency(StrEnum):
     EVERY_OTHER_YEAR = "everyOtherYear"
 
 
-class ScheduledTransaction(YnabBaseModel):
+class ScheduledTransaction(DecodedTextModel):
     id: str
     date_first: str  # ISO date YYYY-MM-DD
     date_next: str  # ISO date YYYY-MM-DD
@@ -65,9 +68,9 @@ class SaveScheduledTransaction(YnabBaseModel):
     frequency: Frequency
     amount: int  # milliunits
     payee_id: str | None = None
-    payee_name: str | None = None
+    payee_name: str | None = Field(default=None, max_length=TRANSACTION_PAYEE_NAME_MAX)
     category_id: str | None = None
-    memo: str | None = None
+    memo: str | None = Field(default=None, max_length=MEMO_MAX)
     flag_color: FlagColor | None = None
 
 

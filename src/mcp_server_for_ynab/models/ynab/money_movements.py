@@ -17,10 +17,10 @@ infer them from the transaction shapes; the two resources differ.
 
 from __future__ import annotations
 
-from mcp_server_for_ynab.models.ynab.common import YnabBaseModel
+from mcp_server_for_ynab.models.ynab.common import DecodedTextModel, YnabBaseModel
 
 
-class MoneyMovement(YnabBaseModel):
+class MoneyMovement(DecodedTextModel):
     id: str
     month: str  # ISO date for the first day of the month, e.g. "2026-06-01"
     moved_at: str  # ISO 8601 UTC timestamp
@@ -35,7 +35,7 @@ class MoneyMovement(YnabBaseModel):
     deleted: bool = False
 
 
-class MoneyMovementGroup(YnabBaseModel):
+class MoneyMovementGroup(DecodedTextModel):
     id: str
     month: str  # ISO date for the first day of the month
     group_created_at: str  # ISO 8601 UTC timestamp
