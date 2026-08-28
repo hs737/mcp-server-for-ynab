@@ -93,8 +93,8 @@ name a budget in a request. Full per-client instructions, including where each
 config file lives and how to keep the token out of it, are in
 [Client Setup](docs/client-setup.md).
 
-**Desktop hosts that accept bundles** — download
-[`mcp-server-for-ynab-0.1.0.mcpb`](https://github.com/hs737/mcp-server-for-ynab/releases/latest)
+**Desktop hosts that accept bundles** — download the `.mcpb` file from the
+[latest release](https://github.com/hs737/mcp-server-for-ynab/releases/latest)
 and open it. The host asks for your token in a form and stores it in your OS
 keychain, so there is no config file to edit and no token sitting in plain text.
 A checkbox controls whether writes are enabled.

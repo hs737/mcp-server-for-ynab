@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "mcp-server-for-ynab",
   "display_name": "MCP Server for YNAB",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Connect your AI assistant to YNAB. Read-only by default, with opt-in writes that are recorded and reversible.",
   "long_description": "Exposes the YNAB API as MCP tools, plus enriched tools that answer in one call what the raw API cannot: budget health, cash position, cleanup queues, overspending, and recurring charges. Read-only unless you tick Allow writes. When writes are on, every change records the state that preceded it so it can be reverted.",
   "author": {
@@ -26,7 +26,7 @@
     "mcp_config": {
       "command": "uvx",
       "args": [
-        "mcp-server-for-ynab==0.1.0",
+        "mcp-server-for-ynab==0.2.0",
         "stdio"
       ],
       "env": {
