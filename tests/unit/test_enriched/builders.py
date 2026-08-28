@@ -124,6 +124,7 @@ def transaction(
     category_name: str | None = "Groceries",
     memo: str | None = None,
     deleted: bool = False,
+    transfer_account_id: str | None = None,
     subtransactions: list[Any] | None = None,
 ) -> Transaction:
     return Transaction(
@@ -139,6 +140,7 @@ def transaction(
         payee_name=payee_name,
         category_id=category_id,
         category_name=category_name,
+        transfer_account_id=transfer_account_id,
         deleted=deleted,
         subtransactions=subtransactions or [],
     )
