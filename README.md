@@ -101,8 +101,16 @@ A checkbox controls whether writes are enabled.
 
 ### Docker
 
-The server speaks MCP over stdin and stdout, so run it attached with `-i`.
-There is no port to publish:
+A published image is available for `linux/amd64` and `linux/arm64`. The server
+speaks MCP over stdin and stdout, so run it attached with `-i`. There is no
+port to publish:
+
+```bash
+docker run -i --rm -e YNAB_API_KEY=your_ynab_token \
+  ghcr.io/hs737/mcp-server-for-ynab
+```
+
+Or build it yourself from a clone:
 
 ```bash
 docker build -t mcp-server-for-ynab .

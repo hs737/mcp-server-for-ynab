@@ -1,0 +1,108 @@
+name: Containers
+
+# Publishes the image on every release tag, and rebuilds it on master so the
+# :edge tag reflects what is actually on the default branch.
+#
+# Two registries:
+#
+#   ghcr.io/hs737/mcp-server-for-ynab   always, authenticated by GITHUB_TOKEN
+#   docker.io/<user>/mcp-server-for-ynab  only when Docker Hub is configured
+#
+# GHCR needs no account setup, so it is the one that always works. Docker Hub
+# is skipped rather than failed when its credentials are absent, so a fork or a
+# repository without them still gets an image instead of a red build.
+#
+# To turn Docker Hub on, set:
+#   repository variable DOCKERHUB_USERNAME  (a variable, not a secret: it is
+#     part of the image name, and a secret would be masked in the tag list and
+#     break the push)
+#   repository secret   DOCKERHUB_TOKEN     (an access token, not the password)
+
+on:
+  push:
+    branches: [master]
+    tags: ["v*"]
+  workflow_dispatch:
+
+env:
+  IMAGE_NAME: mcp-server-for-ynab
+
+jobs:
+  publish:
+    name: Build and push
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Is Docker Hub configured?
+        id: dockerhub
+        env:
+          DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          if [ -n "$DOCKERHUB_USERNAME" ] && [ -n "$DOCKERHUB_TOKEN" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Docker Hub is not configured; publishing to GHCR only."
+          fi
+
+      - uses: docker/setup-qemu-action@v3
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Docker Hub
+        if: steps.dockerhub.outputs.enabled == 'true'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Work out the tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
+            ${{ steps.dockerhub.outputs.enabled == 'true' && format('docker.io/{0}/{1}', vars.DOCKERHUB_USERNAME, env.IMAGE_NAME) || '' }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=raw,value=edge,enable=${{ github.ref == 'refs/heads/master' }}
+          labels: |
+            org.opencontainers.image.title=MCP Server for YNAB
+            org.opencontainers.image.description=Connect your AI assistant to YNAB. Read-only by default, with reversible opt-in writes.
+            org.opencontainers.image.licenses=Apache-2.0
+
+      # arm64 is not optional here: a large share of the people running this
+      # locally are on Apple silicon, and an amd64-only image makes them pay
+      # emulation for a process that mostly waits on HTTP.
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Start the published image
+        run: |
+          IMAGE="$(echo '${{ steps.meta.outputs.tags }}' | head -n1)"
+          echo "Smoke-testing $IMAGE"
+          docker run -i --rm -e YNAB_API_KEY=fake-token-for-startup "$IMAGE" smoke
