@@ -1,7 +1,7 @@
 # MCP Server for YNAB
 
-[![PyPI](https://img.shields.io/pypi/v/mcp-server-for-ynab.svg)](https://pypi.org/project/mcp-server-for-ynab/)
-[![Python](https://img.shields.io/pypi/pyversions/mcp-server-for-ynab.svg)](https://pypi.org/project/mcp-server-for-ynab/)
+[![PyPI](https://img.shields.io/pypi/v/mcp-server-for-ynab?logo=pypi&logoColor=white&label=PyPI)](https://pypi.org/project/mcp-server-for-ynab/)
+[![Python](https://img.shields.io/pypi/pyversions/mcp-server-for-ynab?logo=python&logoColor=white&label=Python)](https://pypi.org/project/mcp-server-for-ynab/)
 [![CI](https://github.com/hs737/mcp-server-for-ynab/actions/workflows/ci.yml/badge.svg)](https://github.com/hs737/mcp-server-for-ynab/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
