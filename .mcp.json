@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "ynab": {
+      "command": "uvx",
+      "args": [
+        "mcp-server-for-ynab==0.1.0",
+        "stdio"
+      ],
+      "env": {
+        "YNAB_API_KEY": "${YNAB_API_KEY}",
+        "YNAB_PLAN_ID": "${YNAB_PLAN_ID}"
+      }
+    }
+  }
+}

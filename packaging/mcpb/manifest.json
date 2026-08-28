@@ -1,0 +1,68 @@
+{
+  "manifest_version": "0.3",
+  "name": "mcp-server-for-ynab",
+  "display_name": "MCP Server for YNAB",
+  "version": "0.1.0",
+  "description": "Connect your AI assistant to YNAB. Read-only by default, with opt-in writes that are recorded and reversible.",
+  "long_description": "Exposes the YNAB API as MCP tools, plus enriched tools that answer in one call what the raw API cannot: budget health, cash position, cleanup queues, overspending, and recurring charges. Read-only unless you tick Allow writes. When writes are on, every change records the state that preceded it so it can be reverted.",
+  "author": {
+    "name": "Harsh S",
+    "url": "https://github.com/hs737"
+  },
+  "homepage": "https://github.com/hs737/mcp-server-for-ynab#readme",
+  "documentation": "https://github.com/hs737/mcp-server-for-ynab#readme",
+  "support": "https://github.com/hs737/mcp-server-for-ynab/issues",
+  "license": "Apache-2.0",
+  "keywords": [
+    "mcp",
+    "ynab",
+    "budget",
+    "finance",
+    "personal-finance"
+  ],
+  "server": {
+    "type": "binary",
+    "entry_point": "uvx",
+    "mcp_config": {
+      "command": "uvx",
+      "args": [
+        "mcp-server-for-ynab==0.1.0",
+        "stdio"
+      ],
+      "env": {
+        "YNAB_API_KEY": "${user_config.ynab_api_key}",
+        "YNAB_PLAN_ID": "${user_config.ynab_plan_id}",
+        "YNAB_ALLOW_WRITES": "${user_config.ynab_allow_writes}"
+      }
+    }
+  },
+  "user_config": {
+    "ynab_api_key": {
+      "type": "string",
+      "title": "YNAB Personal Access Token",
+      "description": "Create one at app.ynab.com/settings/developer. Stored by your OS keychain, not in a file.",
+      "sensitive": true,
+      "required": true
+    },
+    "ynab_plan_id": {
+      "type": "string",
+      "title": "Default plan ID (optional)",
+      "description": "Set this and you never have to name a budget in a request. Ask for your plans to find it.",
+      "sensitive": false,
+      "required": false,
+      "default": ""
+    },
+    "ynab_allow_writes": {
+      "type": "boolean",
+      "title": "Allow writes",
+      "description": "Leave off to keep the assistant read-only. Turn on to let it change your budget; every write is recorded locally and can be reverted.",
+      "required": false,
+      "default": false
+    }
+  },
+  "compatibility": {
+    "runtimes": {
+      "python": ">=3.12"
+    }
+  }
+}

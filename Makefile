@@ -2,6 +2,7 @@
         smoke-stdio run-stdio run-http \
         verify-live verify-write verify-mcp-http \
         postman-generate postman-check \
+        packaging-sync packaging-check mcpb docker-build docker-smoke \
         test-postman test-postman-operator
 
 # ---------------------------------------------------------------------------
@@ -40,7 +41,7 @@ test-integration:
 # detection. Does NOT run Newman (live API calls require credentials).
 # ---------------------------------------------------------------------------
 
-check: lint typecheck test postman-check
+check: lint typecheck test postman-check packaging-check
 
 # ---------------------------------------------------------------------------
 # Server — start
@@ -159,3 +160,38 @@ test-postman-operator: _check-newman .env
 	  --folder "Transactions — Read" \
 	  --folder "Money Movements" \
 	  --reporters cli
+
+# ---------------------------------------------------------------------------
+# Packaging — install surfaces
+#
+# The Claude Code plugin, its marketplace, the MCP client config, and the MCPB
+# bundle manifest all repeat the version and launch command. They are generated
+# from pyproject.toml so they cannot drift; `packaging-check` is the CI guard.
+#
+# The .mcpb bundle is what makes desktop install one click: the host renders a
+# form for the token and stores it in the OS keychain instead of asking someone
+# to hand-edit JSON. Building it needs Node, for npx.
+# ---------------------------------------------------------------------------
+
+packaging-sync:
+	uv run python scripts/sync_packaging.py
+
+packaging-check:
+	uv run python scripts/sync_packaging.py --check
+
+mcpb: packaging-sync
+	uv run python scripts/build_mcpb.py
+
+# ---------------------------------------------------------------------------
+# Docker
+#
+# stdio only — there is no port to publish. Mount a volume onto
+# /home/app/.mcp-server-for-ynab when writes are enabled, or every --rm discards
+# the history that makes a revert possible.
+# ---------------------------------------------------------------------------
+
+docker-build:
+	docker build -t mcp-server-for-ynab .
+
+docker-smoke: docker-build
+	docker run -i --rm -e YNAB_API_KEY=fake-token-for-startup mcp-server-for-ynab smoke

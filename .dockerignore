@@ -1,0 +1,33 @@
+# Everything the image does not need. Keeping the build context small also
+# keeps credentials out of it: .env is a real token file.
+.env
+.env.*
+.env~
+.env.bak
+!.env.example
+
+.git/
+.github/
+.venv/
+dist/
+build/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+.agents/
+.claude/
+.cursor/
+docs/
+postman/
+scripts/
+tests/
+packaging/
+
+.DS_Store
+Dockerfile
+.dockerignore

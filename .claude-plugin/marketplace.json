@@ -1,0 +1,34 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "mcp-server-for-ynab",
+  "version": "0.1.0",
+  "description": "MCP Server for YNAB",
+  "owner": {
+    "name": "Harsh S",
+    "url": "https://github.com/hs737"
+  },
+  "plugins": [
+    {
+      "name": "mcp-server-for-ynab",
+      "displayName": "MCP Server for YNAB",
+      "description": "Connect your AI assistant to YNAB. Read-only by default, with opt-in writes that are recorded and reversible.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Harsh S",
+        "url": "https://github.com/hs737"
+      },
+      "homepage": "https://github.com/hs737/mcp-server-for-ynab#readme",
+      "repository": "https://github.com/hs737/mcp-server-for-ynab",
+      "license": "Apache-2.0",
+      "keywords": [
+        "mcp",
+        "ynab",
+        "budget",
+        "finance",
+        "personal-finance"
+      ],
+      "source": "./",
+      "category": "finance"
+    }
+  ]
+}

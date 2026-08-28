@@ -35,6 +35,9 @@ jobs:
       - name: Type check
         run: uv run mypy src
 
+      - name: Packaging manifests are in sync
+        run: uv run python scripts/sync_packaging.py --check
+
       - name: Unit tests
         run: uv run pytest tests/unit -v
 
@@ -79,3 +82,28 @@ jobs:
         env:
           YNAB_API_KEY: fake-token-for-startup
         run: uvx --from dist/*.whl mcp-server-for-ynab smoke
+
+  bundle:
+    name: Build the install surfaces
+    runs-on: ubuntu-latest
+
+    # The plugin manifest, the MCPB bundle, and the container are how most
+    # people will actually install this, and none of them are exercised by the
+    # test suite. A manifest that fails schema validation or an image whose
+    # entrypoint cannot start is invisible until someone tries to install it.
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+
+      - name: Build and validate the MCPB bundle
+        run: uv run python scripts/build_mcpb.py
+
+      - name: Build the container image
+        run: docker build -t mcp-server-for-ynab .
+
+      - name: Start the server inside the container
+        run: docker run -i --rm -e YNAB_API_KEY=fake-token-for-startup mcp-server-for-ynab smoke

@@ -54,7 +54,14 @@ print `smoke: app created, 44 tools registered`.
 
 The two most common paths:
 
-**Claude Code** — one command:
+**Claude Code** — install the plugin, which brings its own MCP config:
+
+```bash
+/plugin marketplace add hs737/mcp-server-for-ynab
+/plugin install mcp-server-for-ynab@mcp-server-for-ynab
+```
+
+Or register the server directly, if you would rather not use a plugin:
 
 ```bash
 claude mcp add --env YNAB_API_KEY=your_ynab_token --transport stdio --scope user \
@@ -83,6 +90,30 @@ MCP config file:
 name a budget in a request. Full per-client instructions, including where each
 config file lives and how to keep the token out of it, are in
 [Client Setup](docs/client-setup.md).
+
+**Desktop hosts that accept bundles** — download
+[`mcp-server-for-ynab-0.1.0.mcpb`](https://github.com/hs737/mcp-server-for-ynab/releases/latest)
+and open it. The host asks for your token in a form and stores it in your OS
+keychain, so there is no config file to edit and no token sitting in plain text.
+A checkbox controls whether writes are enabled.
+
+### Docker
+
+The server speaks MCP over stdin and stdout, so run it attached with `-i`.
+There is no port to publish:
+
+```bash
+docker build -t mcp-server-for-ynab .
+docker run -i --rm -e YNAB_API_KEY=your_ynab_token mcp-server-for-ynab
+```
+
+If you enable writes, mount a volume for the history — otherwise `--rm` discards
+the record that makes a revert possible:
+
+```bash
+docker run -i --rm -e YNAB_API_KEY=your_ynab_token -e YNAB_ALLOW_WRITES=1 \
+  -v ynab-mcp-history:/home/app/.mcp-server-for-ynab mcp-server-for-ynab
+```
 
 ### 3. Ask it something
 

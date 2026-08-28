@@ -61,10 +61,20 @@ jobs:
           uv pip install --python /tmp/release-check/bin/python dist/*.whl
           /tmp/release-check/bin/mcp-server-for-ynab smoke
 
+      - name: Build the MCPB bundle
+        run: uv run python scripts/build_mcpb.py --out-dir bundle
+
       - uses: actions/upload-artifact@v7
         with:
           name: dist
           path: dist/
+
+      # Kept out of dist/, because the PyPI publish step uploads everything in
+      # that directory and would reject an .mcpb.
+      - uses: actions/upload-artifact@v7
+        with:
+          name: bundle
+          path: bundle/
 
   publish:
     name: Publish to PyPI
@@ -86,3 +96,28 @@ jobs:
 
       - name: Publish
         uses: pypa/gh-action-pypi-publish@release/v1
+
+  bundle:
+    name: Attach the MCPB bundle to the release
+    needs: publish
+    runs-on: ubuntu-latest
+
+    # Runs after the PyPI upload on purpose: the bundle launches
+    # `uvx mcp-server-for-ynab==<version>`, so attaching it to the release
+    # before that version exists would hand people a one-click install that
+    # cannot resolve.
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: bundle
+          path: bundle/
+
+      - name: Upload the bundle to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$GITHUB_REF_NAME" bundle/*.mcpb --clobber
