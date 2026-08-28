@@ -90,7 +90,7 @@ reported = info.get("version", "")
 print(reported, "sdk" if reported == version("mcp") else "own", info.get("name", ""))
 ' 2>/dev/null)
 read -r REPORTED_VERSION VERSION_SOURCE SERVER_NAME <<<"$SERVER_INFO"
-check "serverInfo.name" "mcp-for-ynab" "$SERVER_NAME"
+check "serverInfo.name" "mcp-server-for-ynab" "$SERVER_NAME"
 
 # YNAB: an application name may not contain "YNAB" unless preceded by "for".
 case "$(printf '%s' "$SERVER_NAME" | tr '[:upper:]' '[:lower:]')" in

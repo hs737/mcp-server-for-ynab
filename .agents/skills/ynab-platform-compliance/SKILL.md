@@ -35,10 +35,10 @@ This project therefore uses:
 | Thing | Value |
 |-------|-------|
 | Repository and package | `mcp-server-for-ynab` |
-| Server name reported to clients | `mcp-for-ynab` |
-| English title | MCP for YNAB |
+| Server name reported to clients | `mcp-server-for-ynab` |
+| English title | MCP Server for YNAB |
 
-A future domain must follow the same rule: `mcp-for-ynab.com` is fine,
+A future domain must follow the same rule: `mcp-server-for-ynab.com` is fine,
 `ynab-mcp.com` is not. `scripts/mcp_http_check.sh` asserts the reported server
 name complies, and a unit test covers it. Do not weaken either check.
 

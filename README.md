@@ -1,4 +1,4 @@
-# MCP for YNAB
+# MCP Server for YNAB
 
 [![PyPI](https://img.shields.io/pypi/v/mcp-server-for-ynab.svg)](https://pypi.org/project/mcp-server-for-ynab/)
 [![Python](https://img.shields.io/pypi/pyversions/mcp-server-for-ynab.svg)](https://pypi.org/project/mcp-server-for-ynab/)
@@ -125,7 +125,7 @@ the current tool catalog grouped by family. See
 | `YNAB_API_KEY` | Yes | YNAB personal access token |
 | `YNAB_PLAN_ID` | Recommended | Default plan ID, making `plan_id` optional on most tools |
 | `YNAB_ALLOW_WRITES` | No | Register write tools. Unset means read-only |
-| `YNAB_HISTORY_PATH` | No | Write history file, default `~/.mcp-for-ynab/history.jsonl` |
+| `YNAB_HISTORY_PATH` | No | Write history file, default `~/.mcp-server-for-ynab/history.jsonl` |
 | `YNAB_RATE_LIMIT_PER_HOUR` | No | Client-side request budget, default `190` of YNAB's 200 |
 | `YNAB_RATE_WARN_THRESHOLD` | No | Warn when this many requests remain, default `50` |
 | `LOG_LEVEL` | No | Logging verbosity, default `INFO` |

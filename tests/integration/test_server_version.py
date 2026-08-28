@@ -26,7 +26,7 @@ def test_reported_version_is_not_the_sdk_version() -> None:
 def test_server_name_complies_with_ynab_naming_rules() -> None:
     """YNAB: an application name may not contain "YNAB" unless preceded by "for"."""
     options = mcp._mcp_server.create_initialization_options()
-    assert options.server_name == "mcp-for-ynab"
+    assert options.server_name == "mcp-server-for-ynab"
 
     lowered = options.server_name.lower()
     if "ynab" in lowered:

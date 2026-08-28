@@ -21,7 +21,7 @@ __all__ = ["create_app", "create_embedded_app", "mcp", "package_version"]
 mcp = FastMCP(
     # YNAB's OAuth application requirements: an application name may not include
     # "YNAB" unless the word is preceded by "for". Keep this compliant.
-    name="mcp-for-ynab",
+    name="mcp-server-for-ynab",
     instructions=(
         "AI-first MCP server for YNAB budget management. "
         "Start with overview_available_tools to see the full tool catalog. "

@@ -5,7 +5,7 @@ was. Each entry therefore stores the *before* state of what changed, which is
 the only thing YNAB cannot give you afterwards: the API has no history endpoint,
 and once a value is overwritten the previous one is gone.
 
-Entries are JSON lines under `~/.mcp-for-ynab/history.jsonl`, oldest first.
+Entries are JSON lines under `~/.mcp-server-for-ynab/history.jsonl`, oldest first.
 Nothing is ever rewritten in place; reverting appends a new entry of its own, so
 the file stays an accurate account of what happened including the undoing.
 
@@ -51,12 +51,30 @@ IRREVERSIBLE = {
 }
 
 
+LEGACY_HISTORY_DIR = ".mcp-for-ynab"
+HISTORY_DIR = ".mcp-server-for-ynab"
+
+
 def history_path() -> Path:
-    """Where the journal lives. Override with YNAB_HISTORY_PATH."""
+    """Where the journal lives. Override with YNAB_HISTORY_PATH.
+
+    The directory was renamed to match the package name. Anyone who ran an
+    earlier build has their history under the old one, and this file is the only
+    copy of the before-states that make a revert possible — YNAB cannot return
+    them. So an existing legacy file keeps being used in place rather than being
+    moved or abandoned: picking the new path regardless would leave those writes
+    silently unrevertible, which is the one promise this journal exists to keep.
+    """
     override = os.environ.get("YNAB_HISTORY_PATH", "").strip()
     if override:
         return Path(override).expanduser()
-    return Path.home() / ".mcp-for-ynab" / "history.jsonl"
+
+    current = Path.home() / HISTORY_DIR / "history.jsonl"
+    if not current.exists():
+        legacy = Path.home() / LEGACY_HISTORY_DIR / "history.jsonl"
+        if legacy.exists():
+            return legacy
+    return current
 
 
 @dataclass

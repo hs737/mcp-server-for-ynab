@@ -11,7 +11,7 @@ from mcp_server_for_ynab.history import journal
 
 @pytest.fixture(autouse=True)
 def _isolated_history(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Never touch the real ~/.mcp-for-ynab/history.jsonl from a test."""
+    """Never touch the real ~/.mcp-server-for-ynab/history.jsonl from a test."""
     monkeypatch.setenv("YNAB_HISTORY_PATH", str(tmp_path / "history.jsonl"))
 
 
