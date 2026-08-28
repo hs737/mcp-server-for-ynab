@@ -39,12 +39,25 @@ mcp._mcp_server.version = package_version()
 
 
 def _register_tools() -> None:
-    """Import tool modules so they register themselves against the shared app."""
+    """Import tool modules so they register themselves against the shared app.
+
+    Prompts and resources come along here too. Prompts are how someone who has
+    not read the tool catalogue finds a starting point — most clients surface
+    them as slash commands — and resources carry the working knowledge that is
+    too long to repeat in every tool description.
+    """
+    from mcp_server_for_ynab.server import (
+        prompts,  # noqa: F401
+        resources,  # noqa: F401
+    )
     from mcp_server_for_ynab.server.tools import (
         enriched,  # noqa: F401
         history,  # noqa: F401
         raw,  # noqa: F401
     )
+    from mcp_server_for_ynab.server.tools.presentation import apply_presentation
+
+    apply_presentation(mcp)
 
 
 def create_app() -> FastMCP:

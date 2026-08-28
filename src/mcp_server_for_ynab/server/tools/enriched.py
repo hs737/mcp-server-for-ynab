@@ -8,6 +8,7 @@ from mcp.types import ToolAnnotations
 
 from mcp_server_for_ynab.enriched.analysis import (
     overspent_categories,
+    recurring_charges,
     target_funding_gaps,
     upcoming_scheduled_risks,
 )
@@ -56,6 +57,11 @@ _reg(
     "analysis_upcoming_scheduled_risks",
     "analysis",
     "Scheduled outflows due within N days that may exceed category balances.",
+)
+_reg(
+    "analysis_recurring_charges",
+    "analysis",
+    "Repeating charges grouped by payee id, with cadence and estimated annual cost.",
 )
 
 
@@ -331,3 +337,29 @@ async def analysis_upcoming_scheduled_risks_tool(
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)
     return await upcoming_scheduled_risks(ctx, resolved, lookahead_days=lookahead_days)
+
+
+@mcp.tool(
+    name="analysis_recurring_charges",
+    description=(
+        "[READ] Find repeating charges (subscriptions, memberships, regular bills) and estimate what "
+        "each costs per year. months: how far back to look, default 12. "
+        "Charges are grouped by YNAB payee id, not by payee name, so no fuzzy name matching is involved: "
+        "YNAB already resolves a merchant to one payee regardless of how the bank spelled it. "
+        "Only outflows count; transfers between your own accounts are excluded. "
+        "A series needs at least 3 charges on a recognisable cadence (weekly through yearly) to be "
+        "reported. Each result carries occurrences — treat a series seen 3 times as a weaker signal than "
+        "one seen 12 times — plus amount_changed and days_since_last, which surface price rises and "
+        "charges that may have lapsed. Amounts are in milliunits (1000 = $1.00)."
+    ),
+    annotations=ToolAnnotations(readOnlyHint=True),
+)
+@tool_handler
+async def analysis_recurring_charges_tool(
+    plan_id: str | None = None,
+    months: int = 12,
+    since_date: str | None = None,
+) -> dict[str, Any]:
+    ctx = get_app_context()
+    resolved = ctx.settings.resolve_plan_id(plan_id)
+    return await recurring_charges(ctx, resolved, months=months, since_date=since_date)

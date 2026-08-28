@@ -137,6 +137,7 @@ Read-only, works out of the box:
 | "Which targets won't be funded this month?" | `analysis_target_funding_gaps` |
 | "Are any scheduled transactions at risk?" | `analysis_upcoming_scheduled_risks` |
 | "What have I spent at this payee over the last year?" | `bookkeeping_transaction_history` |
+| "What subscriptions am I actually paying for?" | `analysis_recurring_charges` |
 
 With `YNAB_ALLOW_WRITES=1`:
 
@@ -148,6 +149,17 @@ preceded it. `history_revert` undoes any of them.
 Agents work best when they start with `overview_available_tools`, which returns
 the current tool catalog grouped by family. See
 [Tool Surface](docs/tool-surface.md) for the full map.
+
+### Guided workflows
+
+Six prompts ship with the server, and most clients surface them as slash
+commands — a starting point that does not require reading the tool list first:
+monthly review, weekly triage, categorize and approve, subscription audit, cash
+position, and review-and-undo.
+
+Three resources (`ynab://guide/*`) carry the YNAB method, the write-safety
+rules, and guidance on which tool to reach for. They are fetched on demand, so
+they cost nothing until a client asks for them.
 
 ## Configuration
 
@@ -174,7 +186,7 @@ what is left; it costs no API requests.
 
 ## Tool Families
 
-44 read-only tools, 63 with writes enabled.
+45 read-only tools, 64 with writes enabled, plus 6 guided prompts and 3 reference resources.
 
 | Family | Type | Purpose |
 |--------|------|---------|
