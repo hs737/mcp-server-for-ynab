@@ -20,12 +20,24 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING, NoReturn
+
+from mcp_server_for_ynab import package_version
+
+if TYPE_CHECKING:
+    from mcp.server.fastmcp import FastMCP
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="mcp-server-for-ynab",
         description="AI-first MCP server for YNAB budget management.",
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"mcp-server-for-ynab {package_version()}",
+        help="Print the installed version and exit.",
     )
     subparsers = parser.add_subparsers(dest="command")
 
@@ -105,10 +117,32 @@ def main() -> None:
     _run_stdio()
 
 
-def _run_stdio() -> None:
+def _fail(message: str) -> NoReturn:
+    """Report a startup failure as one line on stderr and exit non-zero.
+
+    A traceback here is not a debugging aid, it is the whole first-run
+    experience: the overwhelmingly common failure is an unset YNAB_API_KEY, and
+    stdio clients such as Claude Desktop surface only what lands on stderr,
+    inside a log file the user has to go find. Print the one line that says what
+    to do instead of thirty that bury it.
+    """
+    print(f"mcp-server-for-ynab: {message}", file=sys.stderr)
+    sys.exit(1)
+
+
+def _create_app_or_exit() -> FastMCP:
+    """Build the app, turning a configuration failure into a readable exit."""
+    from mcp_server_for_ynab.config.settings import ConfigError
     from mcp_server_for_ynab.server.app import create_app
 
-    app = create_app()
+    try:
+        return create_app()
+    except ConfigError as exc:
+        _fail(str(exc))
+
+
+def _run_stdio() -> None:
+    app = _create_app_or_exit()
     app.run(transport="stdio")
 
 
@@ -197,9 +231,7 @@ def _run_http(host: str | None, port: int | None) -> None:
     """
     resolved_host, resolved_port = resolve_bind(host, port)
 
-    from mcp_server_for_ynab.server.app import create_app
-
-    app = create_app()
+    app = _create_app_or_exit()
     app.settings.host = resolved_host
     app.settings.port = resolved_port
     app.run(transport="streamable-http")

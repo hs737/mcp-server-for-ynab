@@ -49,8 +49,14 @@ class Settings:
     def _require(name: str) -> str:
         value = os.environ.get(name)
         if not value:
+            # Most people reach this line through an MCP client, not a shell, and
+            # have no clone and so no .env.example to consult. Name the place the
+            # variable actually has to go.
             raise ConfigError(
-                f"Required environment variable {name!r} is not set. See .env.example for setup instructions."
+                f"Required environment variable {name!r} is not set. "
+                "Set it in the 'env' block of your MCP client config, or export it "
+                "before starting the server. Get a token at "
+                "https://app.ynab.com/settings/developer"
             )
         return value
 

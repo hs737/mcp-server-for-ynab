@@ -447,12 +447,15 @@ Then use that path as `command`:
 
 Write the path out in full. `~` is not expanded in these config files.
 
-### `YNAB_API_KEY is required for PAT auth but is not set`
+### `Required environment variable 'YNAB_API_KEY' is not set`
 
 The client did not pass the variable through. Env vars exported in your shell do
 not reach a client-launched process — put the token in the client's own `env`
 block, or use a mechanism the client supports for reading it, such as Cursor's
 `envFile` or Codex's `env_vars`.
+
+The server exits immediately with this one line on stderr, so a client that
+shows you any server output at all will show you this.
 
 ### `plan_id is required`
 
@@ -485,6 +488,12 @@ YNAB_API_KEY=your_ynab_token uvx mcp-server-for-ynab smoke
 If that fails, the client cannot work either, and the output tells you why. If
 it succeeds, the problem is the client config — usually the `uvx` path or a
 missing env var.
+
+Include the version when reporting a problem — it needs no token:
+
+```bash
+uvx mcp-server-for-ynab --version
+```
 
 For more detail, raise the log level with `LOG_LEVEL=DEBUG` in the client's
 `env`. Logs go to stderr, which most clients surface in an MCP log panel.
