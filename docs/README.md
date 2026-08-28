@@ -50,6 +50,10 @@ mindmap
       auth
       logging
       write safety
+    distribution.md
+      release channels
+      directories
+      adding a channel
     AGENTS.md
       implementation rules
       extension paths

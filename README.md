@@ -347,6 +347,7 @@ If you are:
 - **adding or changing tools**: [Tool Surface](docs/tool-surface.md)
 - **verifying behavior**: [Testing](docs/testing.md)
 - **working on auth, error handling, or logging**: [Security](docs/security.md)
+- **publishing or adding a release channel**: [Distribution](docs/distribution.md)
 
 Full map: [Docs Index](docs/README.md). Also: [Postman Notes](postman/README.md),
 [Legal Notice](NOTICE.md).
