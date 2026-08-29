@@ -10,6 +10,7 @@ month is going, what is overspent, what your subscriptions really cost.
 [![Python](https://img.shields.io/pypi/pyversions/mcp-server-for-ynab?logo=python&logoColor=white&label=Python)](https://pypi.org/project/mcp-server-for-ynab/)
 [![CI](https://github.com/hs737/mcp-server-for-ynab/actions/workflows/ci.yml/badge.svg)](https://github.com/hs737/mcp-server-for-ynab/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![Listed on mcpservers.org](https://mcpservers.org/badge.svg)](https://mcpservers.org/servers/hs737/mcp-server-for-ynab)
 
 <!-- Absolute URL on purpose: this README is also the package description on
      PyPI, where a repository-relative image path resolves to nothing. -->

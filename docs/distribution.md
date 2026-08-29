@@ -41,13 +41,16 @@ the highest-leverage entry, because several of them read from it.
 - **[PulseMCP](https://www.pulsemcp.com/servers)** — indexes public servers;
   has a submit form to speed it up.
 
+## Listed
+
+- **[mcpservers.org](https://mcpservers.org/servers/hs737/mcp-server-for-ynab)**
+  — submitted and live. The README carries their badge.
+
 ## Directories that need a human
 
-Neither of these has an API or a pull-request path — both are web forms, and
-one offers a paid upsell that is not required.
+No API and no pull-request path — a web form, with a paid upsell that is not
+required.
 
-- **[mcpservers.org/submit](https://mcpservers.org/submit)** — name,
-  description, link, category, contact email.
 - **[pulsemcp.com](https://www.pulsemcp.com)** — Submit in the nav bar.
 
 Text to paste, so the listings stay consistent with everything else:
