@@ -23,6 +23,12 @@ build/
 .env.bak
 !.env.example
 
+# Generated-asset scratch. The rendered assets in assets/ are committed; these
+# are the intermediates that produce them.
+scripts/demo/.frames/
+scripts/demo/.captured.json
+scripts/demo/.social.svg
+
 # Testing / coverage
 .pytest_cache/
 .coverage

@@ -1,0 +1,15 @@
+{
+  "tool_count": 64,
+  "tools_shown": [
+    "overview_month_health",
+    "overview_cash_position",
+    "triage_summary",
+    "analysis_recurring_charges",
+    "analysis_overspent_categories"
+  ],
+  "tools_shown_all_exist": true,
+  "money_format_sample": {
+    "milliunits": 14840360,
+    "display": "$14,840.36"
+  }
+}

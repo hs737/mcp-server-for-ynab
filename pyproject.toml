@@ -84,6 +84,12 @@ ignore = ["B008"]
 [tool.ruff.lint.isort]
 known-first-party = ["mcp_server_for_ynab"]
 
+[tool.ruff.lint.per-file-ignores]
+# The asset renderers are mostly SVG templates. Wrapping markup to satisfy a
+# line-length rule makes it harder to read, not easier, and these files ship
+# nothing — they only produce images.
+"scripts/demo/*.py" = ["E501"]
+
 [tool.mypy]
 python_version = "3.12"
 strict = true

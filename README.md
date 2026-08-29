@@ -2,19 +2,31 @@
 
 # MCP Server for YNAB
 
+**Ask your budget a question.** Connect Claude, Codex, Cursor, or any MCP client
+to [YNAB](https://ynab.com) and get answers about your actual money — how the
+month is going, what is overspent, what your subscriptions really cost.
+
 [![PyPI](https://img.shields.io/pypi/v/mcp-server-for-ynab?logo=pypi&logoColor=white&label=PyPI)](https://pypi.org/project/mcp-server-for-ynab/)
 [![Python](https://img.shields.io/pypi/pyversions/mcp-server-for-ynab?logo=python&logoColor=white&label=Python)](https://pypi.org/project/mcp-server-for-ynab/)
 [![CI](https://github.com/hs737/mcp-server-for-ynab/actions/workflows/ci.yml/badge.svg)](https://github.com/hs737/mcp-server-for-ynab/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
-An AI-first [Model Context Protocol](https://modelcontextprotocol.io/) server for
-[YNAB](https://ynab.com). It exposes the YNAB API as MCP tools, then adds
-enriched tools that answer questions the raw API cannot answer in one call —
-budget health, cleanup queues, spending analysis.
+<!-- Absolute URL on purpose: this README is also the package description on
+     PyPI, where a repository-relative image path resolves to nothing. -->
+![A terminal session asking how the month is going and what subscriptions cost, answered by the server from a sample budget](https://raw.githubusercontent.com/hs737/mcp-server-for-ynab/master/assets/demo.gif)
 
-**Read-only by default.** Write tools are not registered unless you set
-`YNAB_ALLOW_WRITES=1`, so an agent cannot change your budget until you say so.
-See [Write Tools](#write-tools).
+```bash
+YNAB_API_KEY=your_token uvx mcp-server-for-ynab smoke
+```
+
+**Read-only by default.** The write tools are not registered at all unless you
+set `YNAB_ALLOW_WRITES=1`, so they never appear to the assistant and nothing can
+change your budget until you say so. When you do enable them, every write
+records the state that preceded it and can be undone.
+
+An [MCP](https://modelcontextprotocol.io/) server that exposes the YNAB API as
+tools, then adds enriched tools answering questions the raw API cannot answer in
+one call — budget health, cleanup queues, spending analysis, recurring charges.
 
 ## Quick Start
 
