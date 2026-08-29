@@ -17,10 +17,22 @@ from mcp_server_for_ynab.models.amounts import dollars_to_milliunits, milliunits
         (-999, "-$0.99"),  # sub-cent milliunit truncated to 2 decimal places
         (100_000, "$100.00"),
         (-50_000, "-$50.00"),
+        # Grouped once past a thousand: these strings are read by people, and
+        # "$14840.36" has to be counted rather than recognised.
+        (1_000_000, "$1,000.00"),
+        (14_840_360, "$14,840.36"),
+        (-1_234_567_890, "-$1,234,567.89"),
+        (999_999, "$999.99"),  # the boundary just below grouping
     ],
 )
 def test_milliunits_to_display(milliunits: int, expected: str) -> None:
     assert milliunits_to_display(milliunits) == expected
+
+
+def test_display_strings_are_grouped_in_thousands() -> None:
+    """Guards the separator specifically, since it is easy to drop in a refactor."""
+    assert "," in milliunits_to_display(1_000_000)
+    assert "," not in milliunits_to_display(999_999)
 
 
 @pytest.mark.parametrize(
