@@ -38,6 +38,12 @@ jobs:
       - name: Packaging manifests are in sync
         run: uv run python scripts/sync_packaging.py --check
 
+      # The README GIF and social card assert a tool count, which tools answer
+      # which question, and a money format. Those claims live in pixels, where a
+      # diff cannot show them going wrong.
+      - name: Generated assets still match the code
+        run: uv run python scripts/check_assets.py
+
       - name: Unit tests
         run: uv run pytest tests/unit -v
 

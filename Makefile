@@ -3,6 +3,7 @@
         verify-live verify-write verify-mcp-http \
         postman-generate postman-check \
         packaging-sync packaging-check mcpb docker-build docker-smoke \
+        assets assets-check \
         test-postman test-postman-operator
 
 # ---------------------------------------------------------------------------
@@ -41,7 +42,7 @@ test-integration:
 # detection. Does NOT run Newman (live API calls require credentials).
 # ---------------------------------------------------------------------------
 
-check: lint typecheck test postman-check packaging-check
+check: lint typecheck test postman-check packaging-check assets-check
 
 # ---------------------------------------------------------------------------
 # Server — start
@@ -195,3 +196,30 @@ docker-build:
 
 docker-smoke: docker-build
 	docker run -i --rm -e YNAB_API_KEY=fake-token-for-startup mcp-server-for-ynab smoke
+
+# ---------------------------------------------------------------------------
+# Marketing assets
+#
+# The README GIF and the social preview card are generated, not drawn. Every
+# figure in them comes from the real tools run against a synthetic budget in
+# scripts/demo/, so the demo cannot claim something the server does not do, and
+# nobody's real finances are published.
+#
+# Re-render after any change that alters what they show: tool names, the shape
+# or wording of enriched output, money formatting, or the tool count.
+#
+# Needs rsvg-convert and ImageMagick:  brew install librsvg imagemagick
+# ---------------------------------------------------------------------------
+
+assets:
+	uv run python scripts/demo/capture.py
+	uv run python scripts/demo/social.py
+	uv run python scripts/demo/gif.py
+	uv run python scripts/check_assets.py --write
+
+# Fails when the assets assert something the code no longer does. Compares the
+# claims (tool count, tools shown, money format), not the pixels: the renderers
+# are deterministic but ImageMagick and font rendering are not stable across
+# machines, and a check that fails for the wrong reason gets muted.
+assets-check:
+	uv run python scripts/check_assets.py
