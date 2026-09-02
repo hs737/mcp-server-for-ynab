@@ -38,6 +38,7 @@ REVERT_STRATEGIES = {
     "scheduled_delete": "recreate the scheduled transaction from its recorded state",
     "category_update": "restore the previous name and note",
     "category_month_budget": "restore the previous budgeted amount",
+    "category_month_budget_batch": "restore the previous budgeted amount of every category in the batch",
     "category_group_update": "restore the previous name",
     "payee_update": "restore the previous name",
 }

@@ -25,6 +25,7 @@ flowchart TD
     B --> E["triage"]
     B --> F["bookkeeping"]
     B --> G["analysis"]
+    B --> S["changes"]
     C --> H["user/plans"]
     C --> I["accounts/categories/months"]
     C --> J["payees/payee_locations"]
@@ -79,6 +80,20 @@ Purpose:
 Typical uses:
 - uncategorized transactions
 - unapproved transactions
+- hand-entered transactions on linked accounts that never cleared
+- accounts nobody has reconciled recently
+
+A queue is only useful if everything in it is work. YNAB's `type=uncategorized`
+filter is not that queue: on a live plan it returned 519 transactions of which
+none actually needed a category. The rest were transactions on an off-budget
+tracking account, which take no category, and transfers between two on-budget
+accounts, which take no category either.
+
+`triage_uncategorized` therefore excludes both by default, reports `count` as
+the number needing attention and `raw_count` as what YNAB's own filter said, and
+breaks down what it excluded. `include_transfers` and `include_tracking_accounts`
+bring them back. A transfer *out* to a tracking account is not excluded — that
+money leaves the budget and does need a category.
 
 ### `bookkeeping`
 
@@ -96,9 +111,48 @@ Purpose:
 - higher-level budget reasoning
 
 Typical uses:
-- overspending
+- overspending, in one month or across a range
 - funding gaps
 - scheduled-transaction risk
+- recurring charges
+- credit-card funding and trapped money
+- assignments copied forward without review
+- following one category's money through time
+
+### `changes`
+
+Purpose:
+- re-check a plan cheaply after the user has edited it
+
+`changes_since` wraps YNAB's delta sync, which is on every list route and almost
+never used because using it means knowing the knowledge counter is plan-wide
+rather than per-route and threading one integer through three calls. Called with
+no argument it returns a baseline; called with a value it returns what moved.
+
+### Reading across months
+
+YNAB has no range endpoint, so anything spanning months costs one request per
+month. That is the constraint these tools are shaped around, and each one states
+its cost in its description.
+
+| Tool | Answers |
+|------|---------|
+| `months_range` | Budgeted, activity and balance per category per month, as one matrix |
+| `category_groups_summary_by_month` | The same at group level |
+| `analysis_overspent_history` | Every negative month-end balance, cash or credit, and what Ready to Assign absorbed |
+| `analysis_group_parity` | Whether two paired groups are funded and spent evenly |
+| `analysis_copied_forward_months` | Months that repeat the previous month exactly |
+| `analysis_flow_trace` | One category's assigned, moved, spent, refunded and left |
+| `analysis_credit_funding` | Card debt against payment-category funds, and money stranded in closed accounts |
+| `overview_balance_identity` | Whether the plan adds up at all |
+
+Ranges are capped at 36 months, which is refused with the reason rather than
+silently truncated.
+
+`overview_balance_identity` is the one to run first. Categories plus Ready to
+Assign equals on-budget accounts plus credit-card debt, and that holds whether
+or not the cards are funded — so a mismatch means the data is inconsistent
+rather than the budgeting being wrong. If it ties, the rest can be trusted.
 
 ## Raw Tool Families
 
@@ -150,6 +204,19 @@ leaves the plan, and the record has no date, payee, or account. Its fields are
   `money_movement_group_id`
 - to answer "where did the money go", use the transaction tools instead
 
+#### Batch writes compose raw writes, and are journaled as one entry
+
+`months_assign_many` and `money_move` are write tools that make several YNAB
+calls. They exist because the API's unit — one category, one month, one
+absolute amount — is not the unit of the decision. Applying a month's plan is
+thirty-five writes; moving money is two writes whose amounts have to be
+computed from carried balances.
+
+Each is journaled as a single history entry, so one decision reverts as one
+decision. Neither is atomic — YNAB has no transaction boundary — so both report
+what was applied and what failed, and a half-written `money_move` is journaled
+anyway, because that is precisely the case where a revert is needed.
+
 #### Category writes have two separate routes
 
 Budgeted amounts are per-month, and only `categories_update_for_month` can set
@@ -186,7 +253,22 @@ Guidance:
 Current transaction-list note:
 - the `transactions_list*` raw tools now return an MCP-native pagination envelope with `items`, `count`, `has_more`, and `next_offset`
 - use `next_offset` as the next call's `offset` when the tool reports more results
-- this pagination is deterministic and stateless; it does not change YNAB's underlying API behavior
+- `limit` defaults to 100 and is capped at 500; the cap is in the tool description rather than discovered through an error
+- they also accept `cleared`, `approved`, `manual_only`, and `min_amount`, which YNAB's routes do not support. These are applied before paging, so `total_available` counts matches rather than rows
+
+#### Payload size is a design constraint
+
+A single `months_get` on a real plan is about 60 KB, because YNAB returns every
+goal field of every category. `months_get` and `categories_list` therefore take
+`compact=true`, which returns `id`, `group`, `name`, `budgeted`, `activity` and
+`balance` and nothing else — about a quarter of the size, measured on a
+ninety-category plan.
+
+Both also exclude hidden and deleted categories unless `include_hidden=true`,
+and report `omitted_category_count` so the omission is visible. Hidden is not a
+display preference in YNAB: the credit-card payment categories live in a hidden
+group, which is why `analysis_credit_funding` exists and why `include_hidden`
+does.
 
 ### Enriched tools
 

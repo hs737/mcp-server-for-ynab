@@ -129,6 +129,73 @@ specifically.
 
 
 @mcp.resource(
+    "ynab://guide/credit-accounts",
+    name="Credit accounts",
+    title="Credit cards and lines of credit in YNAB",
+    description="Payment categories, unfunded debt, and why repayments routed through a brokerage go wrong.",
+    mime_type=GUIDE_MIME,
+)
+def credit_accounts_guide() -> str:
+    return """# Credit cards and lines of credit in YNAB
+
+Every on-budget credit account has a shadow: a category in a hidden group
+called "Credit Card Payments", named identically to the account. Nothing in the
+API links the two — the match is by name — and the group is hidden, so this
+whole mechanism is invisible unless you go looking for it.
+
+## What the payment category is for
+
+Spending on a card does two things at once. It records the purchase against the
+spending category, and it moves that same amount of budgeted money into the
+card's payment category, where it waits until you pay the bill. The card's
+balance goes further into debt; the payment category holds the money to settle
+it. Paying the card is a transfer that spends the payment category down.
+
+When the two agree, the debt is funded: you owe money, and you have set aside
+exactly enough to cover it.
+
+## The two ways it goes wrong
+
+**Unfunded debt.** If the spending category was overspent, the money is not
+there to move, and the payment category ends up short of the card balance. The
+purchase still happened, so the debt is real; the budget just has nothing
+assigned against it. `analysis_credit_funding` reports the gap per account, and
+`overview_budget_snapshot` reports the total.
+
+**Trapped funds.** Closing an account does not empty its payment category. The
+money stays assigned to a card that can no longer be paid — spoken for in every
+total, spendable by nothing. On the plan this guidance came from, $4,545 sat
+that way for months.
+
+## Lines of credit, and repayments through another account
+
+A line of credit behaves like a card: it has a payment category, and paying it
+down is a transfer into it.
+
+The confusion that costs people an afternoon is this. A repayment made from a
+tracking account — a brokerage, typically, since that is often where the money
+lives — arrives in YNAB as an inflow to the line of credit. YNAB treats it as a
+payment, so it lands against the hidden payment category, not against whatever
+spending category the user expected. The result is a spending category that
+nets to zero, a hidden category going negative, and no visible explanation for
+either.
+
+If you see a payment category going negative while a spending category nets to
+zero, look for a transfer from an off-budget account. That is the shape of it.
+
+## What to check
+
+- `analysis_credit_funding` — debt versus funds per account, trapped money, and
+  payment categories that went negative by month.
+- `overview_balance_identity` — categories plus Ready to Assign against
+  accounts plus card debt. It ties whether or not the cards are funded, so a
+  mismatch means the data is wrong rather than the budget.
+- `months_get` and `categories_list` with `include_hidden=true` — the only way
+  to see payment categories in those tools.
+"""
+
+
+@mcp.resource(
     "ynab://guide/tool-selection",
     name="Tool selection",
     title="Which tool to reach for",

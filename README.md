@@ -209,30 +209,49 @@ what is left; it costs no API requests.
 
 ## Tool Families
 
-45 read-only tools, 64 with writes enabled, plus 6 guided prompts and 3 reference resources.
+56 read-only tools, 77 with writes enabled, plus 7 guided prompts and 4 reference resources.
 
 | Family | Type | Purpose |
 |--------|------|---------|
 | `overview` | enriched | Budget health snapshots and orientation |
 | `triage` | enriched | Transaction cleanup queues |
 | `bookkeeping` | enriched | Categorization suggestions, memo help, history |
-| `analysis` | enriched | Spending analysis, funding gaps, scheduled risks |
+| `analysis` | enriched | Overspending, funding gaps, scheduled risks, card funding, multi-month audits |
 | `history` | enriched | Review and roll back writes this server made |
+| `changes` | enriched | What moved since a given `server_knowledge` value |
 | `user` | raw | YNAB user info |
 | `plans` | raw | Plan and settings reads |
 | `accounts` | raw | Account reads and creation |
 | `categories` | raw | Categories and category groups |
-| `months` | raw | Month-level budget data |
+| `months` | raw | Month-level budget data, multi-month ranges, batch assignment |
 | `payees` | raw | Payee management |
 | `payee_locations` | raw | Geographic payee metadata, niche/low-priority |
 | `transactions` | raw | Transaction CRUD and import trigger |
 | `scheduled_transactions` | raw | Scheduled transaction management |
-| `money_movements` | raw | Money movement data |
+| `money_movements` | raw | Money movement data, and moving money between categories |
 
 **Raw tools** are close mirrors of YNAB endpoints — use them for exact reads and
-all writes. **Enriched tools** combine several reads into one answer — use them
+most writes. **Enriched tools** combine several reads into one answer — use them
 for orientation, investigation, and analysis. Every tool is labeled `read` or
-`write`, and enriched tools perform no hidden writes.
+`write`, and no enriched tool writes unless its name and description say so.
+
+### Reading a lot of budget without reading a lot of JSON
+
+A single month of a real plan is around 60 KB of JSON, because YNAB returns
+every goal field of every category, hidden ones included. Reviewing a year that
+way does not fit in a context window.
+
+- `months_get` and `categories_list` take `compact=true`, which returns six
+  fields per category instead of thirty — about a quarter of the size.
+- `months_range` returns a whole range as one category-by-month matrix, so a
+  twenty-one-month review is one call rather than twenty-one.
+- `category_groups_summary_by_month` does the same at group level, which is
+  where most "is this healthy" questions actually live.
+- `changes_since` reports what moved since a `server_knowledge` value, so
+  re-checking after the user edits their budget costs one small call.
+
+Range tools still spend one YNAB request per month — there is no range endpoint
+— so each one says what it costs and the range is capped at 36 months.
 
 More detail: [Tool Surface](docs/tool-surface.md)
 
@@ -278,6 +297,21 @@ recreated transaction also gets a new id and loses any bank-import link.
 Tools that change a value re-read it afterwards and report a `verification`
 block. A 200 response is not proof: YNAB accepts `budgeted` on the category
 update route, returns 200, and ignores it. Verification is what catches that.
+
+### Applying a plan, and moving money
+
+YNAB's API assigns money one category-month at a time, which makes a month's
+plan thirty-five separate writes and thirty-five separate history entries.
+
+- `months_assign_many` applies a whole month in one call, journaled as one
+  entry, so it can be undone as the one decision it was.
+- `money_move` moves available money between two categories — or to and from
+  Ready to Assign — reading the current amounts and doing the arithmetic, so a
+  carried-forward balance is not mistaken for the assigned amount.
+
+Neither is atomic, because YNAB has no transaction boundary. Both report what
+was applied and what failed, and a half-written `money_move` is still journaled
+so the money can be put back.
 
 ## Amount Convention
 

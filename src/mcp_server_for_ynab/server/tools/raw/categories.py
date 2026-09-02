@@ -6,6 +6,7 @@ from typing import Any
 
 from mcp.types import ToolAnnotations
 
+from mcp_server_for_ynab.enriched.multi_month import compact_category, visible
 from mcp_server_for_ynab.history import capture, journal
 from mcp_server_for_ynab.models.ynab.categories import (
     SaveCategory,
@@ -24,7 +25,7 @@ def _reg(name: str, classification: str, summary: str) -> None:
     tool_registry.register(name, "categories", classification, "raw", summary)  # type: ignore[arg-type]
 
 
-_reg("categories_list", "read", "List all categories grouped by category group. Supports delta sync.")
+_reg("categories_list", "read", "List categories by group. compact=true for a small payload. Supports delta sync.")
 _reg("categories_get", "read", "Get a single category by ID.")
 _reg("categories_get_for_month", "read", "Get a category's budgeted/activity/balance for a specific month.")
 _reg("categories_create", "write", "Create a new category. [WRITE]")
@@ -42,7 +43,12 @@ _reg("category_groups_update", "write", "Update a category group. [WRITE]")
     name="categories_list",
     description=(
         "[READ] List all categories grouped by category group. "
-        "Amounts (budgeted, activity, balance) are in milliunits (1000 = $1.00). "
+        "Amounts (budgeted, activity, balance) are in milliunits (1000 = $1.00) and are for the "
+        "current month. "
+        "compact=true returns only id, group, name, budgeted, activity and balance per category — "
+        "about a quarter of the size, and enough to find an id or read the shape of a plan. "
+        "include_hidden=true adds hidden categories, which is where YNAB keeps the credit-card "
+        "payment categories; deleted categories are never returned. "
         "Note: category group listing is embedded here — YNAB returns categories already grouped. "
         "Supports delta sync via last_knowledge_of_server."
     ),
@@ -52,11 +58,49 @@ _reg("category_groups_update", "write", "Update a category group. [WRITE]")
 async def categories_list(
     plan_id: str | None = None,
     last_knowledge_of_server: int | None = None,
+    compact: bool = False,
+    include_hidden: bool = False,
 ) -> dict[str, Any]:
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)
     result = await ctx.categories.list(resolved, last_knowledge_of_server=last_knowledge_of_server)
-    return result.model_dump()
+
+    groups = [g for g in result.data.category_groups if not g.deleted]
+    omitted = 0
+    kept: list[tuple[Any, list[Any]]] = []
+    for group in groups:
+        members = visible(group.categories, include_hidden=include_hidden)
+        omitted += len(group.categories) - len(members)
+        kept.append((group, members))
+
+    if compact:
+        return {
+            "scope": "categories_list",
+            "plan_id": resolved,
+            "compact": True,
+            "include_hidden": include_hidden,
+            "omitted_category_count": omitted,
+            "category_count": sum(len(members) for _, members in kept),
+            "amounts": "milliunits (1000 = $1.00), current month",
+            "server_knowledge": result.data.server_knowledge,
+            "groups": [
+                {
+                    "id": group.id,
+                    "name": group.name,
+                    "hidden": group.hidden,
+                    "categories": [compact_category(c) for c in members],
+                }
+                for group, members in kept
+            ],
+        }
+
+    payload = result.model_dump()
+    payload["data"]["category_groups"] = [
+        {**group.model_dump(), "categories": [c.model_dump() for c in members]} for group, members in kept
+    ]
+    payload["omitted_category_count"] = omitted
+    payload["include_hidden"] = include_hidden
+    return payload
 
 
 @mcp.tool(

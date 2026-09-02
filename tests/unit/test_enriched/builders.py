@@ -19,7 +19,19 @@ from mcp_server_for_ynab.models.ynab.categories import (
     Category,
     CategoryGroup,
 )
-from mcp_server_for_ynab.models.ynab.months import Month, MonthData, MonthResponse
+from mcp_server_for_ynab.models.ynab.money_movements import (
+    MoneyMovement,
+    MoneyMovementsData,
+    MoneyMovementsResponse,
+)
+from mcp_server_for_ynab.models.ynab.months import (
+    Month,
+    MonthData,
+    MonthResponse,
+    MonthsData,
+    MonthsResponse,
+    MonthSummary,
+)
 from mcp_server_for_ynab.models.ynab.scheduled_transactions import (
     ScheduledTransaction,
     ScheduledTransactionsData,
@@ -38,11 +50,14 @@ def category(
     goal_under_funded: int | None = None,
     hidden: bool = False,
     deleted: bool = False,
+    group_id: str = "group-1",
+    group_name: str | None = "Everyday",
     **extra: Any,
 ) -> Category:
     return Category(
         id=id,
-        category_group_id="group-1",
+        category_group_id=group_id,
+        category_group_name=group_name,
         name=name,
         hidden=hidden,
         budgeted=budgeted,
@@ -89,6 +104,10 @@ def account(
     closed: bool = False,
     deleted: bool = False,
     type: str = "checking",
+    cleared_balance: int | None = None,
+    uncleared_balance: int = 0,
+    direct_import_linked: bool | None = None,
+    last_reconciled_at: str | None = None,
 ) -> Account:
     return Account(
         id=id,
@@ -97,9 +116,11 @@ def account(
         on_budget=on_budget,
         closed=closed,
         balance=balance,
-        cleared_balance=balance,
-        uncleared_balance=0,
+        cleared_balance=balance if cleared_balance is None else cleared_balance,
+        uncleared_balance=uncleared_balance,
         transfer_payee_id=f"transfer-{id}",
+        direct_import_linked=direct_import_linked,
+        last_reconciled_at=last_reconciled_at,
         deleted=deleted,
     )
 
@@ -113,11 +134,63 @@ def categories_response(*items: Category, server_knowledge: int = 1) -> Categori
     return CategoriesResponse(data=CategoriesData(category_groups=[group], server_knowledge=server_knowledge))
 
 
+def category_group(
+    name: str = "Everyday",
+    *,
+    id: str = "group-1",
+    hidden: bool = False,
+    categories: list[Category] | None = None,
+) -> CategoryGroup:
+    return CategoryGroup(id=id, name=name, hidden=hidden, deleted=False, categories=categories or [])
+
+
+def groups_response(*groups: CategoryGroup, server_knowledge: int = 1) -> CategoriesResponse:
+    """A categories response built from explicit groups, for multi-group cases."""
+    return CategoriesResponse(data=CategoriesData(category_groups=list(groups), server_knowledge=server_knowledge))
+
+
+def months_list_response(*items: MonthSummary, server_knowledge: int = 1) -> MonthsResponse:
+    return MonthsResponse(data=MonthsData(months=list(items), server_knowledge=server_knowledge))
+
+
+def month_summary(*, month: str = "2026-07-01", budgeted: int = 0) -> MonthSummary:
+    return MonthSummary(
+        month=month, income=0, budgeted=budgeted, activity=0, to_be_budgeted=0, age_of_money=None, deleted=False
+    )
+
+
+def money_movement(
+    *,
+    id: str = "mm-1",
+    month: str = "2026-07-01",
+    amount: int = 10_000,
+    from_category_id: str | None = None,
+    to_category_id: str | None = "cat-1",
+) -> MoneyMovement:
+    return MoneyMovement(
+        id=id,
+        month=month,
+        moved_at=f"{month}T12:00:00Z",
+        amount=amount,
+        from_category_id=from_category_id,
+        to_category_id=to_category_id,
+    )
+
+
+def money_movements_response(*items: MoneyMovement, server_knowledge: int = 1) -> MoneyMovementsResponse:
+    return MoneyMovementsResponse(
+        data=MoneyMovementsData(money_movements=list(items), server_knowledge=server_knowledge)
+    )
+
+
 def transaction(
     *,
     id: str = "txn-1",
     date: str = "2026-07-15",
     amount: int = -10_000,
+    account_id: str = "acct-1",
+    cleared: str = "cleared",
+    import_id: str | None = None,
     payee_id: str | None = "payee-1",
     payee_name: str | None = "Grocery Store",
     category_id: str | None = "cat-1",
@@ -132,9 +205,10 @@ def transaction(
         date=date,
         amount=amount,
         memo=memo,
-        cleared="cleared",
+        cleared=cleared,
         approved=True,
-        account_id="acct-1",
+        import_id=import_id,
+        account_id=account_id,
         account_name="Checking",
         payee_id=payee_id,
         payee_name=payee_name,
@@ -190,6 +264,9 @@ def scheduled_response(*items: ScheduledTransaction, server_knowledge: int = 1) 
 def make_ctx(
     *,
     month_response: MonthResponse | None = None,
+    months_by_month: dict[str, MonthResponse] | None = None,
+    months_list: MonthsResponse | None = None,
+    money_movements: MoneyMovementsResponse | None = None,
     accounts: AccountsResponse | None = None,
     categories: CategoriesResponse | None = None,
     transactions: TransactionsResponse | None = None,
@@ -204,7 +281,17 @@ def make_ctx(
     """
     ctx = MagicMock()
 
-    ctx.months.get = AsyncMock(return_value=month_response or month())
+    if months_by_month is not None:
+
+        async def _month(_plan: str, stamp: str) -> MonthResponse:
+            return months_by_month[stamp]
+
+        ctx.months.get = AsyncMock(side_effect=_month)
+    else:
+        ctx.months.get = AsyncMock(return_value=month_response or month())
+
+    ctx.months.list = AsyncMock(return_value=months_list or months_list_response())
+    ctx.money_movements.list = AsyncMock(return_value=money_movements or money_movements_response())
     ctx.accounts.list = AsyncMock(return_value=accounts or accounts_response())
     ctx.categories.list = AsyncMock(return_value=categories or categories_response())
     ctx.scheduled_transactions.list = AsyncMock(return_value=scheduled_transactions or scheduled_response())

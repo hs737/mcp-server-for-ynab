@@ -25,6 +25,8 @@ WRITE_TOOLS = {
     "categories_update_for_month",
     "category_groups_create",
     "category_groups_update",
+    "months_assign_many",
+    "money_move",
     "payees_create",
     "payees_update",
     "scheduled_transactions_create",

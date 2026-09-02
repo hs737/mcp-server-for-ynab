@@ -79,7 +79,19 @@ Every tool is one of:
 - `read`
 - `write`
 
-Enriched tools should stay read-only unless there is a very strong reason otherwise.
+Enriched tools should stay read-only unless there is a very strong reason
+otherwise. Two exist: `months_assign_many` and `money_move`, in
+`server/tools/writes.py`. Both compose raw writes because YNAB's unit of work —
+one category, one month, one absolute amount — is not the unit of the decision,
+and both journal the whole composition as a single entry so one decision reverts
+as one decision. A composed write must:
+
+- be named and described so the caller knows exactly what it will change
+- record every before-state it touched in one journal entry
+- report what was applied and what failed, since YNAB has no transaction
+  boundary
+- journal what it did even when it fails part-way, because that is precisely
+  when a revert is needed
 
 ### Naming
 
@@ -99,6 +111,36 @@ Every registered tool carries:
 - optional `priority`
 
 Keep metadata accurate. `overview_available_tools` depends on it.
+
+## Payload Size Rule
+
+Payload size is a correctness constraint, not an optimization. One uncompacted
+`months_get` on a real plan is about 60 KB, so a twenty-one-month review is not
+merely expensive — it does not fit, and the reviewer ends up parsing files off
+disk instead of reading a budget.
+
+Therefore:
+
+- any tool returning a list of categories offers `compact=true`, projecting
+  through `enriched/multi_month.py:compact_category`
+- hidden and deleted categories are excluded by default, and the response says
+  how many were omitted rather than dropping them silently
+- anything spanning months goes through `enriched/multi_month.py`, which owns
+  month normalisation, the 36-month cap, and the concurrency limit
+- a tool whose cost scales with the range says so in its description, because
+  YNAB has no range endpoint and one month is one request
+
+Hidden is not a display preference. YNAB keeps each credit card's payment
+category in a hidden group, so `include_hidden` is the difference between
+seeing card funding and not.
+
+## Queue Rule
+
+A triage queue is only useful if everything in it is work. Anything that cannot
+be acted on — a transaction on an off-budget tracking account, a transfer
+between two on-budget accounts — is excluded by default, and the response
+reports both the actionable count and what the raw filter said. Adding a queue
+means deciding what does not belong in it.
 
 ## Milliunit Rule
 
@@ -152,11 +194,20 @@ Where YNAB supports it:
 
 Do not remove delta-sync capability from raw tools when modifying route wrappers.
 
+The counter is plan-wide, not per-route, which is why `changes_since` can pass
+one value to three list routes and return the highest as the value to carry
+forward.
+
 ## Mutation Safety
 
 - Raw write tools mutate only when explicitly called.
-- Enriched tools never perform hidden writes.
+- No tool ever performs a write the caller did not ask for by name.
 - Write tool descriptions should clearly indicate side effects.
+- The journal sentence on each write description is derived in
+  `server/tools/presentation.py`, not written on the decorator. If you add a
+  write whose revert story differs from the existing three cases — reversible,
+  recreated with a new id, permanent — extend that derivation rather than
+  hand-writing the sentence.
 
 ## How to Add a Raw Tool
 

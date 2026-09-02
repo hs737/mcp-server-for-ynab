@@ -25,12 +25,14 @@ EXPECTED_PROMPTS = {
     "subscription_audit",
     "cash_position",
     "undo_last_changes",
+    "budget_audit",
 }
 
 RESOURCE_BODIES = [
     resources.method_guide,
     resources.write_safety_guide,
     resources.tool_selection_guide,
+    resources.credit_accounts_guide,
 ]
 
 
@@ -107,6 +109,7 @@ def test_prompts_name_only_tools_that_exist() -> None:
         prompts.subscription_audit(),
         prompts.cash_position(),
         prompts.undo_last_changes(),
+        prompts.budget_audit(),
     ]
 
     referenced = {name for body in bodies for name in re.findall(r"`([a-z_]+_[a-z_]+)`", body)}

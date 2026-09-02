@@ -172,3 +172,48 @@ categories, category groups, or payees, so creating one is permanent; those
 entries are marked non-revertible with the reason. A recreated transaction also
 gets a new id and loses any bank-import link, so it is not identical to the one
 that was deleted. Say so before reverting rather than after."""
+
+
+@mcp.prompt(
+    name="budget_audit",
+    title="Multi-month budget audit",
+    description="Review a range of months: integrity, overspending, card funding, and drift.",
+)
+def budget_audit(from_month: str = "", to_month: str = "current") -> str:
+    """Guided review across many months rather than one."""
+    window = from_month or "the last twelve months"
+    return f"""Audit the user's budget across {window} through {to_month}.
+
+This is a range review, and range tools cost one YNAB request per month. Check
+`overview_request_budget` first and say so if the range has to be shortened.
+
+Work in this order, because each step decides whether the next one is worth
+trusting:
+
+1. `overview_balance_identity`. Categories plus Ready to Assign should equal
+   on-budget accounts plus card debt. If it does not tie, stop and report that
+   — every later number inherits the problem.
+2. `triage_reconciliation`. An account nobody has reconciled in a year makes
+   its balances a guess. Name the worst ones before quoting figures from them.
+3. `analysis_credit_funding`. Debt with no money set aside for it, and money
+   stranded in the payment category of a closed account.
+4. `analysis_overspent_history` over the range. Separate cash overspending,
+   which is taken out of the next month's Ready to Assign, from credit
+   overspending, which becomes uncovered debt.
+5. `analysis_copied_forward_months`. A month that repeats the one before it
+   exactly is "assign last month's amounts" applied without looking, and it
+   carries one-off assignments forward as though they were the plan.
+6. `category_groups_summary_by_month` for the shape of the range, and
+   `months_range` or `analysis_flow_trace` for any category worth following.
+
+Then write the report. Lead with the two or three findings that cost the user
+real money, each with the figure and the month it happened. Everything else can
+be a list.
+
+{_AMOUNTS}
+
+Say which numbers are inferred rather than reported. The cash-versus-credit
+split of an overspend is inferred from the accounts a category was spent on;
+YNAB does not record it. `triage_unmatched_manual` is worth running if YNAB and
+the bank disagree — hand-entered transactions that never cleared are usually
+the whole difference."""

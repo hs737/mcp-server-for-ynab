@@ -51,9 +51,11 @@ def _register_tools() -> None:
         resources,  # noqa: F401
     )
     from mcp_server_for_ynab.server.tools import (
+        audit,  # noqa: F401
         enriched,  # noqa: F401
         history,  # noqa: F401
         raw,  # noqa: F401
+        writes,  # noqa: F401
     )
     from mcp_server_for_ynab.server.tools.presentation import apply_presentation
 

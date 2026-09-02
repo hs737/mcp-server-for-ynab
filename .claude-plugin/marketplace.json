@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "mcp-server-for-ynab",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "MCP Server for YNAB",
   "owner": {
     "name": "Harsh S",
@@ -12,7 +12,7 @@
       "name": "mcp-server-for-ynab",
       "displayName": "MCP Server for YNAB",
       "description": "Connect your AI assistant to YNAB. Read-only by default, with opt-in writes that are recorded and reversible.",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "author": {
         "name": "Harsh S",
         "url": "https://github.com/hs737"

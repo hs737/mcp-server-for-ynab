@@ -75,7 +75,7 @@ src/mcp_server_for_ynab/
 ├── auth/           auth abstraction and PAT provider
 ├── cli/            stdio/http entrypoints and smoke helper
 ├── config/         settings and environment loading
-├── enriched/       consolidated read-only workflows
+├── enriched/       consolidated read workflows, including multi-month audits
 ├── http_client/    outbound httpx client for YNAB API calls
 ├── models/         shared errors, amount helpers, typed YNAB models
 ├── server/         FastMCP app, context, metadata, tool boundary, tool registration
@@ -140,8 +140,15 @@ Owns higher-level read workflows, including:
 - triage
 - bookkeeping guidance
 - analysis
+- multi-month reads (`multi_month.py`), credit-card funding (`credit.py`),
+  cross-month audits (`audit.py`), and delta sync (`changes.py`)
 
 These modules combine multiple raw reads into structured agent-friendly outputs.
+
+`multi_month.py` also owns the compact category projection used by
+`months_get`, `categories_list`, and every range tool. Payload size is a design
+constraint here rather than an optimization: one uncompacted month of a real
+plan is about 60 KB, so a year of them cannot be read at all.
 
 ### `server/`
 
@@ -151,6 +158,12 @@ Owns MCP-facing concerns:
 - request-scoped app context override for embedded runtimes
 - tool metadata registry
 - raw and enriched tool registration
+- composed write tools (`server/tools/writes.py`) that journal several YNAB
+  calls as one revertible entry
+- client-side transaction filters (`server/tools/filters.py`) applied before
+  paging, for the questions YNAB's routes cannot express
+- derived tool titles, behavioural hints, and the journal sentence appended to
+  every write description (`server/tools/presentation.py`)
 - structured tool error boundary
 - deterministic MCP-native pagination envelopes for oversized list responses
 
@@ -258,12 +271,25 @@ flowchart LR
     A["server/app.py:create_app"] --> B["initialize AppContext"]
     B --> C["import server.tools.enriched"]
     B --> D["import server.tools.raw"]
+    B --> H["import server.tools.audit"]
+    B --> I["import server.tools.writes"]
     C --> E["FastMCP tool registration"]
     D --> E
+    H --> E
+    I --> E
     C --> F["ToolRegistry metadata"]
     D --> F
+    H --> F
+    I --> F
+    E --> J["apply_presentation"]
+    F --> J
     F --> G["overview_available_tools"]
 ```
+
+`apply_presentation` runs last and projects registry metadata back onto the
+registered tools: titles, `destructiveHint`, and the sentence telling an agent
+whether a write can be undone. These are derived rather than written on each
+decorator, so a new tool gets them without anyone remembering to.
 
 For hosted runtimes, `embed.create_mcp_app()` reuses the same registration path
 without forcing the PAT startup flow.
@@ -316,6 +342,9 @@ The repo supports YNAB’s delta-sync semantics where available:
 - raw tools accept `last_knowledge_of_server`
 - responses expose `server_knowledge`
 - enriched tools may pass through relevant sync state when useful
+- `changes_since` wraps the three list routes behind one call, because the
+  knowledge counter is plan-wide and threading it through three routes by hand
+  is why delta sync went unused
 
 There is no local sync cache layer in the current implementation.
 

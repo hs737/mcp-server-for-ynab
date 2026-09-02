@@ -64,7 +64,7 @@ src/mcp_server_for_ynab/
 ├── cli/            stdio/http entrypoints and smoke helper
 ├── config/         settings and environment loading
 ├── embed.py        stable hosted-consumption surface for imported runtimes
-├── enriched/       higher-level read-only analysis and bookkeeping logic
+├── enriched/       higher-level read analysis, bookkeeping, and multi-month audit logic
 ├── http_client/    outbound httpx wrapper for YNAB API calls
 ├── models/         shared errors, amount helpers, typed YNAB models
 ├── server/         FastMCP app, app context, metadata registry, tool handlers
@@ -78,10 +78,32 @@ src/mcp_server_for_ynab/server/
 ├── app.py              FastMCP application factory
 ├── context.py          shared and request-scoped app context helpers
 ├── registry.py         tool metadata catalog
+├── prompts.py          guided workflows, surfaced as MCP prompts
+├── resources.py        reference guides, surfaced as MCP resources
 └── tools/
+    ├── audit.py        multi-month range and integrity tool registrations
     ├── boundary.py     structured error boundary for tool handlers
     ├── enriched.py     enriched tool registrations
+    ├── filters.py      client-side transaction filters, applied before paging
+    ├── pagination.py   MCP-native pagination envelope
+    ├── presentation.py derived titles, hints, and write-safety sentences
+    ├── writes.py       composed write tools journaled as one entry
     └── raw/            raw tool registrations by resource family
+```
+
+The `enriched/` package splits along the question being answered rather than the
+YNAB resource being read:
+
+```text
+src/mcp_server_for_ynab/enriched/
+├── analysis.py     single-month analysis and recurring charges
+├── audit.py        cross-month audits and the balance identity
+├── bookkeeping.py  categorization and memo suggestions
+├── changes.py      delta sync behind one call
+├── credit.py       credit accounts and their payment categories
+├── multi_month.py  month ranges and the compact category projection
+├── overview.py     orientation snapshots
+└── triage.py       queues of work, with the non-work excluded
 ```
 
 ## Where to Add New Work
@@ -99,9 +121,15 @@ Add or update:
 
 Add or update:
 - logic in `src/mcp_server_for_ynab/enriched/`
-- registration in `src/mcp_server_for_ynab/server/tools/enriched.py`
+- registration in `src/mcp_server_for_ynab/server/tools/enriched.py`, or in
+  `audit.py` if it reads a range of months
 - unit tests for logic
 - integration tests if boundary behavior matters
+
+Anything that reads a range of months should build on
+`enriched/multi_month.py` rather than looping `months.get` itself: the range
+cap, month normalisation, and the concurrency limit live there, and a tool that
+skips them can spend an hour's request budget in one call.
 
 ### Add a new YNAB model
 

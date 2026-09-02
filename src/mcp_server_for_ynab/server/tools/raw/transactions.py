@@ -22,6 +22,7 @@ from mcp_server_for_ynab.server.app import mcp
 from mcp_server_for_ynab.server.context import get_app_context
 from mcp_server_for_ynab.server.registry import tool_registry
 from mcp_server_for_ynab.server.tools.boundary import tool_handler
+from mcp_server_for_ynab.server.tools.filters import FILTER_HELP, apply_transaction_filters
 from mcp_server_for_ynab.server.tools.pagination import paginate_items
 from mcp_server_for_ynab.server.tools.registration import write_tool
 
@@ -53,7 +54,9 @@ _reg("transactions_trigger_import", "write", "Trigger YNAB import from linked ac
         "Amounts are in milliunits (1000 = $1.00). "
         "Includes subtransactions for split transactions. "
         "Supports delta sync via last_knowledge_of_server. "
-        "Returns a paginated envelope with items, count, has_more, and next_offset."
+        "Returns a paginated envelope with items, count, has_more, and next_offset. "
+        "limit defaults to 100 and cannot exceed 500. "
+        f"{FILTER_HELP}"
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
@@ -65,6 +68,10 @@ async def transactions_list(
     limit: int = 100,
     offset: int = 0,
     last_knowledge_of_server: int | None = None,
+    cleared: str | None = None,
+    approved: bool | None = None,
+    manual_only: bool | None = None,
+    min_amount: int | None = None,
 ) -> dict[str, Any]:
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)
@@ -75,7 +82,13 @@ async def transactions_list(
         last_knowledge_of_server=last_knowledge_of_server,
     )
     return paginate_items(
-        result.data.transactions,
+        apply_transaction_filters(
+            result.data.transactions,
+            cleared=cleared,
+            approved=approved,
+            manual_only=manual_only,
+            min_amount=min_amount,
+        ),
         limit=limit,
         offset=offset,
         server_knowledge=result.data.server_knowledge,
@@ -86,7 +99,10 @@ async def transactions_list(
     name="transactions_list_by_account",
     description=(
         "[READ] List transactions for a specific account. Amounts are in milliunits. "
-        "Supports delta sync. Returns a paginated envelope with items, count, has_more, and next_offset."
+        "Supports delta sync. "
+        "Returns a paginated envelope with items, count, has_more, and next_offset. "
+        "limit defaults to 100 and cannot exceed 500. "
+        f"{FILTER_HELP}"
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
@@ -99,6 +115,10 @@ async def transactions_list_by_account(
     limit: int = 100,
     offset: int = 0,
     last_knowledge_of_server: int | None = None,
+    cleared: str | None = None,
+    approved: bool | None = None,
+    manual_only: bool | None = None,
+    min_amount: int | None = None,
 ) -> dict[str, Any]:
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)
@@ -110,7 +130,13 @@ async def transactions_list_by_account(
         last_knowledge_of_server=last_knowledge_of_server,
     )
     return paginate_items(
-        result.data.transactions,
+        apply_transaction_filters(
+            result.data.transactions,
+            cleared=cleared,
+            approved=approved,
+            manual_only=manual_only,
+            min_amount=min_amount,
+        ),
         limit=limit,
         offset=offset,
         server_knowledge=result.data.server_knowledge,
@@ -121,7 +147,9 @@ async def transactions_list_by_account(
     name="transactions_list_by_category",
     description=(
         "[READ] List transactions for a specific category. Amounts in milliunits. "
-        "Returns a paginated envelope with items, count, has_more, and next_offset."
+        "Returns a paginated envelope with items, count, has_more, and next_offset. "
+        "limit defaults to 100 and cannot exceed 500. "
+        f"{FILTER_HELP}"
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
@@ -134,6 +162,10 @@ async def transactions_list_by_category(
     limit: int = 100,
     offset: int = 0,
     last_knowledge_of_server: int | None = None,
+    cleared: str | None = None,
+    approved: bool | None = None,
+    manual_only: bool | None = None,
+    min_amount: int | None = None,
 ) -> dict[str, Any]:
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)
@@ -145,7 +177,13 @@ async def transactions_list_by_category(
         last_knowledge_of_server=last_knowledge_of_server,
     )
     return paginate_items(
-        result.data.transactions,
+        apply_transaction_filters(
+            result.data.transactions,
+            cleared=cleared,
+            approved=approved,
+            manual_only=manual_only,
+            min_amount=min_amount,
+        ),
         limit=limit,
         offset=offset,
         server_knowledge=result.data.server_knowledge,
@@ -156,7 +194,9 @@ async def transactions_list_by_category(
     name="transactions_list_by_payee",
     description=(
         "[READ] List transactions for a specific payee. Amounts in milliunits. "
-        "Returns a paginated envelope with items, count, has_more, and next_offset."
+        "Returns a paginated envelope with items, count, has_more, and next_offset. "
+        "limit defaults to 100 and cannot exceed 500. "
+        f"{FILTER_HELP}"
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
@@ -169,6 +209,10 @@ async def transactions_list_by_payee(
     limit: int = 100,
     offset: int = 0,
     last_knowledge_of_server: int | None = None,
+    cleared: str | None = None,
+    approved: bool | None = None,
+    manual_only: bool | None = None,
+    min_amount: int | None = None,
 ) -> dict[str, Any]:
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)
@@ -180,7 +224,13 @@ async def transactions_list_by_payee(
         last_knowledge_of_server=last_knowledge_of_server,
     )
     return paginate_items(
-        result.data.transactions,
+        apply_transaction_filters(
+            result.data.transactions,
+            cleared=cleared,
+            approved=approved,
+            manual_only=manual_only,
+            min_amount=min_amount,
+        ),
         limit=limit,
         offset=offset,
         server_knowledge=result.data.server_knowledge,
@@ -193,7 +243,9 @@ async def transactions_list_by_payee(
         "[READ] List transactions for a specific month. "
         "month: ISO date string for the first day of the month (e.g. '2024-01-01'). "
         "Amounts in milliunits. "
-        "Returns a paginated envelope with items, count, has_more, and next_offset."
+        "Returns a paginated envelope with items, count, has_more, and next_offset. "
+        "limit defaults to 100 and cannot exceed 500. "
+        f"{FILTER_HELP}"
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
@@ -206,6 +258,10 @@ async def transactions_list_by_month(
     limit: int = 100,
     offset: int = 0,
     last_knowledge_of_server: int | None = None,
+    cleared: str | None = None,
+    approved: bool | None = None,
+    manual_only: bool | None = None,
+    min_amount: int | None = None,
 ) -> dict[str, Any]:
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)
@@ -217,7 +273,13 @@ async def transactions_list_by_month(
         last_knowledge_of_server=last_knowledge_of_server,
     )
     return paginate_items(
-        result.data.transactions,
+        apply_transaction_filters(
+            result.data.transactions,
+            cleared=cleared,
+            approved=approved,
+            manual_only=manual_only,
+            min_amount=min_amount,
+        ),
         limit=limit,
         offset=offset,
         server_knowledge=result.data.server_knowledge,

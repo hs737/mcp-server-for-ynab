@@ -150,6 +150,23 @@ async def revert_entry(ctx: AppContext, entry: journal.HistoryEntry) -> dict[str
             "budgeted": entry.before["budgeted"],
         }
 
+    elif entry.operation == "category_month_budget_batch":
+        # A batch assignment is one entry so it can be undone as one decision,
+        # which is the point of applying a month's plan in a single call. Each
+        # line is still restored individually, and a failure part-way names the
+        # categories that kept their new amounts rather than reporting success.
+        restored, failed = [], []
+        for state in entry.before or []:
+            payload = SaveCategoryWrapper(category=SaveCategory(budgeted=state["budgeted"]))
+            try:
+                await ctx.categories.update_for_month(plan, state["month"], state["id"], payload)
+                restored.append(state["id"])
+            except Exception as exc:
+                failed.append({"category_id": state["id"], "error": str(exc)})
+        outcome = {"action": "restored previous budgeted amounts", "restored": restored, "failed": failed}
+        if failed:
+            outcome["note"] = "Partially reverted. The listed categories still hold their new amounts."
+
     elif entry.operation == "category_group_update":
         group_payload = SaveCategoryGroupWrapper(category_group=SaveCategoryGroup(name=entry.before["name"]))
         await ctx.categories.update_group(plan, str(entry.entity_id), group_payload)

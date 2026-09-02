@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Any
 
+from mcp_server_for_ynab.enriched.credit import credit_position
 from mcp_server_for_ynab.models.amounts import milliunits_to_display
 from mcp_server_for_ynab.server.context import AppContext
 
@@ -24,6 +25,11 @@ async def budget_snapshot(ctx: AppContext, plan_id: str) -> dict[str, Any]:
     # Overspent categories
     all_cats = [c for g in categories_data.data.category_groups for c in g.categories if not c.deleted and not c.hidden]
     overspent = [c for c in all_cats if c.balance < 0]
+
+    # Both lists are already in hand, so the two failures that hide best in a
+    # plan — card debt with no money set aside for it, and money assigned to a
+    # card that was closed — cost nothing extra to surface here.
+    credit = credit_position(accounts_data.data.accounts, categories_data.data.category_groups)
 
     return {
         "scope": "budget_snapshot",
@@ -50,6 +56,16 @@ async def budget_snapshot(ctx: AppContext, plan_id: str) -> dict[str, Any]:
             }
             for c in overspent[:10]
         ],
+        "unfunded_card_debt": credit["total_unfunded_debt"],
+        "unfunded_card_debt_display": credit["total_unfunded_debt_display"],
+        "trapped_funds": credit["trapped_funds"],
+        "trapped_funds_display": credit["trapped_funds_display"],
+        "credit_note": (
+            "unfunded_card_debt is what the cards owe beyond what their payment categories hold. "
+            "trapped_funds is money sitting in the payment category of a closed or missing account, "
+            "which the budget counts as spoken for but cannot spend. "
+            "Call analysis_credit_funding for the per-account breakdown."
+        ),
         "server_knowledge": categories_data.data.server_knowledge,
     }
 

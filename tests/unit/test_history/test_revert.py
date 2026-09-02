@@ -187,3 +187,45 @@ async def test_revert_to_an_unknown_entry_fails_clearly() -> None:
         await revert_to(_ctx(), "nosuchid")
 
     assert "No history entry" in str(exc.value)
+
+
+async def test_a_batch_assignment_restores_every_line() -> None:
+    """months_assign_many is one entry so a month's plan can be undone as one
+    decision; the revert still has to touch each category individually."""
+    ctx = _ctx()
+    entry = journal.record(
+        operation="category_month_budget_batch",
+        tool="months_assign_many",
+        plan_id="plan-1",
+        before=[
+            {"id": "c1", "month": "2026-07-01", "budgeted": 10_000},
+            {"id": "c2", "month": "2026-07-01", "budgeted": 25_000},
+        ],
+    )
+
+    result = await revert_entry(ctx, entry)
+
+    assert result["restored"] == ["c1", "c2"]
+    restored = [call.args[3].category.budgeted for call in ctx.categories.update_for_month.await_args_list]
+    assert restored == [10_000, 25_000]
+    assert journal.get(entry.id).reverted_by == result["revert_entry_id"]
+
+
+async def test_a_batch_revert_reports_the_lines_it_could_not_put_back() -> None:
+    ctx = _ctx()
+    ctx.categories.update_for_month = AsyncMock(side_effect=[MagicMock(), RuntimeError("YNAB said no")])
+    entry = journal.record(
+        operation="category_month_budget_batch",
+        tool="months_assign_many",
+        plan_id="plan-1",
+        before=[
+            {"id": "c1", "month": "2026-07-01", "budgeted": 10_000},
+            {"id": "c2", "month": "2026-07-01", "budgeted": 25_000},
+        ],
+    )
+
+    result = await revert_entry(ctx, entry)
+
+    assert result["restored"] == ["c1"]
+    assert result["failed"][0]["category_id"] == "c2"
+    assert "Partially reverted" in result["note"]

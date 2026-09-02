@@ -100,3 +100,36 @@ def test_a_changed_sdk_layout_does_not_crash_startup() -> None:
         _tool_manager = object()
 
     presentation.apply_presentation(Unrecognised())
+
+
+def test_a_reversible_write_says_the_journal_can_undo_it() -> None:
+    note = presentation.journal_note(_meta("transactions_update", "transactions", "write"))
+
+    assert "history_revert" in note
+
+
+def test_a_create_says_plainly_that_it_cannot_be_undone() -> None:
+    note = presentation.journal_note(_meta("categories_create", "categories", "write"))
+
+    assert "cannot be undone" in note
+
+
+def test_a_delete_promises_recreation_not_restoration() -> None:
+    """The journal can put a deleted transaction back, but with a new id and no
+    import link. Calling that 'revertible' would overstate what happens."""
+    note = presentation.journal_note(_meta("transactions_delete", "transactions", "write"))
+
+    assert "new id" in note
+
+
+def test_reads_get_no_journal_sentence() -> None:
+    assert presentation.journal_note(_meta("transactions_list", "transactions")) == ""
+
+
+def test_the_history_tools_are_not_told_to_revert_themselves() -> None:
+    assert presentation.journal_note(_meta("history_revert", "history", "write")) == ""
+
+
+def test_the_two_awkward_names_get_readable_titles() -> None:
+    assert presentation.tool_title(_meta("money_move", "money_movements", "write")).startswith("Money — Move")
+    assert presentation.tool_title(_meta("changes_since", "changes")) == "Changes — Since last check"

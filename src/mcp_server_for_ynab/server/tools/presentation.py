@@ -76,8 +76,21 @@ def _split_name(name: str) -> tuple[str, str]:
     return head, tail or "overview"
 
 
+# Two names the prefix rule reads correctly and titles badly: money_move is not
+# in the money_movements family it looks like it belongs to, and "Changes —
+# Since" is a sentence fragment. Overriding two titles is cheaper than bending
+# the rule that gets the other seventy-five right.
+_TITLE_OVERRIDES = {
+    "money_move": "Money — Move between categories",
+    "changes_since": "Changes — Since last check",
+}
+
+
 def tool_title(meta: ToolMeta) -> str:
     """A human-readable label, e.g. "Transactions — List by account"."""
+    override = _TITLE_OVERRIDES.get(meta.name)
+    if override:
+        return override
     prefix, action = _split_name(meta.name)
     return f"{_humanize(prefix)} — {_humanize(action)}"
 
@@ -101,6 +114,40 @@ _IRREVERSIBLE_NAMES = frozenset(
 
 def is_irreversible(name: str) -> bool:
     return name in _IRREVERSIBLE_NAMES or name.endswith(_IRREVERSIBLE_SUFFIXES)
+
+
+# Every write is journaled with the state that preceded it, and an agent that
+# does not know that is more cautious than it needs to be about the reversible
+# ones and no more careful about the rest. Saying so belongs on each write tool,
+# where it is read at the moment of deciding — but written once here, because a
+# sentence repeated on fifteen decorators is a sentence that goes missing from
+# the sixteenth.
+_JOURNAL_NOTE = (
+    " This write is journaled: history_list shows it, and history_revert restores the values recorded before the call."
+)
+_IRREVERSIBLE_NOTE = (
+    " This write is journaled, but it cannot be undone — YNAB has no route to reverse it. Say so before calling it."
+)
+# A delete is destructive and revertible at the same time, which is why it needs
+# its own sentence: the journal can put the record back, but not as the same
+# record. Saying only "revertible" would be a promise the revert does not keep.
+_DELETE_NOTE = (
+    " This write is journaled and history_revert can recreate the record, but it comes back with a "
+    "new id and no bank-import link, so it is not the same record."
+)
+
+
+def journal_note(meta: ToolMeta) -> str:
+    """The sentence appended to a write tool's description, or nothing."""
+    if meta.classification != "write":
+        return ""
+    # The history tools do the reverting; telling them to revert themselves is
+    # circular advice.
+    if meta.family == "history":
+        return ""
+    if meta.name.endswith(_IRREVERSIBLE_SUFFIXES):
+        return _DELETE_NOTE
+    return _IRREVERSIBLE_NOTE if is_irreversible(meta.name) else _JOURNAL_NOTE
 
 
 def _annotate(existing: ToolAnnotations | None, meta: ToolMeta, title: str) -> ToolAnnotations:
@@ -140,9 +187,14 @@ def apply_presentation(mcp: Any) -> None:
             continue
 
         title = tool_title(meta)
+        note = journal_note(meta)
         try:
             tool.title = title
             tool.annotations = _annotate(tool.annotations, meta, title)
+            # create_app is safe to call more than once, so this must not append
+            # the same sentence twice.
+            if note and note.strip() not in tool.description:
+                tool.description = tool.description.rstrip() + note
         except (AttributeError, ValueError):  # pragma: no cover - SDK shape change
             logger.debug("Tool presentation skipped for %s.", name)
             return

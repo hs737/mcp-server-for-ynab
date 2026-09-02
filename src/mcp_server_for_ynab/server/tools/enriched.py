@@ -18,7 +18,13 @@ from mcp_server_for_ynab.enriched.bookkeeping import (
     transaction_history,
 )
 from mcp_server_for_ynab.enriched.overview import budget_snapshot, cash_position, month_health
-from mcp_server_for_ynab.enriched.triage import triage_summary, triage_unapproved, triage_uncategorized
+from mcp_server_for_ynab.enriched.triage import (
+    reconciliation,
+    triage_summary,
+    triage_unapproved,
+    triage_uncategorized,
+    unmatched_manual,
+)
 from mcp_server_for_ynab.server.app import mcp
 from mcp_server_for_ynab.server.context import get_app_context
 from mcp_server_for_ynab.server.registry import tool_registry
@@ -42,8 +48,10 @@ _reg(
 )
 _reg("overview_cash_position", "overview", "Account balances: on-budget, off-budget, net worth.")
 _reg("triage_summary", "triage", "Combined count of uncategorized + unapproved transactions.")
-_reg("triage_uncategorized", "triage", "List all uncategorized transactions, most-recent first.")
+_reg("triage_uncategorized", "triage", "Transactions that genuinely need a category, most-recent first.")
 _reg("triage_unapproved", "triage", "List all unapproved transactions, most-recent first.")
+_reg("triage_unmatched_manual", "triage", "Hand-entered transactions on linked accounts that never cleared.")
+_reg("triage_reconciliation", "triage", "Accounts ranked by how long since anyone reconciled them.")
 _reg(
     "bookkeeping_categorization_suggestions",
     "bookkeeping",
@@ -93,7 +101,9 @@ async def overview_request_budget() -> dict[str, Any]:
     name="overview_available_tools",
     description=(
         "[READ] List all available tools grouped by family, with classification and summary. "
-        "Start here to understand what the server can do before running other tools."
+        "Start here to understand what the server can do before running other tools. "
+        "Also returns conventions worth knowing before the first call: how amounts are expressed, "
+        "which reads cost a request per month, and what hidden categories are."
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
@@ -117,6 +127,34 @@ async def overview_available_tools() -> dict[str, Any]:
         "scope": "overview_available_tools",
         "total_tool_count": len(tool_registry.all()),
         "families": families,
+        "conventions": {
+            "amounts": (
+                "Every monetary value is in milliunits: 1000 = $1.00. Enriched tools add a matching "
+                "*_display string alongside each figure; raw tools return milliunits only."
+            ),
+            "hidden_categories": (
+                "YNAB keeps each credit card's payment category in a hidden group called 'Credit Card "
+                "Payments', so 'Credit Card Payments' appears as a category group in months_get and "
+                "categories_list. Those tools exclude hidden categories unless include_hidden=true, "
+                "which means card payment money is invisible by default — analysis_credit_funding "
+                "reports it directly."
+            ),
+            "payload_size": (
+                "months_get and categories_list take compact=true, which returns six fields per "
+                "category instead of every goal field: about a quarter of the size. For anything "
+                "spanning months, months_range returns the whole matrix in one call."
+            ),
+            "request_cost": (
+                "YNAB allows 200 requests per hour per token. Any tool covering a range of months "
+                "spends one request per month; overview_request_budget reports what is left and "
+                "costs nothing."
+            ),
+            "reference": (
+                "Longer guidance is available as MCP resources: ynab://guide/method, "
+                "ynab://guide/write-safety, ynab://guide/tool-selection, and "
+                "ynab://guide/credit-accounts."
+            ),
+        },
     }
 
 
@@ -125,7 +163,11 @@ async def overview_available_tools() -> dict[str, Any]:
     description=(
         "[READ] Single-call budget health snapshot. "
         "Returns current month income, spending, to-be-budgeted, age of money, "
-        "account counts, and overspent categories. Good first call for any budget session."
+        "account counts, and overspent categories. Good first call for any budget session. "
+        "Also reports two things nothing else in YNAB surfaces: unfunded_card_debt, what the credit "
+        "cards owe beyond what their payment categories hold, and trapped_funds, money assigned to "
+        "the payment category of a closed or missing account. "
+        "Costs three requests."
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
@@ -176,7 +218,10 @@ async def overview_cash_position_tool(plan_id: str | None = None) -> dict[str, A
     name="triage_summary",
     description=(
         "[READ] Combined triage summary: count of uncategorized and unapproved transactions. "
-        "Use this to quickly assess whether the budget needs attention before diving deeper."
+        "Use this to quickly assess whether the budget needs attention before diving deeper. "
+        "uncategorized_count excludes what can never take a category — transactions on off-budget "
+        "tracking accounts, and transfers between two on-budget accounts — so it is work, not noise. "
+        "uncategorized_raw_count is what YNAB's own filter would have said."
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
@@ -190,31 +235,111 @@ async def triage_summary_tool(plan_id: str | None = None) -> dict[str, Any]:
 @mcp.tool(
     name="triage_uncategorized",
     description=(
-        "[READ] List all uncategorized transactions, most-recent first. "
-        "Each entry includes payee, amount, account, and memo for manual categorization."
+        "[READ] Transactions that genuinely need a category, most-recent first. "
+        "Each entry includes payee, amount, account, and memo. "
+        "Two kinds of transaction are excluded by default because they can never take a category: "
+        "anything on an off-budget tracking account, and transfers between two on-budget accounts. "
+        "On a real plan that turned a queue of 533 into the 14 that were actually work. "
+        "count is the number needing attention; raw_count is what YNAB's filter returned before "
+        "filtering, and excluded says what went. "
+        "Set include_tracking_accounts or include_transfers to true to see them anyway. "
+        "limit and offset page the result; count and raw_count always describe the whole queue."
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
 @tool_handler
-async def triage_uncategorized_tool(plan_id: str | None = None) -> dict[str, Any]:
+async def triage_uncategorized_tool(
+    plan_id: str | None = None,
+    include_transfers: bool = False,
+    include_tracking_accounts: bool = False,
+    limit: int = 100,
+    offset: int = 0,
+) -> dict[str, Any]:
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)
-    return await triage_uncategorized(ctx, resolved)
+    return await triage_uncategorized(
+        ctx,
+        resolved,
+        include_transfers=include_transfers,
+        include_tracking_accounts=include_tracking_accounts,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @mcp.tool(
     name="triage_unapproved",
     description=(
         "[READ] List all unapproved transactions, most-recent first. "
-        "Imported transactions from bank connections typically start as unapproved."
+        "Imported transactions from bank connections typically start as unapproved. "
+        "limit and offset page the result; count always describes the whole queue."
     ),
     annotations=ToolAnnotations(readOnlyHint=True),
 )
 @tool_handler
-async def triage_unapproved_tool(plan_id: str | None = None) -> dict[str, Any]:
+async def triage_unapproved_tool(
+    plan_id: str | None = None,
+    limit: int = 100,
+    offset: int = 0,
+) -> dict[str, Any]:
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)
-    return await triage_unapproved(ctx, resolved)
+    return await triage_unapproved(ctx, resolved, limit=limit, offset=offset)
+
+
+@mcp.tool(
+    name="triage_unmatched_manual",
+    description=(
+        "[READ] Hand-entered transactions on bank-linked accounts that never cleared. "
+        "On an account YNAB imports from, a manual entry is a promise that a real transaction is "
+        "coming. One still uncleared weeks later means the bank never matched it: a duplicate of "
+        "something already imported, a payment that did not go through, or a typo. Their net amount "
+        "is how far YNAB stands from the bank for these entries alone — on the plan this was written "
+        "for, ten of them on one checking account summed to $9,469. "
+        "account_id narrows it to one account. older_than_days is how long an entry must have sat "
+        "(default 30). since_date bounds how far back to read (default 18 months)."
+    ),
+    annotations=ToolAnnotations(readOnlyHint=True),
+)
+@tool_handler
+async def triage_unmatched_manual_tool(
+    plan_id: str | None = None,
+    account_id: str | None = None,
+    older_than_days: int = 30,
+    since_date: str | None = None,
+) -> dict[str, Any]:
+    ctx = get_app_context()
+    resolved = ctx.settings.resolve_plan_id(plan_id)
+    return await unmatched_manual(
+        ctx,
+        resolved,
+        account_id=account_id,
+        older_than_days=older_than_days,
+        since_date=since_date,
+    )
+
+
+@mcp.tool(
+    name="triage_reconciliation",
+    description=(
+        "[READ] Accounts ordered least-trustworthy first: never reconciled, then longest since. "
+        "Each row carries cleared and uncleared balances, the bank-link state, and warnings — "
+        "including a cash account whose cleared balance is negative, which means the bank shows an "
+        "overdraft or the account holds transactions it should not. "
+        "Reconciliation staleness is what decides whether the rest of a plan's numbers can be "
+        "trusted, and no other tool reports it. "
+        "stale_after_days: how long counts as stale (default 45). Costs one request."
+    ),
+    annotations=ToolAnnotations(readOnlyHint=True),
+)
+@tool_handler
+async def triage_reconciliation_tool(
+    plan_id: str | None = None,
+    stale_after_days: int = 45,
+) -> dict[str, Any]:
+    ctx = get_app_context()
+    resolved = ctx.settings.resolve_plan_id(plan_id)
+    return await reconciliation(ctx, resolved, stale_after_days=stale_after_days)
 
 
 @mcp.tool(
