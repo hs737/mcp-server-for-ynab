@@ -47,3 +47,19 @@ def test_port_zero_is_honoured(monkeypatch: pytest.MonkeyPatch) -> None:
     """Port 0 means "pick a free port" — it must not be treated as unset."""
     monkeypatch.delenv("FASTMCP_PORT", raising=False)
     assert resolve_bind(None, 0)[1] == 0
+
+
+def test_http_passes_the_resolved_bind_to_run() -> None:
+    """mcp 2.x dropped host and port from settings and takes them as run()
+    arguments. The old code assigned app.settings.host/port, which on 2.x would
+    raise rather than bind somewhere wrong — but nothing here covered the wiring,
+    so the transport was the one code path the suite could not vouch for."""
+    from unittest.mock import MagicMock, patch
+
+    import mcp_server_for_ynab.cli.main as cli
+
+    app = MagicMock()
+    with patch.object(cli, "_create_app_or_exit", return_value=app):
+        cli._run_http("0.0.0.0", 9001)
+
+    app.run.assert_called_once_with(transport="streamable-http", host="0.0.0.0", port=9001)

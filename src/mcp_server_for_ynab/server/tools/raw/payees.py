@@ -36,7 +36,7 @@ _reg(
 @mcp.tool(
     name="payees_list",
     description=("[READ] List all payees for a plan. Supports delta sync via last_knowledge_of_server."),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def payees_list(
@@ -52,7 +52,7 @@ async def payees_list(
 @mcp.tool(
     name="payees_get",
     description="[READ] Get a single payee by ID.",
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def payees_get(payee_id: str, plan_id: str | None = None) -> dict[str, Any]:
@@ -69,7 +69,7 @@ async def payees_get(payee_id: str, plan_id: str | None = None) -> dict[str, Any
         "Note: payee creation was added in YNAB API v1.81.0 (March 26, 2026). "
         "Payees are also created implicitly when you create transactions with a new payee_name."
     ),
-    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False),
+    annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False),
 )
 @tool_handler
 async def payees_create(name: str, plan_id: str | None = None) -> dict[str, Any]:
@@ -92,7 +92,7 @@ async def payees_create(name: str, plan_id: str | None = None) -> dict[str, Any]
 @write_tool(
     name="payees_update",
     description="[WRITE] Update a payee's name.",
-    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False),
+    annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False),
 )
 @tool_handler
 async def payees_update(payee_id: str, name: str, plan_id: str | None = None) -> dict[str, Any]:
@@ -126,7 +126,7 @@ async def payees_update(payee_id: str, name: str, plan_id: str | None = None) ->
         "[READ] List all payee locations (geographic lat/lon data from bank imports). "
         "Low priority: rarely useful for AI budget workflows."
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def payee_locations_list(plan_id: str | None = None) -> dict[str, Any]:
@@ -142,7 +142,7 @@ async def payee_locations_list(plan_id: str | None = None) -> dict[str, Any]:
         "[READ] Get a single payee location by ID (geographic lat/lon data). "
         "Low priority: rarely useful for AI budget workflows."
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def payee_locations_get(payee_location_id: str, plan_id: str | None = None) -> dict[str, Any]:
@@ -158,7 +158,7 @@ async def payee_locations_get(payee_location_id: str, plan_id: str | None = None
         "[READ] List all locations for a specific payee (geographic lat/lon data). "
         "Low priority: rarely useful for AI budget workflows."
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def payee_locations_list_for_payee(payee_id: str, plan_id: str | None = None) -> dict[str, Any]:

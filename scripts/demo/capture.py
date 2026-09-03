@@ -43,7 +43,12 @@ async def main() -> None:
 
     out = {}
     for name, args in calls:
-        result = await manager.call_tool(name, args)
+        # The registered function is invoked directly rather than through
+        # ToolManager.call_tool, which needs a request Context this script has
+        # no way to build and whose signature has already changed once across an
+        # SDK major. The function is the same object the manager would call, so
+        # the capture is still genuine tool output.
+        result = await manager.get_tool(name).fn(**args)
         payload = result if isinstance(result, dict) else json.loads(str(result))
         if "error" in payload:
             print(f"{name}: ERROR {payload['error']}", file=sys.stderr)

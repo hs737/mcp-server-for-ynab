@@ -34,7 +34,7 @@ _reg("months_get", "Get one month's categories. compact=true for a small payload
         "to_be_budgeted). Amounts are in milliunits (1000 = $1.00). "
         "Supports delta sync via last_knowledge_of_server."
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def months_list(
@@ -60,7 +60,7 @@ async def months_list(
         f"To compare several months, use months_range instead (up to {MAX_RANGE_MONTHS} months in one call). "
         "Amounts are in milliunits (1000 = $1.00)."
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def months_get(

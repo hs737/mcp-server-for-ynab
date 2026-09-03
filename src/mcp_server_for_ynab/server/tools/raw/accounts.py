@@ -31,7 +31,7 @@ _reg("accounts_create", "write", "Create a new account. [WRITE]")
         "Balances are in milliunits (1000 = $1.00). "
         "Supports delta sync via last_knowledge_of_server."
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def accounts_list(
@@ -47,7 +47,7 @@ async def accounts_list(
 @mcp.tool(
     name="accounts_get",
     description="[READ] Get a single account by ID. Balance is in milliunits (1000 = $1.00).",
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def accounts_get(account_id: str, plan_id: str | None = None) -> dict[str, Any]:
@@ -66,7 +66,7 @@ async def accounts_get(account_id: str, plan_id: str | None = None) -> dict[str,
         "otherAsset, otherLiability, mortgage, autoLoan, studentLoan, personalLoan, "
         "medicalDebt, otherDebt."
     ),
-    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False),
+    annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False),
 )
 @tool_handler
 async def accounts_create(

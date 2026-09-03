@@ -10,9 +10,9 @@ argument on every decorator is another copy of a fact the registry already
 holds, and the copy that gets forgotten is the one on the tool added last.
 Deriving them means a new tool is titled and hinted correctly for free.
 
-The hints matter more than the titles. `readOnlyHint` is already set at each
+The hints matter more than the titles. `read_only_hint` is already set at each
 call site and is load-bearing — the live sweep selects read tools by it — so it
-is never overwritten here. What is missing is `destructiveHint`: a client that
+is never overwritten here. What is missing is `destructive_hint`: a client that
 treats "update a transaction" and "delete a transaction" identically cannot
 warn proportionally, and only one of those is unrecoverable through this
 server.
@@ -151,34 +151,34 @@ def journal_note(meta: ToolMeta) -> str:
 
 
 def _annotate(existing: ToolAnnotations | None, meta: ToolMeta, title: str) -> ToolAnnotations:
-    read_only = existing.readOnlyHint if existing else None
+    read_only = existing.read_only_hint if existing else None
     if read_only is None:
         read_only = meta.classification == "read"
 
     return ToolAnnotations(
         title=title,
-        readOnlyHint=read_only,
+        read_only_hint=read_only,
         # A read never destroys anything, so state that rather than leaving it
         # unknown; for writes, only the genuinely unrecoverable ones say true.
-        destructiveHint=False if read_only else is_irreversible(meta.name),
-        idempotentHint=existing.idempotentHint if existing else None,
+        destructive_hint=False if read_only else is_irreversible(meta.name),
+        idempotent_hint=existing.idempotent_hint if existing else None,
         # YNAB is a closed, bounded system: the tools reach one API the user
         # already owns, not the open internet.
-        openWorldHint=False,
+        open_world_hint=False,
     )
 
 
 def apply_presentation(mcp: Any) -> None:
-    """Project registry metadata onto the tools FastMCP has registered.
+    """Project registry metadata onto the tools MCPServer has registered.
 
-    FastMCP exposes no public hook for amending a tool after registration, so
+    MCPServer exposes no public hook for amending a tool after registration, so
     this reaches into its tool manager. If a future SDK moves that, titles are
     worth losing but a crash at startup is not — the server still works without
     them, so this degrades quietly and says so in the log.
     """
     tools = getattr(getattr(mcp, "_tool_manager", None), "_tools", None)
     if not isinstance(tools, dict):
-        logger.debug("Tool presentation skipped: FastMCP tool manager layout not recognised.")
+        logger.debug("Tool presentation skipped: MCPServer tool manager layout not recognised.")
         return
 
     for name, tool in tools.items():

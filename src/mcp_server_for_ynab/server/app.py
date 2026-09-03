@@ -1,16 +1,18 @@
-"""FastMCP application factory.
+"""MCPServer application factory.
 
-Creates the single FastMCP instance and registers all tools against it.
+Creates the single MCPServer instance and registers all tools against it.
 Imported by the CLI entrypoint and by integration tests.
 
-SDK note: FastMCP ships inside the official Anthropic `mcp` package (>=1.0).
-The import path `mcp.server.fastmcp` is the correct, locked path — this is NOT
-the standalone `fastmcp` PyPI package. pyproject.toml pins `mcp>=1.28.1,<2`.
+SDK note: MCPServer ships inside the official Anthropic `mcp` package, and is
+what v1 called FastMCP — renamed in mcp 2.0. The import path
+`mcp.server.mcpserver` is the correct, locked path; this is NOT the standalone
+`fastmcp` PyPI package. pyproject.toml pins `mcp>=2.1.1,<3`, and the floor is
+2.x because `mcp.server.fastmcp` no longer exists.
 """
 
 from __future__ import annotations
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 from mcp_server_for_ynab import package_version
 from mcp_server_for_ynab.config import get_settings
@@ -18,7 +20,7 @@ from mcp_server_for_ynab.server.context import AppContext, set_app_context
 
 __all__ = ["create_app", "create_embedded_app", "mcp", "package_version"]
 
-mcp = FastMCP(
+mcp = MCPServer(
     # YNAB's OAuth application requirements: an application name may not include
     # "YNAB" unless the word is preceded by "for". Keep this compliant.
     name="mcp-server-for-ynab",
@@ -29,13 +31,11 @@ mcp = FastMCP(
         "orientation and investigation. Use raw tools for precise reads and all writes. "
         "All amounts are in milliunits: 1000 = $1.00."
     ),
+    # v1 took no version argument, and the low-level server reported the SDK's
+    # own version instead of ours, so this used to be set by assigning to a
+    # private attribute after construction. 2.x takes it here.
+    version=package_version(),
 )
-
-# FastMCP takes no version argument, and the low-level server falls back to the
-# mcp SDK's own version when its version is unset — so without this, initialize
-# reports the SDK version as the server's version. Assigning it here is the only
-# hook the SDK offers.
-mcp._mcp_server.version = package_version()
 
 
 def _register_tools() -> None:
@@ -62,11 +62,11 @@ def _register_tools() -> None:
     apply_presentation(mcp)
 
 
-def create_app() -> FastMCP:
+def create_app() -> MCPServer:
     """Initialize the application context and register all tools.
 
     Called once at startup. Safe to call multiple times — subsequent calls
-    return the same FastMCP instance after re-initializing the context.
+    return the same MCPServer instance after re-initializing the context.
     """
     settings = get_settings()
     settings.configure_logging()
@@ -77,8 +77,8 @@ def create_app() -> FastMCP:
     return mcp
 
 
-def create_embedded_app() -> FastMCP:
-    """Return the shared FastMCP app for hosted runtimes that inject auth."""
+def create_embedded_app() -> MCPServer:
+    """Return the shared MCPServer app for hosted runtimes that inject auth."""
     _register_tools()
 
     return mcp

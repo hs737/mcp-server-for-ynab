@@ -67,7 +67,7 @@ src/mcp_server_for_ynab/
 ├── enriched/       higher-level read analysis, bookkeeping, and multi-month audit logic
 ├── http_client/    outbound httpx wrapper for YNAB API calls
 ├── models/         shared errors, amount helpers, typed YNAB models
-├── server/         FastMCP app, app context, metadata registry, tool handlers
+├── server/         MCPServer app, app context, metadata registry, tool handlers
 └── ynab_client/    thin async YNAB API wrappers by resource family
 ```
 
@@ -75,7 +75,7 @@ src/mcp_server_for_ynab/
 
 ```text
 src/mcp_server_for_ynab/server/
-├── app.py              FastMCP application factory
+├── app.py              MCPServer application factory
 ├── context.py          shared and request-scoped app context helpers
 ├── registry.py         tool metadata catalog
 ├── prompts.py          guided workflows, surfaced as MCP prompts
@@ -178,6 +178,6 @@ Do not edit generated JSON directly unless the generation process itself is bein
 
 ## Current State Notes
 
-- The current server implementation uses `FastMCP` from the `mcp` package.
-- HTTP transport currently runs through the CLI via FastMCP’s streamable HTTP support rather than a dedicated `http_transport` package.
+- The current server implementation uses `MCPServer` from the `mcp` package.
+- HTTP transport currently runs through the CLI via MCPServer’s streamable HTTP support rather than a dedicated `http_transport` package.
 - `server/tools/boundary.py` is now part of the actual MCP boundary and should be reflected in any architecture update.

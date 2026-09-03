@@ -6,7 +6,7 @@ script is the check that closes that gap: it drives the server as a real MCP
 client over stdio, invokes every tool annotated read-only, and reports any tool
 whose response does not parse.
 
-Writes are never invoked. Tool selection comes from the readOnlyHint annotation
+Writes are never invoked. Tool selection comes from the read_only_hint annotation
 in tools/list, so new read tools are picked up automatically.
 
 Usage:
@@ -57,7 +57,11 @@ class Sweep:
     def __init__(self, session: ClientSession, month: str) -> None:
         self._session = session
         self._month = month
-        self._ids: dict[str, str] = {"month": month}
+        # from_month and to_month are both the sweep's single month, so a range
+        # tool covers one month and costs one request. Widening the window here
+        # would multiply the sweep's cost by the number of months for every
+        # range tool it touches.
+        self._ids: dict[str, str] = {"month": month, "from_month": month, "to_month": month}
         self.results: list[tuple[str, str, str]] = []
 
     async def call(self, name: str, arguments: dict[str, Any]) -> Any:
@@ -108,6 +112,13 @@ class Sweep:
             if "category_id" in self._ids:
                 break
 
+        # analysis_group_parity compares two groups, so it needs two distinct
+        # ids. Any two real groups exercise the route; the comparison being
+        # meaningful is not what the sweep is testing.
+        group_ids = [g["id"] for g in groups if not g.get("deleted")]
+        if len(group_ids) >= 2:
+            self._ids["group_a_id"], self._ids["group_b_id"] = group_ids[0], group_ids[1]
+
         payees = await self.call("payees_list", {})
         payee = _first(payees, "payees")
         if payee:
@@ -153,7 +164,7 @@ async def run(month: str) -> int:
         await session.initialize()
         tools = (await session.list_tools()).tools
 
-        read_tools = [t for t in tools if getattr(t.annotations, "readOnlyHint", False)]
+        read_tools = [t for t in tools if getattr(t.annotations, "read_only_hint", False)]
         print(f"Sweeping {len(read_tools)} read-only tools of {len(tools)} total, month={month}\n")
 
         sweep = Sweep(session, month)
@@ -164,7 +175,7 @@ async def run(month: str) -> int:
         for tool in read_tools:
             if tool.name in already_called:
                 continue
-            arguments = sweep.arguments_for(tool.inputSchema)
+            arguments = sweep.arguments_for(tool.input_schema)
             if arguments is None:
                 skipped.append(tool.name)
                 continue

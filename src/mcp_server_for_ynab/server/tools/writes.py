@@ -77,7 +77,7 @@ async def _budgeted_now(ctx: AppContext, plan_id: str, month: str, category_id: 
         "This write is journaled — history_revert on the returned history_entry_id restores every "
         "category's previous amount in one step."
     ),
-    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False),
+    annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False),
 )
 @tool_handler
 async def months_assign_many(
@@ -209,7 +209,7 @@ async def months_assign_many(
         "carried-forward balance cannot be mistaken for the assigned amount. "
         "Both sides are journaled as one entry; history_revert puts the money back."
     ),
-    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False),
+    annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False),
 )
 @tool_handler
 async def money_move(

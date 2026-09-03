@@ -3,7 +3,7 @@
 Read tools register with `@mcp.tool(...)` directly. Write tools must go through
 `@write_tool(...)`, which registers them only when writes are enabled.
 
-The difference matters: a disabled write tool never reaches FastMCP, so it does
+The difference matters: a disabled write tool never reaches MCPServer, so it does
 not appear in tools/list and an agent has no way to invoke it. Refusing a call
 at execution time would still advertise the capability and still depend on the
 refusal being correct every time.

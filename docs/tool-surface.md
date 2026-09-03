@@ -173,7 +173,7 @@ These are the main resource families an agent will use for exact reads and write
 #### Write tools are absent unless enabled
 
 Set `YNAB_ALLOW_WRITES=1` to register them. Without it, the write tools do not
-reach FastMCP at all: they are missing from `tools/list` and from
+reach MCPServer at all: they are missing from `tools/list` and from
 `overview_available_tools`, so an agent has no way to discover or call them.
 
 The registry follows the same rule, so the catalog never advertises a tool the

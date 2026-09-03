@@ -35,16 +35,16 @@ The system is optimized for:
 |---------|------------------------|
 | Python | 3.12 |
 | Concurrency | `asyncio` |
-| MCP framework | `FastMCP` from the `mcp` package |
+| MCP framework | `MCPServer` from the `mcp` package (called `FastMCP` before mcp 2.0) |
 | Outbound HTTP | `httpx` |
 | Validation/models | `pydantic` v2 |
 | Test stack | `pytest`, `pytest-asyncio`, `pytest-httpx` |
 
 ## Current State Notes
 
-- The current server uses `FastMCP`, not a hand-built lower-level protocol layer.
+- The current server uses `MCPServer`, not a hand-built lower-level protocol layer.
 - The CLI supports both `stdio` and HTTP transports today.
-- HTTP transport currently runs through FastMCP’s built-in streamable HTTP mode rather than a dedicated `http_transport` package.
+- HTTP transport currently runs through MCPServer’s built-in streamable HTTP mode rather than a dedicated `http_transport` package.
 - Structured tool errors are handled through `server/tools/boundary.py`.
 
 These are implementation truths and should be preferred over older planning assumptions.
@@ -78,7 +78,7 @@ src/mcp_server_for_ynab/
 ├── enriched/       consolidated read workflows, including multi-month audits
 ├── http_client/    outbound httpx client for YNAB API calls
 ├── models/         shared errors, amount helpers, typed YNAB models
-├── server/         FastMCP app, context, metadata, tool boundary, tool registration
+├── server/         MCPServer app, context, metadata, tool boundary, tool registration
 └── ynab_client/    async resource wrappers over the YNAB API
 ```
 
@@ -153,7 +153,7 @@ plan is about 60 KB, so a year of them cannot be read at all.
 ### `server/`
 
 Owns MCP-facing concerns:
-- FastMCP application factory
+- MCPServer application factory
 - shared app context
 - request-scoped app context override for embedded runtimes
 - tool metadata registry
@@ -170,7 +170,7 @@ Owns MCP-facing concerns:
 ### `embed.py`
 
 Owns the small supported import surface for hosted runtimes:
-- create the shared FastMCP app without PAT startup wiring
+- create the shared MCPServer app without PAT startup wiring
 - build an `AppContext` from any `AuthProvider`
 - bind request-scoped context around hosted tool execution
 
@@ -188,7 +188,7 @@ Business logic should not accumulate here.
 ```mermaid
 sequenceDiagram
     participant Client as MCP client
-    participant App as FastMCP app
+    participant App as MCPServer app
     participant Tool as raw tool handler
     participant Boundary as tool_handler boundary
     participant Ctx as AppContext
@@ -222,7 +222,7 @@ Current implementation note:
 ```mermaid
 sequenceDiagram
     participant Client as MCP client
-    participant App as FastMCP app
+    participant App as MCPServer app
     participant Tool as enriched tool handler
     participant Boundary as tool_handler boundary
     participant Enriched as enriched module
@@ -273,7 +273,7 @@ flowchart LR
     B --> D["import server.tools.raw"]
     B --> H["import server.tools.audit"]
     B --> I["import server.tools.writes"]
-    C --> E["FastMCP tool registration"]
+    C --> E["MCPServer tool registration"]
     D --> E
     H --> E
     I --> E
@@ -316,7 +316,7 @@ tool modules themselves.
 - summary
 - optional priority
 
-This metadata is separate from FastMCP’s protocol registration and is used by `overview_available_tools`.
+This metadata is separate from MCPServer’s protocol registration and is used by `overview_available_tools`.
 
 ## Amount Convention
 

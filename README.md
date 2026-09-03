@@ -343,7 +343,7 @@ live, and where to add new tools, tests, and docs.
 
 ```mermaid
 flowchart LR
-    A["MCP Client"] --> B["FastMCP Server"]
+    A["MCP Client"] --> B["MCPServer Server"]
     B --> C["Tool Handlers"]
     C --> D["ynab_client"]
     D --> E["http_client (httpx)"]
@@ -354,7 +354,7 @@ flowchart LR
 
 The code is centered on a small set of layers:
 
-- `src/mcp_server_for_ynab/server/`: FastMCP app, tool metadata, tool registration, error boundary
+- `src/mcp_server_for_ynab/server/`: MCPServer app, tool metadata, tool registration, error boundary
 - `src/mcp_server_for_ynab/ynab_client/`: one async wrapper module per YNAB resource family
 - `src/mcp_server_for_ynab/http_client/`: outbound `httpx` wrapper with retries, redaction, and error normalization
 - `src/mcp_server_for_ynab/models/`: typed YNAB shapes, shared error model, milliunit helpers
@@ -401,7 +401,7 @@ Full map: [Docs Index](https://github.com/hs737/mcp-server-for-ynab/blob/master/
 
 ## Current State
 
-The current implementation uses Python 3.12, `FastMCP` from the official `mcp`
+The current implementation uses Python 3.12, `MCPServer` from the official `mcp`
 package, `asyncio` end to end, `httpx` for outbound YNAB calls, and the built-in
 stdio and streamable HTTP transports.
 

@@ -2,7 +2,7 @@
 
 Titles are derived rather than written on each tool, so the derivation is what
 needs pinning: it has to stay readable for every naming shape in the surface,
-and it must not undo the readOnlyHint that each call site sets and the live
+and it must not undo the read_only_hint that each call site sets and the live
 sweep depends on.
 """
 
@@ -73,24 +73,24 @@ def test_journalled_writes_are_not_marked_destructive(name: str) -> None:
 
 
 def test_read_only_hint_from_the_call_site_is_never_overwritten() -> None:
-    existing = ToolAnnotations(readOnlyHint=True)
+    existing = ToolAnnotations(read_only_hint=True)
     result = presentation._annotate(existing, _meta("transactions_list", "transactions"), "T")
 
-    assert result.readOnlyHint is True
-    assert result.destructiveHint is False
+    assert result.read_only_hint is True
+    assert result.destructive_hint is False
 
 
 def test_a_write_tool_keeps_its_read_only_false() -> None:
-    existing = ToolAnnotations(readOnlyHint=False)
+    existing = ToolAnnotations(read_only_hint=False)
     result = presentation._annotate(existing, _meta("transactions_delete", "transactions", "write"), "T")
 
-    assert result.readOnlyHint is False
-    assert result.destructiveHint is True
+    assert result.read_only_hint is False
+    assert result.destructive_hint is True
 
 
 def test_ynab_is_reported_as_a_closed_system() -> None:
     result = presentation._annotate(None, _meta("user_get", "user"), "T")
-    assert result.openWorldHint is False
+    assert result.open_world_hint is False
 
 
 def test_a_changed_sdk_layout_does_not_crash_startup() -> None:

@@ -58,7 +58,7 @@ _reg("transactions_trigger_import", "write", "Trigger YNAB import from linked ac
         "limit defaults to 100 and cannot exceed 500. "
         f"{FILTER_HELP}"
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def transactions_list(
@@ -104,7 +104,7 @@ async def transactions_list(
         "limit defaults to 100 and cannot exceed 500. "
         f"{FILTER_HELP}"
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def transactions_list_by_account(
@@ -151,7 +151,7 @@ async def transactions_list_by_account(
         "limit defaults to 100 and cannot exceed 500. "
         f"{FILTER_HELP}"
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def transactions_list_by_category(
@@ -198,7 +198,7 @@ async def transactions_list_by_category(
         "limit defaults to 100 and cannot exceed 500. "
         f"{FILTER_HELP}"
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def transactions_list_by_payee(
@@ -247,7 +247,7 @@ async def transactions_list_by_payee(
         "limit defaults to 100 and cannot exceed 500. "
         f"{FILTER_HELP}"
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def transactions_list_by_month(
@@ -294,7 +294,7 @@ async def transactions_list_by_month(
         "Check transfer_account_id to identify transfer transactions. "
         "Amount is in milliunits (1000 = $1.00)."
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def transactions_get(transaction_id: str, plan_id: str | None = None) -> dict[str, Any]:
@@ -317,7 +317,7 @@ async def transactions_get(transaction_id: str, plan_id: str | None = None) -> d
         "Example: amount -50000 with subtransactions "
         "[{'amount': -30000, 'category_id': 'groceries-id'}, {'amount': -20000, 'category_id': 'household-id'}]."
     ),
-    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False),
+    annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False),
 )
 @tool_handler
 async def transactions_create(
@@ -398,7 +398,7 @@ async def transactions_create(
         "its id is returned in duplicate_import_ids. Check the verification block: created_count tells "
         "you how many were actually created."
     ),
-    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False),
+    annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False),
 )
 @tool_handler
 async def transactions_create_many(
@@ -470,7 +470,7 @@ async def transactions_create_many(
         "amount: milliunits (1000 = $1.00). "
         "All provided fields are updated. Omit fields you do not want to change."
     ),
-    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False),
+    annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False),
 )
 @tool_handler
 async def transactions_update(
@@ -532,7 +532,7 @@ async def transactions_update(
         "transactions: list of objects with id (required) and any fields to update. "
         "All amounts in milliunits (1000 = $1.00)."
     ),
-    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False),
+    annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False),
 )
 @tool_handler
 async def transactions_bulk_update(
@@ -588,7 +588,7 @@ async def transactions_bulk_update(
         "WARNING: For transfer transactions, deleting one side affects the paired transaction. "
         "Check transfer_account_id before deleting to understand transfer implications."
     ),
-    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True),
+    annotations=ToolAnnotations(read_only_hint=False, destructive_hint=True),
 )
 @tool_handler
 async def transactions_delete(transaction_id: str, plan_id: str | None = None) -> dict[str, Any]:
@@ -618,7 +618,7 @@ async def transactions_delete(transaction_id: str, plan_id: str | None = None) -
         "Only accounts with direct bank links are affected. "
         "Returns the IDs of transactions that were imported."
     ),
-    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False),
+    annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False),
 )
 @tool_handler
 async def transactions_trigger_import(plan_id: str | None = None) -> dict[str, Any]:

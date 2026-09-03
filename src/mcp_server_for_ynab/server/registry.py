@@ -4,8 +4,8 @@ The ToolRegistry maintains a catalog of tool metadata (family, classification,
 tool_type, priority) keyed by tool name. This data drives overview_available_tools
 and helps agents navigate the tool surface.
 
-Actual MCP tool registration is handled by FastMCP. The ToolRegistry is a
-companion metadata store that runs alongside FastMCP's own tool list.
+Actual MCP tool registration is handled by MCPServer. The ToolRegistry is a
+companion metadata store that runs alongside MCPServer's own tool list.
 """
 
 from __future__ import annotations
@@ -43,7 +43,7 @@ class ToolRegistry:
         summary: str,
         priority: ToolPriority = "standard",
     ) -> None:
-        # Write tools are not registered with FastMCP when writes are disabled,
+        # Write tools are not registered with MCPServer when writes are disabled,
         # so they must not appear in the catalog either. Advertising a tool an
         # agent cannot call wastes its time and misleads the user.
         if classification == "write" and not writes_enabled():

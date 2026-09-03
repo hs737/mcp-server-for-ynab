@@ -39,7 +39,7 @@ _reg("scheduled_transactions_delete", "write", "Delete a scheduled transaction. 
         "Amounts are in milliunits (1000 = $1.00). "
         "Supports delta sync via last_knowledge_of_server."
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def scheduled_transactions_list(
@@ -55,7 +55,7 @@ async def scheduled_transactions_list(
 @mcp.tool(
     name="scheduled_transactions_get",
     description=("[READ] Get a single scheduled transaction by ID. Amount is in milliunits (1000 = $1.00)."),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def scheduled_transactions_get(scheduled_transaction_id: str, plan_id: str | None = None) -> dict[str, Any]:
@@ -74,7 +74,7 @@ async def scheduled_transactions_get(scheduled_transaction_id: str, plan_id: str
         "frequency: never, daily, weekly, everyOtherWeek, twiceAMonth, every4Weeks, "
         "monthly, everyOtherMonth, every3Months, every4Months, twiceAYear, yearly, everyOtherYear."
     ),
-    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False),
+    annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False),
 )
 @tool_handler
 async def scheduled_transactions_create(
@@ -120,7 +120,7 @@ async def scheduled_transactions_create(
 @write_tool(
     name="scheduled_transactions_update",
     description=("[WRITE] Update a scheduled transaction. amount: milliunits (1000 = $1.00)."),
-    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False),
+    annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False),
 )
 @tool_handler
 async def scheduled_transactions_update(
@@ -170,7 +170,7 @@ async def scheduled_transactions_update(
 @write_tool(
     name="scheduled_transactions_delete",
     description="[WRITE] Delete a scheduled transaction.",
-    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True),
+    annotations=ToolAnnotations(read_only_hint=False, destructive_hint=True),
 )
 @tool_handler
 async def scheduled_transactions_delete(scheduled_transaction_id: str, plan_id: str | None = None) -> dict[str, Any]:

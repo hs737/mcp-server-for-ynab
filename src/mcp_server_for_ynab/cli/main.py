@@ -5,12 +5,12 @@ Subcommands:
   http    Start the MCP server on HTTP/streamable-http (development/testing transport).
   smoke   Run a startup smoke test and exit.
 
-The same FastMCP application instance serves all transports — the transport is
+The same MCPServer application instance serves all transports — the transport is
 purely a delivery mechanism. stdio is the standard for LLM client integration
 (e.g. Claude Desktop). http exposes the MCP JSON-RPC protocol over HTTP,
 which is useful for development, debugging, and the MCP Inspector tool.
 
-Do NOT add a separate web framework (FastAPI, Flask, etc.) alongside FastMCP.
+Do NOT add a separate web framework (FastAPI, Flask, etc.) alongside MCPServer.
 If you need HTTP access, use the built-in 'http' subcommand. Mixing web
 frameworks creates two separate server processes with conflicting lifecycles.
 """
@@ -25,7 +25,7 @@ from typing import TYPE_CHECKING, NoReturn
 from mcp_server_for_ynab import package_version
 
 if TYPE_CHECKING:
-    from mcp.server.fastmcp import FastMCP
+    from mcp.server.mcpserver import MCPServer
 
 
 def main() -> None:
@@ -130,7 +130,7 @@ def _fail(message: str) -> NoReturn:
     sys.exit(1)
 
 
-def _create_app_or_exit() -> FastMCP:
+def _create_app_or_exit() -> MCPServer:
     """Build the app, turning a configuration failure into a readable exit."""
     from mcp_server_for_ynab.config.settings import ConfigError
     from mcp_server_for_ynab.server.app import create_app
@@ -202,11 +202,11 @@ def _run_history(*, show: bool, export: str | None, delete: bool, assume_yes: bo
 def resolve_bind(host: str | None, port: int | None) -> tuple[str, int]:
     """Resolve the HTTP bind address: CLI flag, then env var, then default.
 
-    FastMCP takes host and port as constructor arguments that default to
-    127.0.0.1:8000, and those arguments win over FASTMCP_HOST / FASTMCP_PORT.
-    Because the shared FastMCP instance in server.app is built without them,
-    setting the env vars here would do nothing — the caller must assign the
-    resolved values onto app.settings before run().
+    FASTMCP_HOST and FASTMCP_PORT are read here rather than by the SDK. In v1
+    they were the SDK's own settings names; mcp 2.x dropped host and port from
+    settings entirely and takes them as run() arguments instead. The names are
+    kept because they are what this server has always documented, and renaming
+    them would break a working config to no end.
     """
     import os
 
@@ -232,9 +232,7 @@ def _run_http(host: str | None, port: int | None) -> None:
     resolved_host, resolved_port = resolve_bind(host, port)
 
     app = _create_app_or_exit()
-    app.settings.host = resolved_host
-    app.settings.port = resolved_port
-    app.run(transport="streamable-http")
+    app.run(transport="streamable-http", host=resolved_host, port=resolved_port)
 
 
 if __name__ == "__main__":

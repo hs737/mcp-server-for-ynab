@@ -1,7 +1,7 @@
 """AI-first MCP server for YNAB.
 
 Kept free of heavy imports: `cli.main` reads the version from here to answer
---version without importing FastMCP and the whole tool surface.
+--version without importing MCPServer and the whole tool surface.
 """
 
 from __future__ import annotations

@@ -31,7 +31,7 @@ _reg("money_movement_groups_list_by_month", "List money movement groups for a sp
         "Amounts are in milliunits (1000 = $1.00). "
         "Supports delta sync via last_knowledge_of_server."
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def money_movements_list(
@@ -52,7 +52,7 @@ async def money_movements_list(
         "A null from_category_id or to_category_id means Ready to Assign. "
         "Amounts are in milliunits (1000 = $1.00)."
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def money_movements_list_by_month(
@@ -74,7 +74,7 @@ async def money_movements_list_by_month(
         "money_movement_group_id. "
         "Supports delta sync via last_knowledge_of_server."
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def money_movement_groups_list(
@@ -94,7 +94,7 @@ async def money_movement_groups_list(
         "movements made in a single action; it carries no amount of its own. "
         "month: ISO date string for the first day of the month (e.g. '2024-01-01')."
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def money_movement_groups_list_by_month(

@@ -39,7 +39,7 @@ src/mcp_server_for_ynab/
 ├── enriched/     AI-friendly read workflows
 ├── http_client/  async httpx wrapper: retries, error normalization, redaction
 ├── models/       typed YNAB shapes, shared error model, milliunit helpers
-├── server/       FastMCP app, context, registry, error boundary, tool registration
+├── server/       MCPServer app, context, registry, error boundary, tool registration
 └── ynab_client/  async wrappers for YNAB resource families
 ```
 
@@ -55,7 +55,7 @@ sequenceDiagram
     participant API as YNAB API
 
     Client->>Server: invoke tool name
-    Server->>Handler: registered FastMCP handler
+    Server->>Handler: registered MCPServer handler
     Handler->>YClient: call resource or enriched workflow
     YClient->>Http: request(...)
     Http->>API: HTTP call
@@ -276,6 +276,23 @@ Update the affected Mermaid diagrams whenever you change:
 - Mermaid diagrams must reflect current request flow and structure.
 - `docs/testing.md` must not overclaim test coverage.
 - `docs/repo-structure.md` must match the actual repo tree.
+
+## SDK Rule
+
+The MCP framework is `MCPServer` from the official `mcp` package, imported from
+`mcp.server.mcpserver`. This is not the standalone `fastmcp` package on PyPI,
+and it is not the `mcp.server.fastmcp` path — that was the v1 name and the
+module was removed in mcp 2.0.
+
+Two consequences worth knowing before touching the server layer:
+
+- `ToolAnnotations` fields are snake_case in Python (`read_only_hint`) and
+  camelCase on the wire (`readOnlyHint`). Clients see the protocol spelling;
+  only the Python attribute names changed.
+- `server/tools/presentation.py` and `cli/smoke.py` reach into
+  `_tool_manager._tools`, which is private and has survived one major version.
+  If a future SDK moves it, presentation degrades quietly by design rather than
+  failing startup — keep it that way.
 
 ## Async Rule
 

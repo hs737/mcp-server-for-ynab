@@ -60,7 +60,7 @@ _reg("changes_since", "changes", "What changed since a server_knowledge value.")
         "include_hidden=true adds hidden categories, including the credit-card payment ones. "
         "Amounts are in milliunits (1000 = $1.00). " + _COST
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def months_range_tool(
@@ -96,7 +96,7 @@ async def months_range_tool(
         "the credit-card payment group; pass include_hidden=false to leave them out. "
         "Amounts are in milliunits (1000 = $1.00). " + _COST
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def category_groups_summary_by_month(
@@ -123,7 +123,7 @@ async def category_groups_summary_by_month(
         "Also returns the categories that were overspent in the most months. " + _COST + " Plus one "
         "for the transaction history used to tell cash from credit."
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def analysis_overspent_history(
@@ -147,7 +147,7 @@ async def analysis_overspent_history(
         "Gaps are always group A minus group B. Get group ids from categories_list. "
         "from_month and to_month: 'YYYY-MM', an ISO date, or 'current'. " + _COST
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def analysis_group_parity(
@@ -176,7 +176,7 @@ async def analysis_group_parity(
         "The month before the range is read too, so the first month has something to be compared "
         "against. " + _COST
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def analysis_copied_forward_months(
@@ -204,7 +204,7 @@ async def analysis_copied_forward_months(
         "YNAB provides no identifier linking them; anything unmatched is reported rather than "
         "dropped."
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def analysis_credit_funding(plan_id: str | None = None, months: int = 6) -> dict[str, Any]:
@@ -224,7 +224,7 @@ async def analysis_credit_funding(plan_id: str | None = None, months: int = 6) -
         "from_month and to_month: 'YYYY-MM', an ISO date, or 'current'. " + _COST + " Plus two for "
         "the money movements and transactions."
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def analysis_flow_trace(
@@ -248,7 +248,7 @@ async def analysis_flow_trace(
         "Run it first in a review: if it ties, the rest of the numbers can be trusted. "
         "Costs three requests."
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def overview_balance_identity(plan_id: str | None = None) -> dict[str, Any]:
@@ -268,7 +268,7 @@ async def overview_balance_identity(plan_id: str | None = None) -> dict[str, Any
         "Deleted records are omitted, and delta sync reports that a record changed, not how — the "
         "values shown are current ones. Costs three requests."
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def changes_since_tool(

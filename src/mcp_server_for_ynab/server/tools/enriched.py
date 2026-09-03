@@ -89,7 +89,7 @@ _reg(
         "and prefer enriched tools over many raw calls when the remaining count is low. "
         "This tool costs no API requests."
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def overview_request_budget() -> dict[str, Any]:
@@ -105,7 +105,7 @@ async def overview_request_budget() -> dict[str, Any]:
         "Also returns conventions worth knowing before the first call: how amounts are expressed, "
         "which reads cost a request per month, and what hidden categories are."
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def overview_available_tools() -> dict[str, Any]:
@@ -169,7 +169,7 @@ async def overview_available_tools() -> dict[str, Any]:
         "the payment category of a closed or missing account. "
         "Costs three requests."
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def overview_budget_snapshot_tool(plan_id: str | None = None) -> dict[str, Any]:
@@ -186,7 +186,7 @@ async def overview_budget_snapshot_tool(plan_id: str | None = None) -> dict[str,
         "and underfunded goals. Defaults to current month. "
         "month: ISO date string for first day of month (e.g. '2024-01-01')."
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def overview_month_health_tool(
@@ -205,7 +205,7 @@ async def overview_month_health_tool(
         "Returns on-budget total, off-budget total, net worth, and per-account detail. "
         "Cleared vs uncleared breakdown included for on-budget accounts."
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def overview_cash_position_tool(plan_id: str | None = None) -> dict[str, Any]:
@@ -223,7 +223,7 @@ async def overview_cash_position_tool(plan_id: str | None = None) -> dict[str, A
         "tracking accounts, and transfers between two on-budget accounts — so it is work, not noise. "
         "uncategorized_raw_count is what YNAB's own filter would have said."
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def triage_summary_tool(plan_id: str | None = None) -> dict[str, Any]:
@@ -245,7 +245,7 @@ async def triage_summary_tool(plan_id: str | None = None) -> dict[str, Any]:
         "Set include_tracking_accounts or include_transfers to true to see them anyway. "
         "limit and offset page the result; count and raw_count always describe the whole queue."
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def triage_uncategorized_tool(
@@ -274,7 +274,7 @@ async def triage_uncategorized_tool(
         "Imported transactions from bank connections typically start as unapproved. "
         "limit and offset page the result; count always describes the whole queue."
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def triage_unapproved_tool(
@@ -299,7 +299,7 @@ async def triage_unapproved_tool(
         "account_id narrows it to one account. older_than_days is how long an entry must have sat "
         "(default 30). since_date bounds how far back to read (default 18 months)."
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def triage_unmatched_manual_tool(
@@ -330,7 +330,7 @@ async def triage_unmatched_manual_tool(
         "trusted, and no other tool reports it. "
         "stale_after_days: how long counts as stale (default 45). Costs one request."
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def triage_reconciliation_tool(
@@ -349,7 +349,7 @@ async def triage_reconciliation_tool(
         "Confidence: high (>=80% of past transactions), medium (>=50%), or low (<50%). "
         "Does NOT write — use transactions_update to apply suggestions."
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def bookkeeping_categorization_suggestions_tool(plan_id: str | None = None) -> dict[str, Any]:
@@ -365,7 +365,7 @@ async def bookkeeping_categorization_suggestions_tool(plan_id: str | None = None
         "Flags large transactions (>= $50) and splits without memos. "
         "since_date: ISO date to limit history (e.g. '2024-01-01')."
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def bookkeeping_memo_annotation_suggestions_tool(
@@ -385,7 +385,7 @@ async def bookkeeping_memo_annotation_suggestions_tool(
         "since_date: ISO date to limit history (e.g. '2024-01-01'). "
         "Returns inflow, outflow, and net totals in addition to the transaction list."
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def bookkeeping_transaction_history_tool(
@@ -414,7 +414,7 @@ async def bookkeeping_transaction_history_tool(
         "Sorted by most-overspent first. Includes budgeted, activity, and balance. "
         "month: ISO date string for first day of month (e.g. '2024-01-01'). Defaults to current month."
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def analysis_overspent_categories_tool(
@@ -433,7 +433,7 @@ async def analysis_overspent_categories_tool(
         "Shows how much more needs to be budgeted to meet each goal target. "
         "month: ISO date string for first day of month (e.g. '2024-01-01'). Defaults to current month."
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def analysis_target_funding_gaps_tool(
@@ -452,7 +452,7 @@ async def analysis_target_funding_gaps_tool(
         "Flags each transaction as is_risk=true when the category balance is insufficient. "
         "lookahead_days: how many days ahead to scan (default 30, max recommended 90)."
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def analysis_upcoming_scheduled_risks_tool(
@@ -477,7 +477,7 @@ async def analysis_upcoming_scheduled_risks_tool(
         "one seen 12 times — plus amount_changed and days_since_last, which surface price rises and "
         "charges that may have lapsed. Amounts are in milliunits (1000 = $1.00)."
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def analysis_recurring_charges_tool(

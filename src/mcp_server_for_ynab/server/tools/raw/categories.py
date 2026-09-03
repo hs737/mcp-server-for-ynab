@@ -52,7 +52,7 @@ _reg("category_groups_update", "write", "Update a category group. [WRITE]")
         "Note: category group listing is embedded here — YNAB returns categories already grouped. "
         "Supports delta sync via last_knowledge_of_server."
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def categories_list(
@@ -106,7 +106,7 @@ async def categories_list(
 @mcp.tool(
     name="categories_get",
     description="[READ] Get a single category by ID. Amounts are in milliunits (1000 = $1.00).",
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def categories_get(category_id: str, plan_id: str | None = None) -> dict[str, Any]:
@@ -123,7 +123,7 @@ async def categories_get(category_id: str, plan_id: str | None = None) -> dict[s
         "month: ISO date string for the first day of the month (e.g. '2024-01-01'). "
         "Amounts are in milliunits (1000 = $1.00)."
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def categories_get_for_month(
@@ -144,7 +144,7 @@ async def categories_get_for_month(
         "category_group_id is required — get one from categories_list or category_groups_create. "
         "To set the category's budgeted amount, call categories_update_for_month afterwards."
     ),
-    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False),
+    annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False),
 )
 @tool_handler
 async def categories_create(
@@ -176,7 +176,7 @@ async def categories_create(
         "This route cannot change the budgeted amount — YNAB accepts the field and ignores it, "
         "because budgeted amounts are per-month. Use categories_update_for_month instead."
     ),
-    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False),
+    annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False),
 )
 @tool_handler
 async def categories_update(
@@ -215,7 +215,7 @@ async def categories_update(
         "month: ISO date string for the first day of the month (e.g. '2024-01-01'). "
         "budgeted is in milliunits (1000 = $1.00)."
     ),
-    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False),
+    annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False),
 )
 @tool_handler
 async def categories_update_for_month(
@@ -248,7 +248,7 @@ async def categories_update_for_month(
 @write_tool(
     name="category_groups_create",
     description="[WRITE] Create a new category group.",
-    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False),
+    annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False),
 )
 @tool_handler
 async def category_groups_create(name: str, plan_id: str | None = None) -> dict[str, Any]:
@@ -271,7 +271,7 @@ async def category_groups_create(name: str, plan_id: str | None = None) -> dict[
 @write_tool(
     name="category_groups_update",
     description=("[WRITE] Update a category group. Note: YNAB does not support deleting category groups via the API."),
-    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False),
+    annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False),
 )
 @tool_handler
 async def category_groups_update(

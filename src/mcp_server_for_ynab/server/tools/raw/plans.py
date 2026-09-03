@@ -24,7 +24,7 @@ _reg("plans_get_settings", "read", "Get plan settings (currency/date format). Na
 @mcp.tool(
     name="plans_list",
     description="[READ] List all YNAB plans (budgets) available to the authenticated user.",
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def plans_list() -> dict[str, Any]:
@@ -40,7 +40,7 @@ async def plans_list() -> dict[str, Any]:
         "Pass last_knowledge_of_server for delta sync — only changed data is returned. "
         "The response includes server_knowledge for use in the next delta request."
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def plans_get(
@@ -60,7 +60,7 @@ async def plans_get(
         "Note: this endpoint is intentionally narrow — it returns formatting preferences "
         "only, not budget data."
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def plans_get_settings(plan_id: str | None = None) -> dict[str, Any]:

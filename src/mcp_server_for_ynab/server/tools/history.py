@@ -33,7 +33,7 @@ tool_registry.register(
         "reverted and how. Use this before history_revert or history_revert_to to choose an entry. "
         "Entries are recorded even when writes are later disabled, so history survives a restart."
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def history_list(limit: int = 25, plan_id: str | None = None) -> dict[str, Any]:
@@ -60,7 +60,7 @@ async def history_list(limit: int = 25, plan_id: str | None = None) -> dict[str,
         "[READ] Show one history entry in full, including the before and after state. "
         "The before state is what a revert would restore."
     ),
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def history_show(entry_id: str) -> dict[str, Any]:
@@ -79,7 +79,7 @@ async def history_show(entry_id: str) -> dict[str, Any]:
         "delete route for them — and attempting it returns an explanation rather than a partial change. "
         "A recreated transaction gets a new id and loses any bank-import link."
     ),
-    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True),
+    annotations=ToolAnnotations(read_only_hint=False, destructive_hint=True),
 )
 @tool_handler
 async def history_revert(entry_id: str) -> dict[str, Any]:
@@ -106,7 +106,7 @@ async def history_revert(entry_id: str) -> dict[str, Any]:
         "and 'complete' tells you whether the rollback fully succeeded. "
         "Call history_list first, and prefer reverting a few entries over a long rollback."
     ),
-    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True),
+    annotations=ToolAnnotations(read_only_hint=False, destructive_hint=True),
 )
 @tool_handler
 async def history_revert_to(entry_id: str, plan_id: str | None = None) -> dict[str, Any]:

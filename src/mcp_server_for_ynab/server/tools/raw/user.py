@@ -22,7 +22,7 @@ _reg("user_get", "Get the authenticated YNAB user.")
 @mcp.tool(
     name="user_get",
     description="[READ] Get the authenticated YNAB user. Returns the user ID.",
-    annotations=ToolAnnotations(readOnlyHint=True),
+    annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler
 async def user_get() -> dict[str, Any]:

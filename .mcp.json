@@ -3,7 +3,7 @@
     "ynab": {
       "command": "uvx",
       "args": [
-        "mcp-server-for-ynab==0.3.1",
+        "mcp-server-for-ynab==0.4.0",
         "stdio"
       ],
       "env": {

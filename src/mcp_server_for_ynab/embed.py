@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 from mcp_server_for_ynab.auth.base import AuthProvider
 from mcp_server_for_ynab.server.app import create_embedded_app
@@ -31,8 +31,8 @@ def create_app_context(
     return AppContext.from_auth_provider(settings=resolver, auth_provider=auth_provider)
 
 
-def create_mcp_app() -> FastMCP:
-    """Return the core FastMCP application without PAT-only startup wiring."""
+def create_mcp_app() -> MCPServer:
+    """Return the core MCPServer application without PAT-only startup wiring."""
     return create_embedded_app()
 
 
