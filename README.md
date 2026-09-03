@@ -9,7 +9,7 @@ month is going, what is overspent, what your subscriptions really cost.
 [![PyPI](https://img.shields.io/pypi/v/mcp-server-for-ynab?logo=pypi&logoColor=white&label=PyPI)](https://pypi.org/project/mcp-server-for-ynab/)
 [![Python](https://img.shields.io/pypi/pyversions/mcp-server-for-ynab?logo=python&logoColor=white&label=Python)](https://pypi.org/project/mcp-server-for-ynab/)
 [![CI](https://github.com/hs737/mcp-server-for-ynab/actions/workflows/ci.yml/badge.svg)](https://github.com/hs737/mcp-server-for-ynab/actions/workflows/ci.yml)
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/hs737/mcp-server-for-ynab/blob/master/LICENSE)
 [![Listed on mcpservers.org](https://mcpservers.org/badge.svg)](https://mcpservers.org/servers/hs737/mcp-server-for-ynab)
 
 <!-- Absolute URL on purpose: this README is also the package description on
@@ -58,14 +58,14 @@ print `smoke: app created, 44 tools registered`.
 
 | Client | Setup |
 |--------|-------|
-| [Claude Code](https://claude.com/product/claude-code) | [one command](docs/client-setup.md#claude-code) |
-| [Claude Desktop](https://claude.ai/download) | [config file](docs/client-setup.md#claude-desktop) |
-| [Cursor](https://cursor.com) | [one-click link](docs/client-setup.md#cursor) |
-| [VS Code](https://code.visualstudio.com) (GitHub Copilot) | [one command](docs/client-setup.md#vs-code) |
-| [Codex CLI](https://developers.openai.com/codex) | [one command](docs/client-setup.md#codex-cli) |
-| [Gemini CLI](https://github.com/google-gemini/gemini-cli) | [one command](docs/client-setup.md#gemini-cli) |
-| [Windsurf](https://windsurf.com), [Zed](https://zed.dev), others | [generic stdio config](docs/client-setup.md#other-stdio-clients) |
-| [MCP Inspector](https://github.com/modelcontextprotocol/inspector) | [debugging](docs/client-setup.md#mcp-inspector) |
+| [Claude Code](https://claude.com/product/claude-code) | [one command](https://github.com/hs737/mcp-server-for-ynab/blob/master/docs/client-setup.md#claude-code) |
+| [Claude Desktop](https://claude.ai/download) | [config file](https://github.com/hs737/mcp-server-for-ynab/blob/master/docs/client-setup.md#claude-desktop) |
+| [Cursor](https://cursor.com) | [one-click link](https://github.com/hs737/mcp-server-for-ynab/blob/master/docs/client-setup.md#cursor) |
+| [VS Code](https://code.visualstudio.com) (GitHub Copilot) | [one command](https://github.com/hs737/mcp-server-for-ynab/blob/master/docs/client-setup.md#vs-code) |
+| [Codex CLI](https://developers.openai.com/codex) | [one command](https://github.com/hs737/mcp-server-for-ynab/blob/master/docs/client-setup.md#codex-cli) |
+| [Gemini CLI](https://github.com/google-gemini/gemini-cli) | [one command](https://github.com/hs737/mcp-server-for-ynab/blob/master/docs/client-setup.md#gemini-cli) |
+| [Windsurf](https://windsurf.com), [Zed](https://zed.dev), others | [generic stdio config](https://github.com/hs737/mcp-server-for-ynab/blob/master/docs/client-setup.md#other-stdio-clients) |
+| [MCP Inspector](https://github.com/modelcontextprotocol/inspector) | [debugging](https://github.com/hs737/mcp-server-for-ynab/blob/master/docs/client-setup.md#mcp-inspector) |
 
 The two most common paths:
 
@@ -104,7 +104,7 @@ MCP config file:
 `YNAB_PLAN_ID` is optional but recommended — with it set, you never have to
 name a budget in a request. Full per-client instructions, including where each
 config file lives and how to keep the token out of it, are in
-[Client Setup](docs/client-setup.md).
+[Client Setup](https://github.com/hs737/mcp-server-for-ynab/blob/master/docs/client-setup.md).
 
 **Desktop hosts that accept bundles** — download the `.mcpb` file from the
 [latest release](https://github.com/hs737/mcp-server-for-ynab/releases/latest)
@@ -143,7 +143,7 @@ docker run -i --rm -e YNAB_API_KEY=your_ynab_token -e YNAB_ALLOW_WRITES=1 \
 > What's my cash position across all accounts?
 
 If that works, you're set. If it doesn't, see
-[Troubleshooting](docs/client-setup.md#troubleshooting) — the usual cause is
+[Troubleshooting](https://github.com/hs737/mcp-server-for-ynab/blob/master/docs/client-setup.md#troubleshooting) — the usual cause is
 that the client cannot find `uvx` on its `PATH`.
 
 ## What You Can Ask
@@ -171,7 +171,7 @@ preceded it. `history_revert` undoes any of them.
 
 Agents work best when they start with `overview_available_tools`, which returns
 the current tool catalog grouped by family. See
-[Tool Surface](docs/tool-surface.md) for the full map.
+[Tool Surface](https://github.com/hs737/mcp-server-for-ynab/blob/master/docs/tool-surface.md) for the full map.
 
 ### Guided workflows
 
@@ -253,7 +253,7 @@ way does not fit in a context window.
 Range tools still spend one YNAB request per month — there is no range endpoint
 — so each one says what it costs and the range is capped at 36 months.
 
-More detail: [Tool Surface](docs/tool-surface.md)
+More detail: [Tool Surface](https://github.com/hs737/mcp-server-for-ynab/blob/master/docs/tool-surface.md)
 
 ## Write Tools
 
@@ -388,16 +388,16 @@ make test-postman-operator
 
 If you are:
 
-- **connecting a client**: [Client Setup](docs/client-setup.md)
-- **new to the repo**: [Architecture](docs/architecture.md)
-- **adding code**: [Contributing](CONTRIBUTING.md), [Repo Structure](docs/repo-structure.md), [Agent Guidance](AGENTS.md)
-- **adding or changing tools**: [Tool Surface](docs/tool-surface.md)
-- **verifying behavior**: [Testing](docs/testing.md)
-- **working on auth, error handling, or logging**: [Security](docs/security.md)
-- **publishing or adding a release channel**: [Distribution](docs/distribution.md)
+- **connecting a client**: [Client Setup](https://github.com/hs737/mcp-server-for-ynab/blob/master/docs/client-setup.md)
+- **new to the repo**: [Architecture](https://github.com/hs737/mcp-server-for-ynab/blob/master/docs/architecture.md)
+- **adding code**: [Contributing](https://github.com/hs737/mcp-server-for-ynab/blob/master/CONTRIBUTING.md), [Repo Structure](https://github.com/hs737/mcp-server-for-ynab/blob/master/docs/repo-structure.md), [Agent Guidance](https://github.com/hs737/mcp-server-for-ynab/blob/master/AGENTS.md)
+- **adding or changing tools**: [Tool Surface](https://github.com/hs737/mcp-server-for-ynab/blob/master/docs/tool-surface.md)
+- **verifying behavior**: [Testing](https://github.com/hs737/mcp-server-for-ynab/blob/master/docs/testing.md)
+- **working on auth, error handling, or logging**: [Security](https://github.com/hs737/mcp-server-for-ynab/blob/master/docs/security.md)
+- **publishing or adding a release channel**: [Distribution](https://github.com/hs737/mcp-server-for-ynab/blob/master/docs/distribution.md)
 
-Full map: [Docs Index](docs/README.md). Also: [Postman Notes](postman/README.md),
-[Legal Notice](NOTICE.md).
+Full map: [Docs Index](https://github.com/hs737/mcp-server-for-ynab/blob/master/docs/README.md). Also: [Postman Notes](https://github.com/hs737/mcp-server-for-ynab/blob/master/postman/README.md),
+[Legal Notice](https://github.com/hs737/mcp-server-for-ynab/blob/master/NOTICE.md).
 
 ## Current State
 
@@ -412,11 +412,11 @@ runtime to live in its own repository, importing this package through its embed
 surface so OAuth and public-app concerns stay out of here.
 
 If architecture and implementation ever diverge, the source of truth should be
-[Architecture](docs/architecture.md), updated to reflect the actual code.
+[Architecture](https://github.com/hs737/mcp-server-for-ynab/blob/master/docs/architecture.md), updated to reflect the actual code.
 
 ## License
 
-Apache License 2.0. See [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md).
+Apache License 2.0. See [LICENSE](https://github.com/hs737/mcp-server-for-ynab/blob/master/LICENSE) and [NOTICE.md](https://github.com/hs737/mcp-server-for-ynab/blob/master/NOTICE.md).
 
 ## Disclaimer
 
