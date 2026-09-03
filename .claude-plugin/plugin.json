@@ -1,7 +1,7 @@
 {
   "name": "mcp-server-for-ynab",
   "displayName": "MCP Server for YNAB",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Connect your AI assistant to YNAB. Read-only by default, with opt-in writes that are recorded and reversible.",
   "author": {
     "name": "Harsh S",
