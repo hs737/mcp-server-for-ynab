@@ -139,7 +139,11 @@ async def test_success_returns_data_without_error_key(ynab_env: None) -> None:
         result = await plans_list()
 
     assert "error" not in result
-    assert result == {"budgets": [{"id": "abc", "name": "Test"}]}
+    assert result["budgets"] == [{"id": "abc", "name": "Test"}]
+    # The boundary adds the request-budget trailer to every response, so the
+    # payload is the tool's own keys plus those two.
+    assert result["requests_remaining"] >= 0
+    assert result["requests_used_this_hour"] >= 0
 
 
 async def test_success_with_default_plan_id(ynab_env: None) -> None:
@@ -156,4 +160,4 @@ async def test_success_with_default_plan_id(ynab_env: None) -> None:
         result = await accounts_list(plan_id=None)
 
     assert "error" not in result
-    assert result == {"accounts": []}
+    assert result["accounts"] == []

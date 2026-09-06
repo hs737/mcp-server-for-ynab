@@ -70,10 +70,65 @@ async def budget_snapshot(ctx: AppContext, plan_id: str) -> dict[str, Any]:
     }
 
 
+def _previous_month(stamp: str) -> str:
+    year, month = int(stamp[:4]), int(stamp[5:7])
+    return f"{year - 1:04d}-12-01" if month == 1 else f"{year:04d}-{month - 1:02d}-01"
+
+
+async def _prior_overspending(ctx: AppContext, plan_id: str, target_month: str) -> dict[str, Any]:
+    """What last month's overspending took out of this month's Ready to Assign.
+
+    A month can look under-funded for a reason that is invisible inside it: a
+    category that went negative last month is settled out of this month's Ready
+    to Assign before anything is assigned, and the only trace in this month is a
+    smaller number to work with. On one plan that was $12,661, all of it in two
+    groups, and nothing in the month itself said so.
+    """
+    try:
+        previous = await ctx.months.get(plan_id, _previous_month(target_month))
+    except Exception:  # the month may predate the plan; the rest of the answer stands
+        return {}
+
+    overspent = [c for c in previous.data.month.categories if c.balance < 0 and not c.deleted]
+    if not overspent:
+        return {"prior_month": previous.data.month.month, "prior_month_overspending": 0}
+
+    by_group: dict[str, int] = {}
+    for category in overspent:
+        name = category.category_group_name or "(no group)"
+        by_group[name] = by_group.get(name, 0) + -category.balance
+
+    total = sum(by_group.values())
+    return {
+        "prior_month": previous.data.month.month,
+        "prior_month_overspending": total,
+        "prior_month_overspending_display": milliunits_to_display(total),
+        "prior_month_overspending_by_group": [
+            {"group": group, "overspent": amount, "overspent_display": milliunits_to_display(amount)}
+            for group, amount in sorted(by_group.items(), key=lambda item: item[1], reverse=True)
+        ],
+        "prior_month_note": (
+            "Overspending in the previous month is settled before this month is budgeted, which is "
+            "why this month can have less to assign than its income suggests. Only the part spent "
+            "from cash accounts comes out of Ready to Assign — overspending charged to a credit "
+            "card carries forward as debt instead. analysis_overspent_history separates the two."
+        ),
+    }
+
+
 async def month_health(ctx: AppContext, plan_id: str, month: str | None = None) -> dict[str, Any]:
-    """Summarize a budget month: income, spending, remaining, overspent categories."""
+    """Summarize a budget month: income, spending, remaining, overspent categories.
+
+    Costs two requests: the month, and the one before it, because what reduced
+    this month's Ready to Assign happened in that one.
+    """
+    import asyncio
+
     target_month = month or (date.today().isoformat()[:7] + "-01")
-    month_resp = await ctx.months.get(plan_id, target_month)
+    month_resp, prior = await asyncio.gather(
+        ctx.months.get(plan_id, target_month),
+        _prior_overspending(ctx, plan_id, target_month),
+    )
     m = month_resp.data.month
 
     cats_in_month = m.categories
@@ -108,6 +163,7 @@ async def month_health(ctx: AppContext, plan_id: str, month: str | None = None) 
             }
             for c in overspent[:10]
         ],
+        **prior,
         "underfunded_goal_count": len(underfunded),
         "underfunded_goals": [
             {

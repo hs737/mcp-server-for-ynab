@@ -12,7 +12,13 @@ from datetime import date, timedelta
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
-from mcp_server_for_ynab.models.ynab.accounts import Account, AccountsData, AccountsResponse
+from mcp_server_for_ynab.models.ynab.accounts import (
+    Account,
+    AccountData,
+    AccountResponse,
+    AccountsData,
+    AccountsResponse,
+)
 from mcp_server_for_ynab.models.ynab.categories import (
     CategoriesData,
     CategoriesResponse,
@@ -129,6 +135,11 @@ def accounts_response(*items: Account, server_knowledge: int = 1) -> AccountsRes
     return AccountsResponse(data=AccountsData(accounts=list(items), server_knowledge=server_knowledge))
 
 
+def account_response(item: Account | None = None) -> AccountResponse:
+    """A single-account get, which the reconcile tools read alongside a register."""
+    return AccountResponse(data=AccountData(account=item or account()))
+
+
 def categories_response(*items: Category, server_knowledge: int = 1) -> CategoriesResponse:
     group = CategoryGroup(id="group-1", name="Everyday", hidden=False, deleted=False, categories=list(items))
     return CategoriesResponse(data=CategoriesData(category_groups=[group], server_knowledge=server_knowledge))
@@ -190,6 +201,7 @@ def transaction(
     amount: int = -10_000,
     account_id: str = "acct-1",
     cleared: str = "cleared",
+    approved: bool = True,
     import_id: str | None = None,
     payee_id: str | None = "payee-1",
     payee_name: str | None = "Grocery Store",
@@ -206,7 +218,7 @@ def transaction(
         amount=amount,
         memo=memo,
         cleared=cleared,
-        approved=True,
+        approved=approved,
         import_id=import_id,
         account_id=account_id,
         account_name="Checking",
@@ -263,6 +275,7 @@ def scheduled_response(*items: ScheduledTransaction, server_knowledge: int = 1) 
 
 def make_ctx(
     *,
+    account: AccountResponse | None = None,
     month_response: MonthResponse | None = None,
     months_by_month: dict[str, MonthResponse] | None = None,
     months_list: MonthsResponse | None = None,
@@ -293,6 +306,7 @@ def make_ctx(
     ctx.months.list = AsyncMock(return_value=months_list or months_list_response())
     ctx.money_movements.list = AsyncMock(return_value=money_movements or money_movements_response())
     ctx.accounts.list = AsyncMock(return_value=accounts or accounts_response())
+    ctx.accounts.get = AsyncMock(return_value=account or account_response())
     ctx.categories.list = AsyncMock(return_value=categories or categories_response())
     ctx.scheduled_transactions.list = AsyncMock(return_value=scheduled_transactions or scheduled_response())
 

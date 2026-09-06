@@ -93,3 +93,22 @@ async def test_invalid_arguments_are_reported_as_validation_not_internal() -> No
 
     assert result["error"]["error_type"] == "validation_error"
     assert result["error"]["details"]["fields"][0]["field"] == "memo"
+
+
+def test_a_rate_limit_carries_an_absolute_deadline_as_well_as_seconds() -> None:
+    """A scheduler that turns seconds into a wake-up time drifts; a timestamp does not."""
+    error = YnabMcpError.rate_limited(retry_after=658)
+
+    assert error.retry_after == 658
+    assert error.retry_at is not None
+    assert error.retry_at.startswith("20")
+
+
+def test_a_rate_limit_says_the_quota_is_shared_with_the_users_own_ynab_apps() -> None:
+    """Otherwise the agent promises a reopening time that the phone has already spent."""
+    assert "shared with" in YnabMcpError.rate_limited(retry_after=60).message
+    assert "shared with" in YnabMcpError.from_ynab_response(status_code=429).message
+
+
+def test_retry_at_is_absent_when_ynab_did_not_say_when() -> None:
+    assert YnabMcpError.rate_limited().retry_at is None

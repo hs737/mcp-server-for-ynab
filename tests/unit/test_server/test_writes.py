@@ -181,3 +181,104 @@ async def test_moving_money_to_and_from_nowhere_is_refused(ctx: MagicMock) -> No
     result = await _call(ctx, "money_move", month="2026-07", amount=1_000)
 
     assert "nothing to move" in result["error"]["message"]
+
+
+async def test_adjust_by_adds_to_what_is_already_assigned(ctx: MagicMock) -> None:
+    """The point of a delta: no read-then-replace, and nothing to race."""
+    result = await _call(
+        ctx,
+        "months_assign_many",
+        month="2026-07",
+        assignments=[{"category_id": "c1", "adjust_by": 4_500}],
+    )
+
+    row = result["applied"][0]
+    assert row["mode"] == "adjust_by"
+    assert row["previous_budgeted"] == 10_000
+    assert row["budgeted"] == 14_500
+    assert row["change"] == 4_500
+    assert row["verified"] is True
+
+
+async def test_adjust_by_takes_money_away_when_negative(ctx: MagicMock) -> None:
+    result = await _call(
+        ctx,
+        "months_assign_many",
+        month="2026-07",
+        assignments=[{"category_id": "c1", "adjust_by": -2_500}],
+    )
+
+    assert result["applied"][0]["budgeted"] == 7_500
+
+
+async def test_an_assignment_needs_exactly_one_of_budgeted_and_adjust_by(ctx: MagicMock) -> None:
+    both = await _call(
+        ctx,
+        "months_assign_many",
+        month="2026-07",
+        assignments=[{"category_id": "c1", "budgeted": 1, "adjust_by": 1}],
+    )
+    neither = await _call(ctx, "months_assign_many", month="2026-07", assignments=[{"category_id": "c1"}])
+
+    assert "Both were given" in both["error"]["message"]
+    assert "Neither was given" in neither["error"]["message"]
+
+
+async def test_a_delta_is_still_journaled_against_the_previous_amount(ctx: MagicMock) -> None:
+    """A revert restores what was there, not the delta that was applied."""
+    result = await _call(
+        ctx,
+        "months_assign_many",
+        month="2026-07",
+        assignments=[{"category_id": "c1", "adjust_by": 4_500}],
+    )
+
+    entry = journal.get(result["history_entry_id"])
+    assert entry is not None
+    assert entry.before == [{"id": "c1", "month": "2026-07-01", "budgeted": 10_000}]
+
+
+async def test_a_line_is_refused_when_the_amount_is_not_what_the_caller_expected(ctx: MagicMock) -> None:
+    """The check is on the amount read here against what the caller expected, so
+    it catches a caller acting on a figure that had already moved. It cannot
+    catch a change landing after this read: nothing available here can."""
+    result = await _call(
+        ctx,
+        "months_assign_many",
+        month="2026-07",
+        assignments=[{"category_id": "c1", "adjust_by": 4_500, "expected_budgeted": 9_000}],
+    )
+
+    assert result["applied"] == []
+    assert result["failed"][0]["budgeted_now"] == 10_000
+    assert "YNAB app" in result["failed"][0]["error"]
+    ctx.categories.update_for_month.assert_not_awaited()
+
+
+async def test_a_matching_expectation_lets_the_line_through(ctx: MagicMock) -> None:
+    result = await _call(
+        ctx,
+        "months_assign_many",
+        month="2026-07",
+        assignments=[{"category_id": "c1", "adjust_by": 4_500, "expected_budgeted": 10_000}],
+    )
+
+    assert result["applied"][0]["budgeted"] == 14_500
+
+
+async def test_one_refused_line_does_not_abandon_the_rest(ctx: MagicMock) -> None:
+    """The batch is a plan, and a stale expectation on one line is not a reason
+    to drop the others."""
+    result = await _call(
+        ctx,
+        "months_assign_many",
+        month="2026-07",
+        assignments=[
+            {"category_id": "c1", "adjust_by": 4_500, "expected_budgeted": 1},
+            {"category_id": "c2", "budgeted": 25_000},
+        ],
+    )
+
+    assert [row["category_id"] for row in result["applied"]] == ["c2"]
+    assert [row["category_id"] for row in result["failed"]] == ["c1"]
+    assert result["verification"]["verified"] is False

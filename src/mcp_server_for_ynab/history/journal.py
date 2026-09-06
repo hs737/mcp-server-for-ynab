@@ -39,6 +39,10 @@ REVERT_STRATEGIES = {
     "category_update": "restore the previous name and note",
     "category_month_budget": "restore the previous budgeted amount",
     "category_month_budget_batch": "restore the previous budgeted amount of every category in the batch",
+    "reconcile_apply": (
+        "restore the previous cleared status of every transaction marked, and delete the "
+        "adjustment transaction if one was created"
+    ),
     "category_group_update": "restore the previous name",
     "payee_update": "restore the previous name",
 }

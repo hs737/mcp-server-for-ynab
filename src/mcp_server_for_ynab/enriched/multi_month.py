@@ -21,9 +21,10 @@ this says so in its description, and the range is capped.
 from __future__ import annotations
 
 import asyncio
-from datetime import date
+from datetime import UTC, date, datetime
 from typing import Any
 
+from mcp_server_for_ynab.models.amounts import milliunits_to_display
 from mcp_server_for_ynab.models.errors import ErrorType, YnabMcpError, YnabMcpException
 from mcp_server_for_ynab.models.ynab.categories import Category
 from mcp_server_for_ynab.models.ynab.months import Month
@@ -33,6 +34,22 @@ from mcp_server_for_ynab.server.context import AppContext
 # call. Three years is more than any review has needed and leaves room to work
 # afterwards.
 MAX_RANGE_MONTHS = 36
+
+# The three numbers a month holds for a category. A review usually reads one of
+# them down a column, and at forty categories over twenty-three months the other
+# two are two thirds of the payload.
+SERIES_FIELDS = ("budgeted", "activity", "balance")
+
+# Said on every range response, because the trap it names is not hypothetical: a
+# range cached on day one and reasoned from on day four produced two wrong
+# conclusions in the session this was written for, and nothing in the payload
+# said how old it was.
+FRESHNESS_NOTE = (
+    "as_of is when this was read. A budget changes underneath a cached range — through the YNAB "
+    "app as well as through this server — so re-read before acting on an old one, and use "
+    "changes_since with the server_knowledge from any list response to find out what moved without "
+    "fetching the range again."
+)
 
 # YNAB tolerates parallel reads, but firing thirty-six at once is a good way to
 # collect a 429 for no gain — the wall-clock difference against six at a time is
@@ -130,14 +147,39 @@ def compact_category(category: Category) -> dict[str, Any]:
 
 
 def month_totals(month: Month) -> dict[str, Any]:
+    """One row per month, so the display strings here cost almost nothing.
+
+    Per-category cells deliberately carry none: a display string beside every
+    figure in a forty-category, twenty-three-month matrix would roughly double
+    a payload whose whole point is fitting in a context window. The totals are
+    where a person reading over the agent's shoulder looks.
+    """
     return {
         "month": month.month,
         "income": month.income,
+        "income_display": milliunits_to_display(month.income),
         "budgeted": month.budgeted,
+        "budgeted_display": milliunits_to_display(month.budgeted),
         "activity": month.activity,
+        "activity_display": milliunits_to_display(month.activity),
         "to_be_budgeted": month.to_be_budgeted,
+        "to_be_budgeted_display": milliunits_to_display(month.to_be_budgeted),
         "age_of_money": month.age_of_money,
     }
+
+
+def series_fields(fields: list[str] | None) -> tuple[str, ...]:
+    """Which of budgeted, activity and balance a range should carry."""
+    if not fields:
+        return SERIES_FIELDS
+
+    names = [f.strip() for f in fields if f and f.strip()]
+    unknown = sorted({name for name in names if name not in SERIES_FIELDS})
+    if unknown:
+        raise _fail(
+            f"Unknown field(s) in fields: {', '.join(unknown)}. A month series carries {', '.join(SERIES_FIELDS)}."
+        )
+    return tuple(name for name in SERIES_FIELDS if name in names)
 
 
 def _selected(
@@ -164,6 +206,7 @@ async def month_series(
     category_ids: list[str] | None = None,
     group_ids: list[str] | None = None,
     include_hidden: bool = False,
+    fields: list[str] | None = None,
 ) -> dict[str, Any]:
     """A category-by-month matrix of budgeted, activity, and balance.
 
@@ -172,6 +215,7 @@ async def month_series(
     `months_get` means eighteen documents and a join. Here it is one row.
     """
     months = month_sequence(from_month, to_month)
+    chosen_fields = series_fields(fields)
     fetched = await fetch_months(ctx, plan_id, months)
 
     # Categories are keyed by id rather than accumulated per month, because a
@@ -189,28 +233,27 @@ async def month_series(
             row["group"] = category.category_group_name
             row["group_id"] = category.category_group_id
             row["name"] = category.name
-            row["series"].append(
-                {
-                    "month": month.month,
-                    "budgeted": category.budgeted,
-                    "activity": category.activity,
-                    "balance": category.balance,
-                }
-            )
+            cell: dict[str, Any] = {"month": month.month}
+            for field in chosen_fields:
+                cell[field] = getattr(category, field)
+            row["series"].append(cell)
 
     ordered = sorted(rows.values(), key=lambda r: (r.get("group") or "", r.get("name") or ""))
     return {
         "scope": "months_range",
         "plan_id": plan_id,
+        "as_of": datetime.now(UTC).isoformat(timespec="seconds"),
         "from_month": months[0],
         "to_month": months[-1],
         "months": months,
         "month_count": len(months),
         "category_count": len(ordered),
         "include_hidden": include_hidden,
+        "fields": list(chosen_fields),
         "amounts": "milliunits (1000 = $1.00)",
         "month_totals": [month_totals(month) for month in fetched],
         "categories": ordered,
+        "freshness": FRESHNESS_NOTE,
     }
 
 
@@ -259,6 +302,7 @@ async def group_series(
     return {
         "scope": "category_groups_summary_by_month",
         "plan_id": plan_id,
+        "as_of": datetime.now(UTC).isoformat(timespec="seconds"),
         "from_month": months[0],
         "to_month": months[-1],
         "months": months,
@@ -268,4 +312,5 @@ async def group_series(
         "amounts": "milliunits (1000 = $1.00)",
         "month_totals": [month_totals(month) for month in fetched],
         "groups": ordered,
+        "freshness": FRESHNESS_NOTE,
     }

@@ -76,13 +76,15 @@ def _split_name(name: str) -> tuple[str, str]:
     return head, tail or "overview"
 
 
-# Two names the prefix rule reads correctly and titles badly: money_move is not
-# in the money_movements family it looks like it belongs to, and "Changes —
-# Since" is a sentence fragment. Overriding two titles is cheaper than bending
-# the rule that gets the other seventy-five right.
+# Three names the prefix rule reads correctly and titles badly: money_move is
+# not in the money_movements family it looks like it belongs to, "Changes —
+# Since" is a sentence fragment, and ping is one word with no family prefix at
+# all. Overriding three titles is cheaper than bending the rule that gets the
+# other seventy-five right.
 _TITLE_OVERRIDES = {
     "money_move": "Money — Move between categories",
     "changes_since": "Changes — Since last check",
+    "ping": "Server — Ping",
 }
 
 

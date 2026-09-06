@@ -29,7 +29,10 @@ _reg("money_movement_groups_list_by_month", "List money movement groups for a sp
         "between categories within a month — it is not a transaction and has no payee or account. "
         "A null from_category_id or to_category_id means Ready to Assign. "
         "Amounts are in milliunits (1000 = $1.00). "
-        "Supports delta sync via last_knowledge_of_server."
+        "Supports delta sync: pass last_knowledge_of_server — the server_knowledge value any earlier response "
+        "returned — and YNAB sends only what changed since, which is how a long session stays current without "
+        "re-reading everything. changes_since does the same across categories, months and transactions in one "
+        "call."
     ),
     annotations=ToolAnnotations(read_only_hint=True),
 )
@@ -72,7 +75,10 @@ async def money_movements_list_by_month(
         "[READ] List money movement groups for a plan. A group ties together the movements made "
         "in a single action; it carries no amount of its own. Join movements to a group on "
         "money_movement_group_id. "
-        "Supports delta sync via last_knowledge_of_server."
+        "Supports delta sync: pass last_knowledge_of_server — the server_knowledge value any earlier response "
+        "returned — and YNAB sends only what changed since, which is how a long session stays current without "
+        "re-reading everything. changes_since does the same across categories, months and transactions in one "
+        "call."
     ),
     annotations=ToolAnnotations(read_only_hint=True),
 )

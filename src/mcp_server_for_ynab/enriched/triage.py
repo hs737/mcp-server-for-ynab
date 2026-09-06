@@ -17,6 +17,7 @@ from __future__ import annotations
 from datetime import date, timedelta
 from typing import Any
 
+from mcp_server_for_ynab.enriched.reconcile import PENDING_IMPORT_PREFIX
 from mcp_server_for_ynab.models.amounts import milliunits_to_display
 from mcp_server_for_ynab.models.ynab.accounts import Account
 from mcp_server_for_ynab.models.ynab.transactions import ClearedStatus, Transaction
@@ -286,6 +287,93 @@ async def unmatched_manual(
             "These are transactions with no import_id — entered by hand — still uncleared on an account "
             "YNAB imports from. Their net amount is how far YNAB's balance stands from the bank's for "
             "these entries alone. Each is a duplicate, a payment that never landed, or an entry to fix."
+        ),
+    }
+
+
+async def pending_imports(
+    ctx: AppContext,
+    plan_id: str,
+    *,
+    account_id: str | None = None,
+    older_than_days: int = 7,
+    since_date: str | None = None,
+) -> dict[str, Any]:
+    """Card authorisations YNAB imported that never became real charges.
+
+    When a merchant places a hold — a fuel pump, a hotel, a rideshare — YNAB's
+    direct import records it as a transaction with an import_id beginning
+    `YNAB:P:`. When the charge actually posts, usually at a different amount, it
+    arrives as its own transaction and the hold is left behind: uncleared,
+    permanent, and counted in the card's balance.
+
+    `triage_unmatched_manual` cannot see these, because it looks for entries
+    with no import_id and these have one. On the plan this was written for, four
+    of them had been inflating a credit card by about $79.
+    """
+    import asyncio
+
+    start = since_date or (date.today() - timedelta(days=180)).isoformat()
+    cutoff = (date.today() - timedelta(days=max(0, older_than_days))).isoformat()
+
+    accounts_resp, txn_resp = await asyncio.gather(
+        ctx.accounts.list(plan_id),
+        ctx.transactions.list(plan_id, since_date=start),
+    )
+    accounts = {
+        a.id: a for a in accounts_resp.data.accounts if not a.deleted and (account_id is None or a.id == account_id)
+    }
+
+    stuck = [
+        t
+        for t in txn_resp.data.transactions
+        if not t.deleted
+        and t.account_id in accounts
+        and t.cleared == ClearedStatus.UNCLEARED
+        and t.import_id is not None
+        and t.import_id.startswith(PENDING_IMPORT_PREFIX)
+        and t.date <= cutoff
+    ]
+    stuck.sort(key=lambda t: t.date)
+
+    by_account: dict[str, dict[str, Any]] = {}
+    for txn in stuck:
+        bucket = by_account.setdefault(
+            txn.account_id,
+            {
+                "account_id": txn.account_id,
+                "account_name": accounts[txn.account_id].name,
+                "count": 0,
+                "net_amount": 0,
+                "oldest": txn.date,
+            },
+        )
+        bucket["count"] += 1
+        bucket["net_amount"] += txn.amount
+        bucket["oldest"] = min(str(bucket["oldest"]), txn.date)
+
+    for bucket in by_account.values():
+        bucket["net_amount_display"] = milliunits_to_display(int(bucket["net_amount"]))
+
+    net = sum(t.amount for t in stuck)
+    return {
+        "scope": "triage_pending_imports",
+        "plan_id": plan_id,
+        "as_of": date.today().isoformat(),
+        "since_date": start,
+        "older_than_days": older_than_days,
+        "cutoff_date": cutoff,
+        "count": len(stuck),
+        "net_amount": net,
+        "net_amount_display": milliunits_to_display(net),
+        "by_account": sorted(by_account.values(), key=lambda b: abs(int(b["net_amount"])), reverse=True),
+        "transactions": [_slim(t) for t in stuck],
+        "note": (
+            f"Uncleared transactions whose import_id starts with {PENDING_IMPORT_PREFIX} — card "
+            "authorisations YNAB imported that never posted. Their net amount is how much they are "
+            "distorting the accounts they sit on. Check each against the statement before deleting "
+            "it: an authorisation that did post appears twice, once as the hold and once as the real "
+            "charge, and only the hold should go."
         ),
     }
 

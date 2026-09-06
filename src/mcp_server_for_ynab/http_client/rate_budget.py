@@ -8,6 +8,13 @@ later, in the middle of something else.
 
 The budget is deliberately set below YNAB's limit so the first thing to run out
 is ours, where the error is clear and local, rather than theirs.
+
+Two things follow from the window belonging to YNAB rather than to us. The count
+here is what *this server* spent, while the user's own YNAB apps draw on the same
+per-token quota — so the real remaining figure can be lower than the one reported,
+never higher, which is the direction that matters. And a caller can only pace
+itself against a number it can see, which is why `trailer()` rides along on every
+tool response instead of waiting to be asked for.
 """
 
 from __future__ import annotations
@@ -15,6 +22,8 @@ from __future__ import annotations
 import os
 import time
 from collections import deque
+
+from mcp_server_for_ynab.models.errors import retry_at
 
 YNAB_HOURLY_LIMIT = 200
 DEFAULT_BUDGET = 190
@@ -75,6 +84,22 @@ class RateBudget:
             return 0
         return max(0, int(WINDOW_SECONDS - (moment - self._timestamps[0])) + 1)
 
+    def trailer(self, now: float | None = None) -> dict[str, object]:
+        """The two numbers a caller needs to pace itself, small enough to ride along.
+
+        The tool boundary attaches this to every response, the way an HTTP API
+        returns X-RateLimit-Remaining: an agent throttles itself if it can see
+        the number, and cannot if seeing it costs another call.
+        """
+        moment = time.monotonic() if now is None else now
+        trailer: dict[str, object] = {
+            "requests_used_this_hour": self.used(moment),
+            "requests_remaining": self.remaining(moment),
+        }
+        if self.is_low(moment):
+            trailer["requests_warning"] = str(self.status(moment).get("warning"))
+        return trailer
+
     def status(self, now: float | None = None) -> dict[str, object]:
         moment = time.monotonic() if now is None else now
         remaining = self.remaining(moment)
@@ -84,12 +109,18 @@ class RateBudget:
             "remaining": remaining,
             "window_seconds": WINDOW_SECONDS,
             "ynab_hourly_limit": YNAB_HOURLY_LIMIT,
+            "shared_quota_note": (
+                "This counts what this server spent. YNAB's limit is per access token and the same "
+                "token is used by your own YNAB apps, so the real remaining figure can be lower."
+            ),
         }
         if remaining == 0:
+            wait = self.seconds_until_next_slot(moment)
             status["warning"] = (
                 f"Local request budget exhausted. The oldest request leaves the rolling hour in "
-                f"{self.seconds_until_next_slot(moment)}s. Pause before continuing."
+                f"{wait}s. Pause before continuing."
             )
+            status["retry_at"] = retry_at(wait)
         elif self.is_low(moment):
             status["warning"] = (
                 f"{remaining} of {self.limit} requests left this hour. "

@@ -52,7 +52,7 @@ YNAB_API_KEY=your_token uvx mcp-server-for-ynab smoke
 ```
 
 `smoke` validates configuration and tool registration, then exits. It should
-print `smoke: app created, 44 tools registered`.
+print `smoke: app created, 62 tools registered`.
 
 ### 2. Add it to your client
 
@@ -161,6 +161,9 @@ Read-only, works out of the box:
 | "Are any scheduled transactions at risk?" | `analysis_upcoming_scheduled_risks` |
 | "What have I spent at this payee over the last year?" | `bookkeeping_transaction_history` |
 | "What subscriptions am I actually paying for?" | `analysis_recurring_charges` |
+| "Does this account match the statement, and what's in the way?" | `reconcile_preview` |
+| "Here's the bank CSV — what's missing on each side?" | `transactions_match_statement` |
+| "Are there card holds sitting on my account that never posted?" | `triage_pending_imports` |
 
 With `YNAB_ALLOW_WRITES=1`:
 
@@ -175,13 +178,13 @@ the current tool catalog grouped by family. See
 
 ### Guided workflows
 
-Six prompts ship with the server, and most clients surface them as slash
+Seven prompts ship with the server, and most clients surface them as slash
 commands — a starting point that does not require reading the tool list first:
 monthly review, weekly triage, categorize and approve, subscription audit, cash
-position, and review-and-undo.
+position, review-and-undo, and a multi-month budget audit.
 
-Three resources (`ynab://guide/*`) carry the YNAB method, the write-safety
-rules, and guidance on which tool to reach for. They are fetched on demand, so
+Four resources (`ynab://guide/*`) carry the YNAB method, the write-safety
+rules, guidance on which tool to reach for, and how credit accounts behave. They are fetched on demand, so
 they cost nothing until a client asks for them.
 
 ## Configuration
@@ -204,12 +207,24 @@ Set these in your MCP client's `env` block. For local development, copy
 YNAB allows 200 requests per hour per token, and a single enriched tool can
 spend several. The server tracks its own usage in a rolling hour and stops just
 below YNAB's ceiling, so the limit you hit is local and clearly reported rather
-than a 429 in the middle of a workflow. Call `overview_request_budget` to see
-what is left; it costs no API requests.
+than a 429 in the middle of a workflow.
+
+Every tool response carries `requests_used_this_hour` and `requests_remaining`,
+the way an HTTP API returns `X-RateLimit-Remaining` — an agent paces itself
+against a number it can already see, where asking for it costs a call it will
+not make. `overview_request_budget` adds the limit, the window, and when an
+exhausted budget reopens; `ping` answers whether the server is up at all. Both
+cost nothing.
+
+The quota belongs to the access token, so your own YNAB apps spend from it too.
+The count here is what this server used, which can be less than what YNAB has
+left — every rate-limit error says so, and carries the reopening time as an
+absolute timestamp as well as a delay, so a scheduled retry does not come back
+early.
 
 ## Tool Families
 
-56 read-only tools, 77 with writes enabled, plus 7 guided prompts and 4 reference resources.
+62 read-only tools, 84 with writes enabled, plus 7 guided prompts and 4 reference resources.
 
 | Family | Type | Purpose |
 |--------|------|---------|
@@ -217,6 +232,7 @@ what is left; it costs no API requests.
 | `triage` | enriched | Transaction cleanup queues |
 | `bookkeeping` | enriched | Categorization suggestions, memo help, history |
 | `analysis` | enriched | Overspending, funding gaps, scheduled risks, card funding, multi-month audits |
+| `reconcile` | enriched | Statement comparison, bank-export matching, and finishing a reconciliation |
 | `history` | enriched | Review and roll back writes this server made |
 | `changes` | enriched | What moved since a given `server_knowledge` value |
 | `user` | raw | YNAB user info |
@@ -308,10 +324,32 @@ plan thirty-five separate writes and thirty-five separate history entries.
 - `money_move` moves available money between two categories — or to and from
   Ready to Assign — reading the current amounts and doing the arithmetic, so a
   carried-forward balance is not mistaken for the assigned amount.
+- `reconcile_apply` finishes a reconciliation: it marks the agreed transactions
+  reconciled in one bulk call and posts the adjustment that closes the residual,
+  as a single entry that undoes both together.
 
-Neither is atomic, because YNAB has no transaction boundary. Both report what
-was applied and what failed, and a half-written `money_move` is still journaled
-so the money can be put back.
+Both assignment tools also take `adjust_by` instead of a total — "add $4,500 to
+this category" without your reading the current figure first, since they read it
+anyway to record what a revert would restore. It is not an atomic delta: YNAB's
+API has no delta and no conditional write, so the amount is read and the sum is
+written, and an edit made in the app between those two calls is overwritten.
+Pass `expected_budgeted` alongside it and the write is refused when the amount
+read is not the one you expected, so a caller acting on a figure that has
+already moved stops rather than overwrites. That is a check before the write,
+not a precondition on it: the gap between the read and the write stays open,
+because YNAB's route offers nothing to close it with.
+Either way the response reports `previous_budgeted`, `budgeted` and `change`, so
+a write can be confirmed without a re-read.
+
+None of them is atomic, because YNAB has no transaction boundary. Each reports
+what was applied and what failed, and a half-written `money_move` is still
+journaled so the money can be put back.
+
+One limit worth knowing before you reconcile through an agent: YNAB's API has no
+route that sets an account's `last_reconciled_at`. The transactions really are
+marked reconciled, but the app will still show the date of the last
+reconciliation done there, and the tools say so rather than reporting an account
+as reconciled.
 
 ## Amount Convention
 
@@ -384,6 +422,14 @@ make test-integration
 make test-postman-operator
 ```
 
+Those check that the server works. `evals/` asks a different question — whether
+an assistant *uses* it correctly, which is where this project's real failures
+have been: a rate-limit lockout from a loop that should have been one call, an
+account reported as reconciled that YNAB still showed as stale. Those cases are
+graded by a model rather than asserted, so they run on demand with
+`claude plugin eval` rather than in `make check`. See
+[evals/README.md](https://github.com/hs737/mcp-server-for-ynab/blob/master/evals/README.md).
+
 ### Where to read next
 
 If you are:
@@ -391,7 +437,7 @@ If you are:
 - **connecting a client**: [Client Setup](https://github.com/hs737/mcp-server-for-ynab/blob/master/docs/client-setup.md)
 - **new to the repo**: [Architecture](https://github.com/hs737/mcp-server-for-ynab/blob/master/docs/architecture.md)
 - **adding code**: [Contributing](https://github.com/hs737/mcp-server-for-ynab/blob/master/CONTRIBUTING.md), [Repo Structure](https://github.com/hs737/mcp-server-for-ynab/blob/master/docs/repo-structure.md), [Agent Guidance](https://github.com/hs737/mcp-server-for-ynab/blob/master/AGENTS.md)
-- **adding or changing tools**: [Tool Surface](https://github.com/hs737/mcp-server-for-ynab/blob/master/docs/tool-surface.md)
+- **adding or changing tools**: [Tool Surface](https://github.com/hs737/mcp-server-for-ynab/blob/master/docs/tool-surface.md), [Agent evals](https://github.com/hs737/mcp-server-for-ynab/blob/master/evals/README.md)
 - **verifying behavior**: [Testing](https://github.com/hs737/mcp-server-for-ynab/blob/master/docs/testing.md)
 - **working on auth, error handling, or logging**: [Security](https://github.com/hs737/mcp-server-for-ynab/blob/master/docs/security.md)
 - **publishing or adding a release channel**: [Distribution](https://github.com/hs737/mcp-server-for-ynab/blob/master/docs/distribution.md)

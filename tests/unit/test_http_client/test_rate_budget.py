@@ -80,3 +80,35 @@ def test_limit_can_be_configured_by_environment(monkeypatch: pytest.MonkeyPatch)
 def test_a_bad_limit_falls_back_to_the_default(monkeypatch: pytest.MonkeyPatch, value: str) -> None:
     monkeypatch.setenv("YNAB_RATE_LIMIT_PER_HOUR", value)
     assert RateBudget().limit == RateBudget(limit=None).limit > 0
+
+
+def test_the_trailer_carries_the_two_numbers_a_caller_paces_against() -> None:
+    budget = RateBudget(limit=10, warn_threshold=2)
+    budget.record(now=0)
+    budget.record(now=1)
+
+    assert budget.trailer(now=2) == {"requests_used_this_hour": 2, "requests_remaining": 8}
+
+
+def test_the_trailer_warns_only_when_the_budget_is_running_out() -> None:
+    budget = RateBudget(limit=10, warn_threshold=2)
+    for i in range(9):
+        budget.record(now=i)
+
+    trailer = budget.trailer(now=9)
+    assert trailer["requests_remaining"] == 1
+    assert "1 of 10 requests left" in str(trailer["requests_warning"])
+
+
+def test_status_says_the_quota_is_shared_with_the_users_own_apps() -> None:
+    """The count here is what this server spent, which can be less than YNAB's."""
+    assert "your own YNAB apps" in str(RateBudget(limit=10).status(now=0)["shared_quota_note"])
+
+
+def test_an_exhausted_budget_reports_when_it_reopens_as_a_timestamp() -> None:
+    budget = RateBudget(limit=1)
+    budget.record(now=0)
+
+    status = budget.status(now=1)
+    assert status["remaining"] == 0
+    assert str(status["retry_at"]).startswith("20")

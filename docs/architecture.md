@@ -141,7 +141,8 @@ Owns higher-level read workflows, including:
 - bookkeeping guidance
 - analysis
 - multi-month reads (`multi_month.py`), credit-card funding (`credit.py`),
-  cross-month audits (`audit.py`), and delta sync (`changes.py`)
+  cross-month audits (`audit.py`), delta sync (`changes.py`), and statement
+  reconciliation (`reconcile.py`)
 
 These modules combine multiple raw reads into structured agent-friendly outputs.
 
@@ -158,13 +159,18 @@ Owns MCP-facing concerns:
 - request-scoped app context override for embedded runtimes
 - tool metadata registry
 - raw and enriched tool registration
-- composed write tools (`server/tools/writes.py`) that journal several YNAB
-  calls as one revertible entry
+- composed write tools (`server/tools/writes.py`, and `reconcile_apply` in
+  `server/tools/reconcile.py`) that journal several YNAB calls as one
+  revertible entry
 - client-side transaction filters (`server/tools/filters.py`) applied before
   paging, for the questions YNAB's routes cannot express
+- field selection and empty-value stripping for list items
+  (`server/tools/projection.py`), because most of a transaction's bytes are
+  fields with nothing in them
 - derived tool titles, behavioural hints, and the journal sentence appended to
   every write description (`server/tools/presentation.py`)
-- structured tool error boundary
+- structured tool error boundary, which also attaches the request-budget
+  trailer (`requests_used_this_hour`, `requests_remaining`) to every response
 - deterministic MCP-native pagination envelopes for oversized list responses
 
 ### `embed.py`
@@ -273,14 +279,17 @@ flowchart LR
     B --> D["import server.tools.raw"]
     B --> H["import server.tools.audit"]
     B --> I["import server.tools.writes"]
+    B --> K["import server.tools.reconcile"]
     C --> E["MCPServer tool registration"]
     D --> E
     H --> E
     I --> E
+    K --> E
     C --> F["ToolRegistry metadata"]
     D --> F
     H --> F
     I --> F
+    K --> F
     E --> J["apply_presentation"]
     F --> J
     F --> G["overview_available_tools"]

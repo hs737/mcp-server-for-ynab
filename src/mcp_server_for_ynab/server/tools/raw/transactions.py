@@ -15,6 +15,7 @@ from mcp_server_for_ynab.models.ynab.transactions import (
     SaveTransaction,
     SaveTransactionsWrapper,
     SaveTransactionWrapper,
+    Transaction,
     UpdateTransaction,
     UpdateTransactionsWrapper,
 )
@@ -24,7 +25,14 @@ from mcp_server_for_ynab.server.registry import tool_registry
 from mcp_server_for_ynab.server.tools.boundary import tool_handler
 from mcp_server_for_ynab.server.tools.filters import FILTER_HELP, apply_transaction_filters
 from mcp_server_for_ynab.server.tools.pagination import paginate_items
+from mcp_server_for_ynab.server.tools.projection import fields_help, validate_fields
 from mcp_server_for_ynab.server.tools.registration import write_tool
+
+# What a caller may name in `fields`: the transaction shape itself, so the list
+# cannot drift from the model.
+TRANSACTION_FIELDS = tuple(Transaction.model_fields)
+
+FIELDS_HELP = fields_help("id,date,amount,cleared,import_id,payee_name,memo")
 
 
 def _reg(name: str, classification: str, summary: str) -> None:
@@ -53,10 +61,13 @@ _reg("transactions_trigger_import", "write", "Trigger YNAB import from linked ac
         "type: 'uncategorized' or 'unapproved' for filtered lists. "
         "Amounts are in milliunits (1000 = $1.00). "
         "Includes subtransactions for split transactions. "
-        "Supports delta sync via last_knowledge_of_server. "
+        "Supports delta sync: pass last_knowledge_of_server — the server_knowledge value any earlier response "
+        "returned — and YNAB sends only what changed since, which is how a long session stays current without "
+        "re-reading everything. changes_since does the same across categories, months and transactions in one "
+        "call."
         "Returns a paginated envelope with items, count, has_more, and next_offset. "
         "limit defaults to 100 and cannot exceed 500. "
-        f"{FILTER_HELP}"
+        f"{FILTER_HELP} {FIELDS_HELP}"
     ),
     annotations=ToolAnnotations(read_only_hint=True),
 )
@@ -72,6 +83,7 @@ async def transactions_list(
     approved: bool | None = None,
     manual_only: bool | None = None,
     min_amount: int | None = None,
+    fields: list[str] | None = None,
 ) -> dict[str, Any]:
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)
@@ -92,6 +104,7 @@ async def transactions_list(
         limit=limit,
         offset=offset,
         server_knowledge=result.data.server_knowledge,
+        fields=validate_fields(fields, TRANSACTION_FIELDS),
     )
 
 
@@ -99,10 +112,16 @@ async def transactions_list(
     name="transactions_list_by_account",
     description=(
         "[READ] List transactions for a specific account. Amounts are in milliunits. "
-        "Supports delta sync. "
+        "A transfer to another on-budget account moves no category money — both accounts are "
+        "already inside the budget — so a transfer in this list changed no category balance and no "
+        "assignment. Check assignments separately, or use analysis_unassigned_transfers. "
+        "Supports delta sync: pass last_knowledge_of_server — the server_knowledge value any earlier response "
+        "returned — and YNAB sends only what changed since, which is how a long session stays current without "
+        "re-reading everything. changes_since does the same across categories, months and transactions in one "
+        "call."
         "Returns a paginated envelope with items, count, has_more, and next_offset. "
         "limit defaults to 100 and cannot exceed 500. "
-        f"{FILTER_HELP}"
+        f"{FILTER_HELP} {FIELDS_HELP}"
     ),
     annotations=ToolAnnotations(read_only_hint=True),
 )
@@ -119,6 +138,7 @@ async def transactions_list_by_account(
     approved: bool | None = None,
     manual_only: bool | None = None,
     min_amount: int | None = None,
+    fields: list[str] | None = None,
 ) -> dict[str, Any]:
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)
@@ -140,6 +160,7 @@ async def transactions_list_by_account(
         limit=limit,
         offset=offset,
         server_knowledge=result.data.server_knowledge,
+        fields=validate_fields(fields, TRANSACTION_FIELDS),
     )
 
 
@@ -149,7 +170,7 @@ async def transactions_list_by_account(
         "[READ] List transactions for a specific category. Amounts in milliunits. "
         "Returns a paginated envelope with items, count, has_more, and next_offset. "
         "limit defaults to 100 and cannot exceed 500. "
-        f"{FILTER_HELP}"
+        f"{FILTER_HELP} {FIELDS_HELP}"
     ),
     annotations=ToolAnnotations(read_only_hint=True),
 )
@@ -166,6 +187,7 @@ async def transactions_list_by_category(
     approved: bool | None = None,
     manual_only: bool | None = None,
     min_amount: int | None = None,
+    fields: list[str] | None = None,
 ) -> dict[str, Any]:
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)
@@ -187,6 +209,7 @@ async def transactions_list_by_category(
         limit=limit,
         offset=offset,
         server_knowledge=result.data.server_knowledge,
+        fields=validate_fields(fields, TRANSACTION_FIELDS),
     )
 
 
@@ -196,7 +219,7 @@ async def transactions_list_by_category(
         "[READ] List transactions for a specific payee. Amounts in milliunits. "
         "Returns a paginated envelope with items, count, has_more, and next_offset. "
         "limit defaults to 100 and cannot exceed 500. "
-        f"{FILTER_HELP}"
+        f"{FILTER_HELP} {FIELDS_HELP}"
     ),
     annotations=ToolAnnotations(read_only_hint=True),
 )
@@ -213,6 +236,7 @@ async def transactions_list_by_payee(
     approved: bool | None = None,
     manual_only: bool | None = None,
     min_amount: int | None = None,
+    fields: list[str] | None = None,
 ) -> dict[str, Any]:
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)
@@ -234,6 +258,7 @@ async def transactions_list_by_payee(
         limit=limit,
         offset=offset,
         server_knowledge=result.data.server_knowledge,
+        fields=validate_fields(fields, TRANSACTION_FIELDS),
     )
 
 
@@ -245,7 +270,7 @@ async def transactions_list_by_payee(
         "Amounts in milliunits. "
         "Returns a paginated envelope with items, count, has_more, and next_offset. "
         "limit defaults to 100 and cannot exceed 500. "
-        f"{FILTER_HELP}"
+        f"{FILTER_HELP} {FIELDS_HELP}"
     ),
     annotations=ToolAnnotations(read_only_hint=True),
 )
@@ -262,6 +287,7 @@ async def transactions_list_by_month(
     approved: bool | None = None,
     manual_only: bool | None = None,
     min_amount: int | None = None,
+    fields: list[str] | None = None,
 ) -> dict[str, Any]:
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)
@@ -283,6 +309,7 @@ async def transactions_list_by_month(
         limit=limit,
         offset=offset,
         server_knowledge=result.data.server_knowledge,
+        fields=validate_fields(fields, TRANSACTION_FIELDS),
     )
 
 
@@ -396,7 +423,9 @@ async def transactions_create(
         "and subtransactions for a split. "
         "IMPORTANT: this is NOT atomic. A transaction whose import_id already exists is skipped, and "
         "its id is returned in duplicate_import_ids. Check the verification block: created_count tells "
-        "you how many were actually created."
+        "you how many were actually created. "
+        "The response is compact by default; pass return_transactions=true for the full created "
+        "records, which is about 900 bytes each."
     ),
     annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False),
 )
@@ -404,6 +433,7 @@ async def transactions_create(
 async def transactions_create_many(
     transactions: list[dict[str, Any]],
     plan_id: str | None = None,
+    return_transactions: bool = False,
 ) -> dict[str, Any]:
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)
@@ -460,7 +490,15 @@ async def transactions_create_many(
     elif len(created_ids) != len(to_create):
         verification["warning"] = f"YNAB created {len(created_ids)} of {len(to_create)} requested transactions."
 
-    return {**result.model_dump(), "history_entry_id": entry.id, "verification": verification}
+    payload_out = result.model_dump()
+    if not return_transactions:
+        payload_out["data"].pop("transactions", None)
+        payload_out["transactions_omitted"] = (
+            "Pass return_transactions=true for the full created records. transaction_ids and "
+            "verification already say what was created."
+        )
+
+    return {**payload_out, "history_entry_id": entry.id, "verification": verification}
 
 
 @write_tool(
@@ -530,7 +568,20 @@ async def transactions_update(
         "IMPORTANT: This is NOT atomic. The response contains transaction_ids (successfully updated) "
         "and duplicate_import_ids (skipped). Always verify the response — do not assume all-or-nothing success. "
         "transactions: list of objects with id (required) and any fields to update. "
-        "All amounts in milliunits (1000 = $1.00)."
+        "All amounts in milliunits (1000 = $1.00). "
+        "COST: two YNAB requests for the whole batch, whatever its size — one to read the state this "
+        "write can be reverted to, one to apply it. Prefer one call with 300 items over 300 calls. "
+        "The exception is an id the plan's transaction list does not return, such as a scheduled "
+        "transaction's instance (<uuid>_2026-08-12): each of those costs one further read, up to ten, "
+        "after which the response reports the before-states it could not capture. "
+        "The response is compact by default: ids, the verification block, and the history entry. Pass "
+        "return_transactions=true for the full updated records, which is roughly 900 bytes each and "
+        "overflows most clients past about fifty. "
+        "Marking transactions cleared='reconciled' does NOT update the account's last_reconciled_at — "
+        "the API has no route for that, so YNAB will still show the older date until someone "
+        "reconciles in the app. Use reconcile_apply, which says so in its own response. "
+        "Ids of the form <uuid>_2026-08-12 are real: they are a scheduled transaction's instance in "
+        "the register, and they update like any other."
     ),
     annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False),
 )
@@ -538,17 +589,14 @@ async def transactions_update(
 async def transactions_bulk_update(
     transactions: list[dict[str, Any]],
     plan_id: str | None = None,
+    return_transactions: bool = False,
 ) -> dict[str, Any]:
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)
     updates = [UpdateTransaction.model_validate(t) for t in transactions]
     payload = UpdateTransactionsWrapper(transactions=updates)
 
-    before = []
-    for update in updates:
-        state = await capture.before_transaction(ctx, resolved, update.id)
-        if state:
-            before.append(state)
+    before = await capture.before_transactions(ctx, resolved, [u.id for u in updates])
 
     result = await ctx.transactions.bulk_update(resolved, payload)
 
@@ -572,13 +620,30 @@ async def transactions_bulk_update(
     verification: dict[str, Any] = {
         "requested_count": len(updates),
         "applied_count": len(applied_ids),
+        "before_states_captured": len(before),
         "verified": not not_applied,
     }
     if not_applied:
         verification["not_applied"] = not_applied
         verification["warning"] = "YNAB did not return these ids as updated. They were not changed."
+    if len(before) < len(updates):
+        verification["revert_note"] = (
+            f"{len(updates) - len(before)} of {len(updates)} before-states could not be read, so "
+            "history_revert will not restore those transactions."
+        )
 
-    return {**result.model_dump(), "history_entry_id": entry.id, "verification": verification}
+    # The echo of every updated transaction is the largest part of this response
+    # and the part nobody reads: eighty of them is about 70 KB, past what a
+    # client will hold, so the caller ends up parsing applied_count off disk.
+    payload_out = result.model_dump()
+    if not return_transactions:
+        payload_out["data"].pop("transactions", None)
+        payload_out["transactions_omitted"] = (
+            "Pass return_transactions=true for the full updated records. transaction_ids and "
+            "verification already say what was applied."
+        )
+
+    return {**payload_out, "history_entry_id": entry.id, "verification": verification}
 
 
 @write_tool(

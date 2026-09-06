@@ -103,15 +103,45 @@ async def test_transactions_list_supports_follow_up_pages(ynab_env: None) -> Non
     with patch("mcp_server_for_ynab.server.tools.raw.transactions.get_app_context", return_value=mock_ctx):
         result = await transactions_list(plan_id="plan-123", limit=25, offset=125)
 
-    assert result == {
-        "items": [_transaction(idx) for idx in range(125, 135)],
-        "count": 10,
-        "offset": 125,
-        "limit": 25,
-        "total_available": 135,
-        "has_more": False,
-        "server_knowledge": 1234,
-    }
+    assert [item["id"] for item in result["items"]] == [f"txn-{idx}" for idx in range(125, 135)]
+    assert result["count"] == 10
+    assert result["offset"] == 125
+    assert result["limit"] == 25
+    assert result["total_available"] == 135
+    assert result["has_more"] is False
+    assert result["server_knowledge"] == 1234
+    # Null and empty members are dropped from every item: on a real plan they
+    # are most of the payload.
+    assert "flag_color" not in result["items"][0]
+    assert "subtransactions" not in result["items"][0]
+    assert result["items"][0]["memo"] == "memo-125"
+
+
+async def test_fields_projects_items_and_always_keeps_the_id(ynab_env: None) -> None:
+    mock_ctx = make_mock_ctx()
+    mock_ctx.transactions.list.return_value = _transactions_response(2)
+
+    from mcp_server_for_ynab.server.tools.raw.transactions import transactions_list
+
+    with patch("mcp_server_for_ynab.server.tools.raw.transactions.get_app_context", return_value=mock_ctx):
+        result = await transactions_list(plan_id="plan-123", fields=["date", "amount", "cleared"])
+
+    assert result["fields"] == ["id", "date", "amount", "cleared"]
+    assert sorted(result["items"][1]) == ["amount", "cleared", "date", "id"]
+
+
+async def test_unknown_field_is_refused_with_the_valid_names(ynab_env: None) -> None:
+    mock_ctx = make_mock_ctx()
+    mock_ctx.transactions.list.return_value = _transactions_response(2)
+
+    from mcp_server_for_ynab.server.tools.raw.transactions import transactions_list
+
+    with patch("mcp_server_for_ynab.server.tools.raw.transactions.get_app_context", return_value=mock_ctx):
+        result = await transactions_list(plan_id="plan-123", fields=["amount", "payee"])
+
+    assert result["error"]["error_type"] == ErrorType.VALIDATION_ERROR
+    assert "payee" in result["error"]["message"]
+    assert "payee_name" in result["error"]["message"]
 
 
 async def test_transactions_list_by_account_passes_filters_and_paginates(ynab_env: None) -> None:
