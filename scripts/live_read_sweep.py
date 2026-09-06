@@ -134,6 +134,17 @@ class Sweep:
         if location:
             self._ids["payee_location_id"] = location[0]["id"]
 
+        # reconcile_preview and transactions_match_statement need a statement to
+        # compare the register against, and no read route can supply one, so
+        # they were skipped by a sweep that reported itself green. Zero is a
+        # valid statement balance — the tool reports the difference against it
+        # and writes nothing — and one row copied out of the register gives the
+        # matcher something that should match, so the matched path is exercised
+        # rather than only the empty one.
+        self._ids["statement_balance"] = 0
+        if items:
+            self._ids["rows"] = [{"date": items[0]["date"], "amount": items[0]["amount"]}]
+
         # A plan with no scheduled transactions leaves this unset, and the
         # per-record tool is reported as skipped rather than failed.
         scheduled = await self.call("scheduled_transactions_list", {})
