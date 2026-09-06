@@ -8,6 +8,8 @@ from mcp.types import ToolAnnotations
 
 from mcp_server_for_ynab.enriched.multi_month import compact_category, visible
 from mcp_server_for_ynab.history import capture, journal
+from mcp_server_for_ynab.models.amounts import milliunits_to_display
+from mcp_server_for_ynab.models.errors import ErrorType, YnabMcpError, YnabMcpException
 from mcp_server_for_ynab.models.ynab.categories import (
     SaveCategory,
     SaveCategoryGroup,
@@ -33,7 +35,7 @@ _reg("categories_update", "write", "Update a category. [WRITE]")
 _reg(
     "categories_update_for_month",
     "write",
-    "Update a category's budgeted amount for a specific month. [WRITE]",
+    "Set or adjust a category's budgeted amount for one month. [WRITE]",
 )
 _reg("category_groups_create", "write", "Create a new category group. [WRITE]")
 _reg("category_groups_update", "write", "Update a category group. [WRITE]")
@@ -50,7 +52,10 @@ _reg("category_groups_update", "write", "Update a category group. [WRITE]")
         "include_hidden=true adds hidden categories, which is where YNAB keeps the credit-card "
         "payment categories; deleted categories are never returned. "
         "Note: category group listing is embedded here — YNAB returns categories already grouped. "
-        "Supports delta sync via last_knowledge_of_server."
+        "Supports delta sync: pass last_knowledge_of_server — the server_knowledge value any earlier response "
+        "returned — and YNAB sends only what changed since, which is how a long session stays current without "
+        "re-reading everything. changes_since does the same across categories, months and transactions in one "
+        "call."
     ),
     annotations=ToolAnnotations(read_only_hint=True),
 )
@@ -211,9 +216,24 @@ async def categories_update(
 @write_tool(
     name="categories_update_for_month",
     description=(
-        "[WRITE] Update a category's budgeted amount for a specific month. "
+        "[WRITE] Set or adjust a category's budgeted amount for one month. "
         "month: ISO date string for the first day of the month (e.g. '2024-01-01'). "
-        "budgeted is in milliunits (1000 = $1.00)."
+        "Pass exactly one of: budgeted, the new total for that category in that month, which "
+        "replaces whatever is assigned; or adjust_by, a signed amount added to what is already "
+        "there — adjust_by=45000 tops the category up by $45.00 without your having to read the "
+        "current figure first, since this tool reads it anyway to record what a revert would "
+        "restore. Both are in milliunits (1000 = $1.00). "
+        "adjust_by is NOT an atomic delta. YNAB's API has no delta and no conditional update, so "
+        "the amount is read and the sum is written: an edit made in the YNAB app between those two "
+        "calls is overwritten, and the response's previous_budgeted is the only sign of it. The "
+        "window is short and it is real. "
+        "expected_budgeted narrows what can go wrong without fixing it: give it the amount you "
+        "believe is assigned and the write is refused when the amount read here differs, so a "
+        "caller acting on a stale figure stops rather than overwrites. It is a check before the "
+        "write and not a precondition on it, so the gap described above stays open — a change that "
+        "lands inside it is still overwritten silently. "
+        "The response reports previous_budgeted, budgeted and change. "
+        "To apply many categories in one revertible step, use months_assign_many."
     ),
     annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False),
 )
@@ -221,16 +241,86 @@ async def categories_update(
 async def categories_update_for_month(
     month: str,
     category_id: str,
-    budgeted: int,
+    budgeted: int | None = None,
+    adjust_by: int | None = None,
+    expected_budgeted: int | None = None,
     plan_id: str | None = None,
 ) -> dict[str, Any]:
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)
-    payload = SaveCategoryWrapper(category=SaveCategory(budgeted=budgeted))
 
+    if (budgeted is None) == (adjust_by is None):
+        raise YnabMcpException(
+            YnabMcpError(
+                error_type=ErrorType.VALIDATION_ERROR,
+                message=(
+                    "Pass exactly one of budgeted (the new total) or adjust_by (an amount to add to "
+                    "what is already assigned). "
+                    + ("Both were given." if budgeted is not None else "Neither was given.")
+                ),
+            )
+        )
+
+    # The before-state is read for the journal either way, so a delta costs
+    # nothing extra — but it is also the thing a delta is added to, and a delta
+    # applied to an unknown starting point would be a guess at the total.
+    #
+    # It is not a lock, and expected_budgeted does not make it one. YNAB's
+    # update route accepts no precondition, so a change landing between this
+    # read and the write below is overwritten with no error whether or not an
+    # expectation was given — that gap cannot be closed from here.
+    #
+    # What the check does catch is a caller acting on a figure that had already
+    # moved before this call: the common case, and the only one this API leaves
+    # room to detect at all.
     before = await capture.before_category_month(ctx, resolved, month, category_id)
+
+    if expected_budgeted is not None:
+        if before is None:
+            raise YnabMcpException(
+                YnabMcpError(
+                    error_type=ErrorType.VALIDATION_ERROR,
+                    message=(
+                        "expected_budgeted was given but the category's current amount could not be "
+                        "read, so the check could not be made and nothing was written."
+                    ),
+                )
+            )
+        current = int(before["budgeted"])
+        if current != expected_budgeted:
+            raise YnabMcpException(
+                YnabMcpError(
+                    error_type=ErrorType.CONFLICT,
+                    message=(
+                        f"{category_id} has {current} milliunits assigned for {month}, not the "
+                        f"{expected_budgeted} you expected, so nothing was written. Someone changed "
+                        "it — most likely in the YNAB app. Re-read it and decide again."
+                    ),
+                    details={"category_id": category_id, "month": month, "budgeted": current},
+                )
+            )
+
+    if adjust_by is not None:
+        if before is None:
+            raise YnabMcpException(
+                YnabMcpError(
+                    error_type=ErrorType.VALIDATION_ERROR,
+                    message=(
+                        "adjust_by needs the category's current amount for this month and it could "
+                        "not be read, so nothing was written. Retry, or pass budgeted with the total "
+                        "you want."
+                    ),
+                )
+            )
+        previous = int(before["budgeted"])
+        target = previous + adjust_by
+    else:
+        previous = int(before["budgeted"]) if before else 0
+        target = int(budgeted)  # type: ignore[arg-type]
+
+    payload = SaveCategoryWrapper(category=SaveCategory(budgeted=target))
     result = await ctx.categories.update_for_month(resolved, month, category_id, payload)
-    verification = await capture.verify_category_month(ctx, resolved, month, category_id, budgeted)
+    verification = await capture.verify_category_month(ctx, resolved, month, category_id, target)
 
     entry = journal.record(
         operation="category_month_budget",
@@ -242,7 +332,18 @@ async def categories_update_for_month(
         note=None if before else "No before-state captured; this entry cannot be reverted.",
     )
 
-    return {**result.model_dump(), "history_entry_id": entry.id, "verification": verification}
+    stored = result.data.category.budgeted
+    return {
+        **result.model_dump(),
+        "history_entry_id": entry.id,
+        "verification": verification,
+        "mode": "adjust_by" if adjust_by is not None else "budgeted",
+        "previous_budgeted": previous if before else None,
+        "previous_budgeted_display": milliunits_to_display(previous) if before else None,
+        "budgeted_display": milliunits_to_display(stored),
+        "change": (stored - previous) if before else None,
+        "change_display": milliunits_to_display(stored - previous) if before else None,
+    }
 
 
 @write_tool(

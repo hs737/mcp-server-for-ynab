@@ -29,7 +29,13 @@ _reg("accounts_create", "write", "Create a new account. [WRITE]")
     description=(
         "[READ] List all accounts for a plan. "
         "Balances are in milliunits (1000 = $1.00). "
-        "Supports delta sync via last_knowledge_of_server."
+        "last_reconciled_at is read-only everywhere in this API: marking transactions reconciled "
+        "does not move it, and no tool here can set it. Only reconciling in the YNAB app does, so "
+        "an account cleaned up through this server will still show its old reconciliation date. "
+        "Supports delta sync: pass last_knowledge_of_server — the server_knowledge value any earlier response "
+        "returned — and YNAB sends only what changed since, which is how a long session stays current without "
+        "re-reading everything. changes_since does the same across categories, months and transactions in one "
+        "call."
     ),
     annotations=ToolAnnotations(read_only_hint=True),
 )
@@ -46,7 +52,11 @@ async def accounts_list(
 
 @mcp.tool(
     name="accounts_get",
-    description="[READ] Get a single account by ID. Balance is in milliunits (1000 = $1.00).",
+    description=(
+        "[READ] Get a single account by ID. Balance is in milliunits (1000 = $1.00). "
+        "last_reconciled_at is read-only: no route in the YNAB API sets it, so it stays where the "
+        "YNAB app last left it however many transactions this server marks reconciled."
+    ),
     annotations=ToolAnnotations(read_only_hint=True),
 )
 @tool_handler

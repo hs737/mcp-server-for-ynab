@@ -12,11 +12,13 @@ from typing import Any
 from mcp.types import ToolAnnotations
 
 from mcp_server_for_ynab.enriched.audit import (
+    assignment_patterns,
     balance_identity,
     copied_forward_months,
     flow_trace,
     group_parity,
     overspent_history,
+    unassigned_transfers,
 )
 from mcp_server_for_ynab.enriched.changes import changes_since
 from mcp_server_for_ynab.enriched.credit import credit_funding
@@ -43,6 +45,8 @@ _reg("analysis_group_parity", "analysis", "Compare two category groups month by 
 _reg("analysis_copied_forward_months", "analysis", "Months whose assignments repeat the month before.")
 _reg("analysis_credit_funding", "analysis", "Card debt vs payment-category funds, and trapped money.")
 _reg("analysis_flow_trace", "analysis", "One category's assigned, moved, spent and left, by month.")
+_reg("analysis_unassigned_transfers", "analysis", "Transfers that moved no category money, against assignments.")
+_reg("analysis_assignment_patterns", "analysis", "Categories assigned a base plus their own inflow.")
 _reg("overview_balance_identity", "overview", "Check categories + Ready to Assign against accounts.")
 _reg("changes_since", "changes", "What changed since a server_knowledge value.")
 
@@ -57,7 +61,12 @@ _reg("changes_since", "changes", "What changed since a server_knowledge value.")
         "from_month and to_month: 'YYYY-MM', an ISO date, or 'current'. to_month defaults to the "
         "current month. "
         "Narrow it with category_ids or group_ids (category_ids wins if both are given). "
+        "fields: which of budgeted, activity and balance each cell carries — all three by default, "
+        "and dropping the two you are not reading takes roughly two thirds off a forty-category "
+        "range. "
         "include_hidden=true adds hidden categories, including the credit-card payment ones. "
+        "The response carries as_of: a range is a snapshot, and one cached earlier in a session is "
+        "not what the plan says now. Re-read it, or use changes_since, before acting on an old one. "
         "Amounts are in milliunits (1000 = $1.00). " + _COST
     ),
     annotations=ToolAnnotations(read_only_hint=True),
@@ -70,6 +79,7 @@ async def months_range_tool(
     category_ids: list[str] | None = None,
     group_ids: list[str] | None = None,
     include_hidden: bool = False,
+    fields: list[str] | None = None,
 ) -> dict[str, Any]:
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)
@@ -81,6 +91,7 @@ async def months_range_tool(
         category_ids=category_ids,
         group_ids=group_ids,
         include_hidden=include_hidden,
+        fields=fields,
     )
 
 
@@ -265,6 +276,8 @@ async def overview_balance_identity(plan_id: str | None = None) -> dict[str, Any
         "re-reading everything. "
         "Call it with no arguments first to get a baseline server_knowledge, then pass that value "
         "back on each later call. Every response returns the value to use next time. "
+        "This is the cheap way to keep a long session honest: re-reading a range you already have "
+        "costs one request per month, and this costs three no matter how much moved. "
         "Deleted records are omitted, and delta sync reports that a record changed, not how — the "
         "values shown are current ones. Costs three requests."
     ),
@@ -279,3 +292,80 @@ async def changes_since_tool(
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)
     return await changes_since(ctx, resolved, server_knowledge, limit=limit)
+
+
+@mcp.tool(
+    name="analysis_unassigned_transfers",
+    description=(
+        "[READ] Transfers between two on-budget accounts, month by month, against what was assigned "
+        "in the category groups they were meant to fund. "
+        "A transfer between on-budget accounts moves no category money — both accounts are already "
+        "inside the budget — so a standing 'move $1,500 to the joint account' changes no category "
+        "balance, while looking in the register exactly like it did. Seven months of that went "
+        "unnoticed on the plan this was written for. "
+        "group_ids: the groups those transfers were meant to fund. Pass them and the months where "
+        "money moved and nothing was assigned come back flagged; leave them out and you get the "
+        "transfers alone. Get group ids from categories_list. "
+        "account_ids narrows it to transfers touching those accounts. "
+        "from_month and to_month: 'YYYY-MM', an ISO date, or 'current'. "
+        "Costs two requests, plus one per month when group_ids is given."
+    ),
+    annotations=ToolAnnotations(read_only_hint=True),
+)
+@tool_handler
+async def analysis_unassigned_transfers(
+    from_month: str,
+    to_month: str | None = None,
+    group_ids: list[str] | None = None,
+    account_ids: list[str] | None = None,
+    plan_id: str | None = None,
+) -> dict[str, Any]:
+    ctx = get_app_context()
+    resolved = ctx.settings.resolve_plan_id(plan_id)
+    return await unassigned_transfers(
+        ctx,
+        resolved,
+        from_month,
+        to_month,
+        group_ids=group_ids,
+        account_ids=account_ids,
+    )
+
+
+@mcp.tool(
+    name="analysis_assignment_patterns",
+    description=(
+        "[READ] Categories whose monthly assignment equals a fixed base plus the money that arrived "
+        "in the category that month. "
+        "This is the interest double-count: a savings category earns interest, the interest is "
+        "categorised into it, and the assignment is then written as 'the usual $1,500 plus the "
+        "$12.40 of interest' — funding it twice. Each month is individually plausible, which is why "
+        "nobody notices; sixteen months of it came to about $841 on the plan this was written for. "
+        "Narrow it with group_ids or category_ids. from_month and to_month: 'YYYY-MM', an ISO date, "
+        "or 'current'. "
+        "total_if_unintended is what the pattern would have double-funded. It is a signal, not a "
+        "verdict: a category deliberately funded to cover its own activity produces the same shape, "
+        "so the matching months are reported for checking. " + _COST + " Plus one for the inflows."
+    ),
+    annotations=ToolAnnotations(read_only_hint=True),
+)
+@tool_handler
+async def analysis_assignment_patterns(
+    from_month: str,
+    to_month: str | None = None,
+    group_ids: list[str] | None = None,
+    category_ids: list[str] | None = None,
+    include_hidden: bool = False,
+    plan_id: str | None = None,
+) -> dict[str, Any]:
+    ctx = get_app_context()
+    resolved = ctx.settings.resolve_plan_id(plan_id)
+    return await assignment_patterns(
+        ctx,
+        resolved,
+        from_month,
+        to_month,
+        group_ids=group_ids,
+        category_ids=category_ids,
+        include_hidden=include_hidden,
+    )

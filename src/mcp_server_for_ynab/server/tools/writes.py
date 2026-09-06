@@ -18,7 +18,7 @@ was applied, what failed, and the history entry that can put it back.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, NamedTuple
 
 from mcp.types import ToolAnnotations
 
@@ -35,6 +35,16 @@ from mcp_server_for_ynab.server.tools.registration import write_tool
 # A month has as many lines as it has categories. Beyond a couple of hundred
 # writes the rate budget is the binding constraint, not the tool.
 MAX_ASSIGNMENTS = 100
+
+
+class Assignment(NamedTuple):
+    """One parsed line: which category, how much, and how to read the amount."""
+
+    category_id: str
+    amount: int
+    is_delta: bool
+    expected: int | None
+
 
 tool_registry.register(
     "months_assign_many",
@@ -70,9 +80,24 @@ async def _budgeted_now(ctx: AppContext, plan_id: str, month: str, category_id: 
         "categories_update_for_month thirty-five times is thirty-five history entries that have to "
         "be undone one at a time. "
         "month: ISO date for the first of the month ('2024-01-01'), 'YYYY-MM', or 'current'. "
-        "assignments: a list of {category_id, budgeted} objects. budgeted is the new total assigned "
-        "for that category in that month, in milliunits (1000 = $1.00) — it replaces the current "
-        "amount, it is not added to it. To move money between categories instead, use money_move. "
+        "assignments: a list of objects, each naming a category_id and exactly one of: "
+        "budgeted — the new total assigned for that category in that month, replacing whatever is "
+        "there; or adjust_by — a signed amount added to what is already assigned, so "
+        "{'category_id': x, 'adjust_by': 4500000} tops a category up by $4,500 without the caller "
+        "reading the current figure first. Both are milliunits (1000 = $1.00). "
+        "Retroactive fixes want adjust_by: this tool reads each category's current amount anyway to "
+        "record what a revert would restore, so a delta saves the caller that read. "
+        "It is NOT an atomic delta. YNAB has no delta and no conditional update, so the amount is "
+        "read and the sum is written, and an edit made in the YNAB app in between is overwritten. "
+        "An assignment may also carry expected_budgeted: the amount you believe is assigned. The "
+        "line is refused rather than written when what is read differs, so a caller working from a "
+        "figure that has already moved stops instead of overwriting. It is a check before the "
+        "write, not a precondition on it — YNAB's route accepts none — so it does not cover a "
+        "change that lands in the gap between that read and the write. Nothing available here "
+        "does. "
+        "To move money between two categories instead, use money_move. "
+        "Every applied row reports previous_budgeted, budgeted and change, so the write can be "
+        "confirmed without a re-read. "
         "NOT atomic: YNAB has no transaction boundary, so check applied and failed in the response. "
         "This write is journaled — history_revert on the returned history_entry_id restores every "
         "category's previous amount in one step."
@@ -97,36 +122,55 @@ async def months_assign_many(
             "Each one is a request against YNAB's hourly limit of 200. Split the plan."
         )
 
-    parsed: list[tuple[str, int]] = []
+    parsed: list[Assignment] = []
     seen: set[str] = set()
     for index, item in enumerate(assignments):
         category_id = item.get("category_id")
-        budgeted = item.get("budgeted")
         if not isinstance(category_id, str) or not category_id:
             raise _fail(f"assignments[{index}] has no category_id.")
-        if not isinstance(budgeted, int) or isinstance(budgeted, bool):
+
+        has_budgeted = "budgeted" in item and item["budgeted"] is not None
+        has_delta = "adjust_by" in item and item["adjust_by"] is not None
+        if has_budgeted == has_delta:
             raise _fail(
-                f"assignments[{index}] budgeted must be a whole number of milliunits (1000 = $1.00); got {budgeted!r}."
+                f"assignments[{index}] needs exactly one of budgeted (the new total) or adjust_by "
+                "(an amount to add to what is already assigned). "
+                + ("Both were given." if has_budgeted else "Neither was given.")
             )
+
+        key = "budgeted" if has_budgeted else "adjust_by"
+        amount = item[key]
+        if not isinstance(amount, int) or isinstance(amount, bool):
+            raise _fail(
+                f"assignments[{index}] {key} must be a whole number of milliunits (1000 = $1.00); got {amount!r}."
+            )
+
+        expected = item.get("expected_budgeted")
+        if expected is not None and (not isinstance(expected, int) or isinstance(expected, bool)):
+            raise _fail(
+                f"assignments[{index}] expected_budgeted must be a whole number of milliunits; got {expected!r}."
+            )
+
         if category_id in seen:
             raise _fail(
                 f"assignments[{index}] repeats category_id {category_id}. "
                 "Two amounts for one category in one month is ambiguous; send the final amount once."
             )
         seen.add(category_id)
-        parsed.append((category_id, budgeted))
+        parsed.append(Assignment(category_id=category_id, amount=amount, is_delta=has_delta, expected=expected))
 
     before: list[dict[str, Any]] = []
     applied: list[dict[str, Any]] = []
     failed: list[dict[str, Any]] = []
 
-    for category_id, budgeted in parsed:
+    for category_id, amount, is_delta, expected in parsed:
         try:
             previous, name = await _budgeted_now(ctx, resolved, target, category_id)
         except Exception as exc:
             # Without a before-state this line cannot be reverted, so it is not
             # attempted: a plan that can only be half-undone is worse than one
-            # line short.
+            # line short. It is also what adjust_by is measured against, so a
+            # delta has nothing to add to.
             failed.append(
                 {
                     "category_id": category_id,
@@ -134,6 +178,28 @@ async def months_assign_many(
                 }
             )
             continue
+
+        # A staleness check on what the caller believed, not a precondition on
+        # the write. It compares against the amount read a moment ago, so it
+        # catches the common case — the plan moved since the caller last looked
+        # — and cannot catch the narrow one: YNAB's route accepts no
+        # precondition, so a change landing between that read and the write
+        # below is still overwritten in silence, expectation or no expectation.
+        if expected is not None and previous != expected:
+            failed.append(
+                {
+                    "category_id": category_id,
+                    "name": name,
+                    "error": (
+                        f"Expected {expected} milliunits assigned but found {previous}, so this line "
+                        "was not written. Someone changed it — most likely in the YNAB app."
+                    ),
+                    "budgeted_now": previous,
+                }
+            )
+            continue
+
+        budgeted = previous + amount if is_delta else amount
 
         try:
             result = await ctx.categories.update_for_month(
@@ -152,10 +218,13 @@ async def months_assign_many(
             {
                 "category_id": category_id,
                 "name": name,
+                "mode": "adjust_by" if is_delta else "budgeted",
                 "previous_budgeted": previous,
+                "previous_budgeted_display": milliunits_to_display(previous),
                 "budgeted": stored,
                 "budgeted_display": milliunits_to_display(stored),
                 "change": stored - previous,
+                "change_display": milliunits_to_display(stored - previous),
                 "verified": stored == budgeted,
             }
         )

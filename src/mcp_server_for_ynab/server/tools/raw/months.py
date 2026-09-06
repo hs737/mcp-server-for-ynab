@@ -23,16 +23,25 @@ def _reg(name: str, summary: str) -> None:
     tool_registry.register(name, "months", "read", "raw", summary)
 
 
-_reg("months_list", "List all budget months (summaries). Supports delta sync.")
+_reg("months_list", "List budget months that had money in them. Supports delta sync.")
 _reg("months_get", "Get one month's categories. compact=true for a small payload.")
 
 
 @mcp.tool(
     name="months_list",
     description=(
-        "[READ] List all budget months with summary data (income, budgeted, activity, "
-        "to_be_budgeted). Amounts are in milliunits (1000 = $1.00). "
-        "Supports delta sync via last_knowledge_of_server."
+        "[READ] List budget months with summary data (income, budgeted, activity, to_be_budgeted). "
+        "Amounts are in milliunits (1000 = $1.00). "
+        "Months in which nothing happened — no income and no activity — are left out by default, "
+        "the way YNAB's own month picker leaves them out. YNAB keeps records for months before a "
+        "plan really began, sometimes carrying a stray assignment and a large negative "
+        "to_be_budgeted, and a review that starts from the first month in this list starts a year "
+        "before the budget did. omitted_month_count says how many went; include_empty=true returns "
+        "them. "
+        "Supports delta sync: pass last_knowledge_of_server — the server_knowledge value any earlier response "
+        "returned — and YNAB sends only what changed since, which is how a long session stays current without "
+        "re-reading everything. changes_since does the same across categories, months and transactions in one "
+        "call."
     ),
     annotations=ToolAnnotations(read_only_hint=True),
 )
@@ -40,11 +49,25 @@ _reg("months_get", "Get one month's categories. compact=true for a small payload
 async def months_list(
     plan_id: str | None = None,
     last_knowledge_of_server: int | None = None,
+    include_empty: bool = False,
 ) -> dict[str, Any]:
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)
     result = await ctx.months.list(resolved, last_knowledge_of_server=last_knowledge_of_server)
-    return result.model_dump()
+
+    payload = result.model_dump()
+    if include_empty:
+        payload["include_empty"] = True
+        return payload
+
+    # Money moving is what makes a month real: an assignment alone can be
+    # left over from before the plan started, and to_be_budgeted is derived
+    # from it rather than evidence of its own.
+    kept = [m for m in result.data.months if m.income or m.activity]
+    payload["data"]["months"] = [m.model_dump() for m in kept]
+    payload["omitted_month_count"] = len(result.data.months) - len(kept)
+    payload["include_empty"] = False
+    return payload
 
 
 @mcp.tool(

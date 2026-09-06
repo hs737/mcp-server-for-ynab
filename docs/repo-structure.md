@@ -82,11 +82,13 @@ src/mcp_server_for_ynab/server/
 ├── resources.py        reference guides, surfaced as MCP resources
 └── tools/
     ├── audit.py        multi-month range and integrity tool registrations
-    ├── boundary.py     structured error boundary for tool handlers
+    ├── boundary.py     structured error boundary, and the request-budget trailer
     ├── enriched.py     enriched tool registrations
     ├── filters.py      client-side transaction filters, applied before paging
     ├── pagination.py   MCP-native pagination envelope
     ├── presentation.py derived titles, hints, and write-safety sentences
+    ├── projection.py   field selection and empty-value stripping for list items
+    ├── reconcile.py    the reconciliation workflow: two reads and a composed write
     ├── writes.py       composed write tools journaled as one entry
     └── raw/            raw tool registrations by resource family
 ```
@@ -103,6 +105,7 @@ src/mcp_server_for_ynab/enriched/
 ├── credit.py       credit accounts and their payment categories
 ├── multi_month.py  month ranges and the compact category projection
 ├── overview.py     orientation snapshots
+├── reconcile.py    statement comparison and bank-export matching
 └── triage.py       queues of work, with the non-work excluded
 ```
 

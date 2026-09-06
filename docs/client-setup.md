@@ -60,8 +60,8 @@ Expected output:
 smoke: checking environment and startup...
 smoke: YNAB_API_KEY present (length=64)
 smoke: YNAB_PLAN_ID not set (plan_id required per-call)
-smoke: app created, 44 tools registered
-smoke: tool registry has 44 entries across families: ['accounts', 'analysis', ...]
+smoke: app created, 62 tools registered
+smoke: tool registry has 62 entries across families: ['accounts', 'analysis', ...]
 smoke: OK
 ```
 
@@ -340,7 +340,7 @@ To see the tools, call them by hand, and read raw responses:
 YNAB_API_KEY=your_ynab_token npx @modelcontextprotocol/inspector uvx mcp-server-for-ynab stdio
 ```
 
-The Inspector opens in a browser. The **Tools** tab lists all 44 read-only tools
+The Inspector opens in a browser. The **Tools** tab lists all 62 read-only tools
 and lets you run one with arguments you choose. `overview_available_tools` is a
 good first call — it returns the tool catalog grouped by family and costs no
 YNAB API requests.
@@ -358,7 +358,7 @@ Ask your client:
 
 > Using the ynab tools, call overview_available_tools and tell me how many tools are registered.
 
-A working read-only setup reports 44 tools. With `YNAB_ALLOW_WRITES=1`, it
+A working read-only setup reports 62 tools. With `YNAB_ALLOW_WRITES=1`, it
 reports 63.
 
 Then try a real read:

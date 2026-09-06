@@ -80,11 +80,12 @@ Every tool is one of:
 - `write`
 
 Enriched tools should stay read-only unless there is a very strong reason
-otherwise. Two exist: `months_assign_many` and `money_move`, in
-`server/tools/writes.py`. Both compose raw writes because YNAB's unit of work —
-one category, one month, one absolute amount — is not the unit of the decision,
-and both journal the whole composition as a single entry so one decision reverts
-as one decision. A composed write must:
+otherwise. Three exist: `months_assign_many` and `money_move` in
+`server/tools/writes.py`, and `reconcile_apply` in `server/tools/reconcile.py`.
+Each composes raw writes because YNAB's unit of work — one category, one month,
+one absolute amount; one transaction, one field — is not the unit of the
+decision, and each journals the whole composition as a single entry so one
+decision reverts as one decision. A composed write must:
 
 - be named and described so the caller knows exactly what it will change
 - record every before-state it touched in one journal entry
@@ -92,6 +93,10 @@ as one decision. A composed write must:
   boundary
 - journal what it did even when it fails part-way, because that is precisely
   when a revert is needed
+- have a revert strategy that undoes everything in the entry together.
+  `reconcile_apply` is the case that makes this concrete: it restores cleared
+  statuses *and* deletes the adjustment transaction, because undoing one without
+  the other leaves the account wrong by the amount that was in dispute
 
 ### Naming
 
@@ -112,6 +117,29 @@ Every registered tool carries:
 
 Keep metadata accurate. `overview_available_tools` depends on it.
 
+## Request Budget Rule
+
+YNAB allows 200 requests per hour per token and the quota is shared with the
+user's own YNAB apps, so the limit — not payload size — is what ends a long
+working session. Two consequences bind every change here:
+
+- **A tool says what it costs.** Anything spanning months costs one request per
+  month; anything batched says whether the cost scales with the batch. The cost
+  belongs in the description, where it is read before the call, not discovered
+  from a 429 after 240 items.
+- **Cost that scales with the batch is a bug to fix, not a fact to document.**
+  `transactions_bulk_update` writes in one PATCH, and its before-state capture
+  used to be one GET per transaction — the expensive half, invisible in both the
+  description and the response. `history/capture.py:before_transactions` reads
+  the batch in a single list call instead, and falls back to individual reads
+  only for the handful of ids a register does not hold.
+
+`server/tools/boundary.py` attaches `requests_used_this_hour` and
+`requests_remaining` to every response, success or failure. Do not remove that:
+an agent paces itself against a number it can see and will not spend a call to
+ask for one. `ping` must stay free of YNAB calls for the same reason — it is
+what an agent uses to check liveness while waiting out a rate limit.
+
 ## Payload Size Rule
 
 Payload size is a correctness constraint, not an optimization. One uncompacted
@@ -129,6 +157,13 @@ Therefore:
   month normalisation, the 36-month cap, and the concurrency limit
 - a tool whose cost scales with the range says so in its description, because
   YNAB has no range endpoint and one month is one request
+- a list read offers `fields` and drops null and empty members, through
+  `server/tools/projection.py`. Say in the response that empties were dropped:
+  a missing `category_id` means uncategorized, and a reader who does not know
+  the rule cannot tell that from a withheld field
+- a write echoes ids and counts, not records. The full records go behind
+  `return_transactions=true`: eighty of them is about 70 KB, past what a client
+  will hold, and the caller then parses `applied_count` off disk
 
 Hidden is not a display preference. YNAB keeps each credit card's payment
 category in a hidden group, so `include_hidden` is the difference between
@@ -153,6 +188,21 @@ YNAB amounts are always milliunits.
 
 If a tool touches money, say so in the tool description.
 
+## Say What the API Cannot Do
+
+Some limits are YNAB's, and an agent that does not know them reports success the
+user can disprove in ten seconds:
+
+- there is no route that sets an account's `last_reconciled_at`, so marking
+  transactions reconciled leaves the app showing the old date
+- the rate-limit quota belongs to the token and is shared with the user's own
+  YNAB apps, so a window does not fully reopen on the hour
+- delta sync reports that a record changed, not how
+
+Where a tool touches one of these, the limit belongs in its description *and* in
+the response that could otherwise mislead. `enriched/reconcile.py` carries the
+pattern: one constant, stated in every payload that reports success.
+
 ## Shared Error Shape
 
 All tool failures should use the shared error contract from `models/errors.py`.
@@ -162,6 +212,9 @@ Top-level fields:
 - `message`
 - optional `status_code`
 - optional `retry_after`
+- optional `retry_at`, the same deadline as a wall-clock instant, because a
+  scheduler that converts seconds into a wake-up time drifts by however long it
+  took to schedule
 - optional `details`
 - optional `ynab_error_name`
 - optional `ynab_error_id`

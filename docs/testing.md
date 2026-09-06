@@ -65,6 +65,9 @@ The current suite verifies a meaningful portion of the codebase, but the coverag
 
 Implemented today:
 - unit tests for config, HTTP client retry behavior, amount helpers, and shared errors
+- unit tests for the reconciliation workflow: statement comparison, bank-export matching,
+  and the composed write that marks transactions reconciled and posts the adjustment
+- unit tests for the request-budget trailer, batched before-state capture, and list projection
 - contract tests for the transactions client
 - integration tests for app creation, tool metadata/registration, structured error handling, and transaction pagination behavior
 - QA source assets and generated Postman collections
@@ -102,10 +105,13 @@ Purpose:
 
 Currently covers:
 - config loading and default plan resolution
-- shared error model
+- shared error model, including the absolute retry deadline on a rate limit
 - milliunit helpers
 - HTTP retry and error mapping behavior
 - pagination helper validation and envelope behavior
+- field projection and empty-value stripping on list items
+- the request budget: its rolling window, and the trailer every tool response carries
+- enriched heuristics: triage queues, multi-month audits, and reconciliation
 
 Fastest layer:
 - yes

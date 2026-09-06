@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from unittest.mock import AsyncMock
+
 from mcp_server_for_ynab.enriched.overview import budget_snapshot, cash_position, month_health
 from tests.unit.test_enriched.builders import (
     account,
@@ -122,3 +124,38 @@ async def test_cash_position_of_an_empty_plan() -> None:
     assert result["net_worth"] == 0
     assert result["on_budget_accounts"] == []
     assert result["off_budget_accounts"] == []
+
+
+async def test_month_health_reports_what_last_month_took_out_of_this_one() -> None:
+    """A month can look under-funded for a reason nothing inside it shows."""
+    months = {
+        "2026-07-01": month(month="2026-07-01", income=500_000),
+        "2026-06-01": month(
+            month="2026-06-01",
+            categories=[
+                category(id="c1", name="Dining", group_name="Separate — A", balance=-12_000),
+                category(id="c2", name="Fuel", group_name="Separate — B", balance=-661),
+                category(id="c3", name="Rent", balance=50_000),
+            ],
+        ),
+    }
+    ctx = make_ctx(months_by_month=months)  # type: ignore[arg-type]
+
+    result = await month_health(ctx, "plan-1", "2026-07-01")
+
+    assert result["prior_month"] == "2026-06-01"
+    assert result["prior_month_overspending"] == 12_661
+    assert [row["group"] for row in result["prior_month_overspending_by_group"]] == [
+        "Separate — A",
+        "Separate — B",
+    ]
+
+
+async def test_month_health_still_answers_when_there_is_no_month_before_it() -> None:
+    ctx = make_ctx(month_response=month(month="2026-07-01", income=500_000))
+    ctx.months.get = AsyncMock(side_effect=[month(month="2026-07-01", income=500_000), RuntimeError("404")])
+
+    result = await month_health(ctx, "plan-1", "2026-07-01")
+
+    assert result["income"] == 500_000
+    assert "prior_month_overspending" not in result

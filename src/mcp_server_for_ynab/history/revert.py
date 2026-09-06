@@ -167,6 +167,40 @@ async def revert_entry(ctx: AppContext, entry: journal.HistoryEntry) -> dict[str
         if failed:
             outcome["note"] = "Partially reverted. The listed categories still hold their new amounts."
 
+    elif entry.operation == "reconcile_apply":
+        # Two kinds of change in one entry, and they only undo together: putting
+        # the cleared statuses back while leaving the adjustment in place would
+        # leave the account wrong by exactly the amount that was in dispute.
+        restored, failed = [], []
+        for state in (entry.before or {}).get("transactions", []):
+            try:
+                await ctx.transactions.update(plan, state["id"], _transaction_payload(state))
+                restored.append(state["id"])
+            except Exception as exc:
+                failed.append({"transaction_id": state["id"], "error": str(exc)})
+
+        adjustment_id = (entry.after or {}).get("adjustment_transaction_id")
+        adjustment_outcome = None
+        if adjustment_id:
+            try:
+                await ctx.transactions.delete(plan, str(adjustment_id))
+                adjustment_outcome = f"deleted adjustment transaction {adjustment_id}"
+            except Exception as exc:
+                failed.append({"transaction_id": adjustment_id, "error": str(exc)})
+                adjustment_outcome = f"could not delete adjustment transaction {adjustment_id}"
+
+        outcome = {
+            "action": "restored previous cleared statuses",
+            "restored": restored,
+            "failed": failed,
+            "adjustment": adjustment_outcome,
+        }
+        if failed:
+            outcome["note"] = (
+                "Partially reverted. The listed transactions still hold what this reconciliation "
+                "wrote, so the account no longer matches either the statement or its previous state."
+            )
+
     elif entry.operation == "category_group_update":
         group_payload = SaveCategoryGroupWrapper(category_group=SaveCategoryGroup(name=entry.before["name"]))
         await ctx.categories.update_group(plan, str(entry.entity_id), group_payload)

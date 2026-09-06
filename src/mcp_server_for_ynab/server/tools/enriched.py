@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Any
 
 from mcp.types import ToolAnnotations
 
+from mcp_server_for_ynab import package_version
+from mcp_server_for_ynab.config.settings import writes_enabled
 from mcp_server_for_ynab.enriched.analysis import (
     overspent_categories,
     recurring_charges,
@@ -19,6 +22,7 @@ from mcp_server_for_ynab.enriched.bookkeeping import (
 )
 from mcp_server_for_ynab.enriched.overview import budget_snapshot, cash_position, month_health
 from mcp_server_for_ynab.enriched.triage import (
+    pending_imports,
     reconciliation,
     triage_summary,
     triage_unapproved,
@@ -52,6 +56,7 @@ _reg("triage_uncategorized", "triage", "Transactions that genuinely need a categ
 _reg("triage_unapproved", "triage", "List all unapproved transactions, most-recent first.")
 _reg("triage_unmatched_manual", "triage", "Hand-entered transactions on linked accounts that never cleared.")
 _reg("triage_reconciliation", "triage", "Accounts ranked by how long since anyone reconciled them.")
+_reg("triage_pending_imports", "triage", "Imported card authorisations that never posted.")
 _reg(
     "bookkeeping_categorization_suggestions",
     "bookkeeping",
@@ -78,15 +83,51 @@ _reg(
     "meta",
     "Requests left against YNAB's hourly rate limit.",
 )
+_reg("ping", "meta", "Liveness check. Costs no YNAB requests and needs no credentials.")
+
+
+@mcp.tool(
+    name="ping",
+    description=(
+        "[READ] Is this server up? Answers from the process alone: no YNAB request, no token check, "
+        "no budget read. "
+        "This exists for the agent that has been rate limited and scheduled itself to come back — "
+        "the way to find out whether the server is still reachable must not be a call that spends "
+        "the quota it is waiting on, or that fails for a second, unrelated reason. "
+        "Returns the server version, whether write tools are registered, and the request budget."
+    ),
+    annotations=ToolAnnotations(read_only_hint=True),
+)
+@tool_handler
+async def ping() -> dict[str, Any]:
+    trailer: dict[str, Any] = {}
+    try:
+        trailer = dict(get_app_context().http.budget.trailer())
+    except Exception:  # pragma: no cover - a server answering ping without a bound context is still up
+        trailer = {"requests_note": "No YNAB context is bound in this runtime, so no budget is tracked."}
+
+    return {
+        "scope": "ping",
+        "ok": True,
+        "server": "mcp-server-for-ynab",
+        "version": package_version(),
+        "writes_enabled": writes_enabled(),
+        "server_time": datetime.now(UTC).isoformat(timespec="seconds"),
+        "ynab_requests_spent_by_this_call": 0,
+        **trailer,
+    }
 
 
 @mcp.tool(
     name="overview_request_budget",
     description=(
-        "[READ] How many API requests remain in the current rolling hour. "
-        "YNAB allows 200 per token per hour and this server budgets slightly below that. "
-        "Enriched tools spend several requests each, so check this before a long working session, "
-        "and prefer enriched tools over many raw calls when the remaining count is low. "
+        "[READ] How many API requests remain in the current rolling hour, in full. "
+        "Every other tool already returns requests_used_this_hour and requests_remaining on its "
+        "response, so call this one only for the rest: the limit, the window, and when an exhausted "
+        "budget reopens. "
+        "YNAB allows 200 per token per hour and this server budgets slightly below that. The quota "
+        "belongs to the access token and is shared with your own YNAB apps, so the figure here is "
+        "what this server spent, not necessarily what YNAB has left. "
         "This tool costs no API requests."
     ),
     annotations=ToolAnnotations(read_only_hint=True),
@@ -145,9 +186,12 @@ async def overview_available_tools() -> dict[str, Any]:
                 "spanning months, months_range returns the whole matrix in one call."
             ),
             "request_cost": (
-                "YNAB allows 200 requests per hour per token. Any tool covering a range of months "
-                "spends one request per month; overview_request_budget reports what is left and "
-                "costs nothing."
+                "YNAB allows 200 requests per hour per token, shared with the user's own YNAB apps. "
+                "Any tool covering a range of months spends one request per month, and a bulk write "
+                "says in its description what it spends. Every response carries "
+                "requests_used_this_hour and requests_remaining, so pace against those rather than "
+                "asking; overview_request_budget adds the limit and the reopening time, and ping "
+                "answers without touching YNAB at all."
             ),
             "reference": (
                 "Longer guidance is available as MCP resources: ynab://guide/method, "
@@ -184,7 +228,11 @@ async def overview_budget_snapshot_tool(plan_id: str | None = None) -> dict[str,
         "[READ] Summarize a budget month. "
         "Returns income, budgeted, activity, to-be-budgeted, overspent categories, "
         "and underfunded goals. Defaults to current month. "
-        "month: ISO date string for first day of month (e.g. '2024-01-01')."
+        "Also reports the previous month's overspending, by group: it is settled before this month "
+        "is budgeted, so a month can have less to assign than its income suggests for a reason "
+        "nothing inside the month shows. Only cash overspending comes out of Ready to Assign — "
+        "analysis_overspent_history separates that from overspending charged to a card. "
+        "month: ISO date string for first day of month (e.g. '2024-01-01'). Costs two requests."
     ),
     annotations=ToolAnnotations(read_only_hint=True),
 )
@@ -311,6 +359,42 @@ async def triage_unmatched_manual_tool(
     ctx = get_app_context()
     resolved = ctx.settings.resolve_plan_id(plan_id)
     return await unmatched_manual(
+        ctx,
+        resolved,
+        account_id=account_id,
+        older_than_days=older_than_days,
+        since_date=since_date,
+    )
+
+
+@mcp.tool(
+    name="triage_pending_imports",
+    description=(
+        "[READ] Card authorisations YNAB imported that never became real charges. "
+        "A merchant's hold — a fuel pump, a hotel, a rideshare — arrives through direct import as a "
+        "transaction with an import_id starting 'YNAB:P:'. When the real charge posts, usually at a "
+        "different amount, it comes in as its own transaction and the hold is left behind: "
+        "uncleared, permanent, and counted in the card's balance. Four of them were inflating one "
+        "card by about $79 on the plan this was written for. "
+        "triage_unmatched_manual cannot find these — it looks for entries with no import_id, and "
+        "these have one. "
+        "account_id narrows it to one account. older_than_days is how long a hold must have sat "
+        "(default 7). since_date bounds how far back to read (default 6 months). "
+        "Check each against the statement before deleting: a hold whose charge did post appears "
+        "twice, and only the hold should go. Costs two requests."
+    ),
+    annotations=ToolAnnotations(read_only_hint=True),
+)
+@tool_handler
+async def triage_pending_imports_tool(
+    plan_id: str | None = None,
+    account_id: str | None = None,
+    older_than_days: int = 7,
+    since_date: str | None = None,
+) -> dict[str, Any]:
+    ctx = get_app_context()
+    resolved = ctx.settings.resolve_plan_id(plan_id)
+    return await pending_imports(
         ctx,
         resolved,
         account_id=account_id,

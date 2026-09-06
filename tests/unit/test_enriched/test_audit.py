@@ -9,11 +9,13 @@ tests are written against the judgement rather than the field names.
 from __future__ import annotations
 
 from mcp_server_for_ynab.enriched.audit import (
+    assignment_patterns,
     balance_identity,
     copied_forward_months,
     flow_trace,
     group_parity,
     overspent_history,
+    unassigned_transfers,
 )
 from tests.unit.test_enriched.builders import (
     account,
@@ -278,3 +280,155 @@ async def test_a_mismatch_is_reported_rather_than_rounded_away() -> None:
 
     assert result["ties"] is False
     assert result["difference"] == 10_000
+
+
+async def test_a_transfer_between_on_budget_accounts_with_no_assignment_is_flagged() -> None:
+    """The money moved, the budget did not: seven months of this went unnoticed."""
+    months = {
+        "2026-06-01": month(month="2026-06-01", categories=[category(id="c1", group_id="g1", budgeted=0)]),
+    }
+    ctx = make_ctx(
+        months_by_month=months,  # type: ignore[arg-type]
+        accounts=accounts_response(
+            account(id="checking", on_budget=True),
+            account(id="joint", name="Joint", on_budget=True),
+        ),
+        transactions=transactions_response(
+            transaction(
+                id="t1",
+                date="2026-06-01",
+                amount=-1_500_000,
+                account_id="checking",
+                transfer_account_id="joint",
+            )
+        ),
+    )
+
+    result = await unassigned_transfers(ctx, "plan-1", "2026-06", "2026-06", group_ids=["g1"])
+
+    assert result["total_transferred"] == 1_500_000
+    assert result["flagged_month_count"] == 1
+    assert result["months"][0]["moved_but_not_assigned"] is True
+
+
+async def test_a_transfer_alongside_an_assignment_is_not_flagged() -> None:
+    months = {
+        "2026-06-01": month(month="2026-06-01", categories=[category(id="c1", group_id="g1", budgeted=1_500_000)]),
+    }
+    ctx = make_ctx(
+        months_by_month=months,  # type: ignore[arg-type]
+        accounts=accounts_response(
+            account(id="checking", on_budget=True),
+            account(id="joint", name="Joint", on_budget=True),
+        ),
+        transactions=transactions_response(
+            transaction(
+                id="t1",
+                date="2026-06-01",
+                amount=-1_500_000,
+                account_id="checking",
+                transfer_account_id="joint",
+            )
+        ),
+    )
+
+    result = await unassigned_transfers(ctx, "plan-1", "2026-06", "2026-06", group_ids=["g1"])
+
+    assert result["flagged_month_count"] == 0
+
+
+async def test_a_transfer_is_counted_once_not_once_per_side() -> None:
+    ctx = make_ctx(
+        accounts=accounts_response(
+            account(id="checking", on_budget=True),
+            account(id="joint", name="Joint", on_budget=True),
+        ),
+        transactions=transactions_response(
+            transaction(
+                id="out", date="2026-06-01", amount=-500_000, account_id="checking", transfer_account_id="joint"
+            ),
+            transaction(id="in", date="2026-06-01", amount=500_000, account_id="joint", transfer_account_id="checking"),
+        ),
+    )
+
+    result = await unassigned_transfers(ctx, "plan-1", "2026-06", "2026-06")
+
+    assert result["transfer_count"] == 1
+    assert result["total_transferred"] == 500_000
+
+
+async def test_a_transfer_to_a_tracking_account_is_not_this_problem() -> None:
+    """Money leaving the budget does move category money, so it is a different case."""
+    ctx = make_ctx(
+        accounts=accounts_response(
+            account(id="checking", on_budget=True),
+            account(id="brokerage", name="Brokerage", on_budget=False),
+        ),
+        transactions=transactions_response(
+            transaction(
+                id="t1",
+                date="2026-06-01",
+                amount=-500_000,
+                account_id="checking",
+                transfer_account_id="brokerage",
+            )
+        ),
+    )
+
+    result = await unassigned_transfers(ctx, "plan-1", "2026-06", "2026-06")
+
+    assert result["transfer_count"] == 0
+
+
+async def test_an_assignment_that_tracks_its_own_inflow_is_reported() -> None:
+    """The interest double-count: $1,500 plus whatever interest already landed."""
+    months = {
+        "2026-06-01": month(month="2026-06-01", categories=[category(id="c1", budgeted=1_512_400)]),
+        "2026-07-01": month(month="2026-07-01", categories=[category(id="c1", budgeted=1_509_800)]),
+    }
+    ctx = make_ctx(
+        months_by_month=months,  # type: ignore[arg-type]
+        transactions=transactions_response(
+            transaction(id="i1", date="2026-06-30", amount=12_400, category_id="c1", payee_name="Interest"),
+            transaction(id="i2", date="2026-07-31", amount=9_800, category_id="c1", payee_name="Interest"),
+        ),
+    )
+
+    result = await assignment_patterns(ctx, "plan-1", "2026-06", "2026-07")
+
+    assert result["finding_count"] == 1
+    finding = result["findings"][0]
+    assert finding["base"] == 1_500_000
+    assert finding["double_counted_if_unintended"] == 22_200
+    assert "1,500.00" in finding["pattern"]
+
+
+async def test_a_steady_assignment_beside_an_inflow_is_not_reported() -> None:
+    """Same amount every month is a plan, not a top-up that follows the interest."""
+    months = {
+        "2026-06-01": month(month="2026-06-01", categories=[category(id="c1", budgeted=1_500_000)]),
+        "2026-07-01": month(month="2026-07-01", categories=[category(id="c1", budgeted=1_500_000)]),
+    }
+    ctx = make_ctx(
+        months_by_month=months,  # type: ignore[arg-type]
+        transactions=transactions_response(
+            transaction(id="i1", date="2026-06-30", amount=12_400, category_id="c1"),
+            transaction(id="i2", date="2026-07-31", amount=9_800, category_id="c1"),
+        ),
+    )
+
+    result = await assignment_patterns(ctx, "plan-1", "2026-06", "2026-07")
+
+    assert result["finding_count"] == 0
+
+
+async def test_one_month_is_never_enough_to_call_it_a_pattern() -> None:
+    months = {"2026-06-01": month(month="2026-06-01", categories=[category(id="c1", budgeted=1_512_400)])}
+    ctx = make_ctx(
+        months_by_month=months,  # type: ignore[arg-type]
+        transactions=transactions_response(transaction(id="i1", date="2026-06-30", amount=12_400, category_id="c1")),
+    )
+
+    result = await assignment_patterns(ctx, "plan-1", "2026-06", "2026-06")
+
+    assert result["finding_count"] == 0

@@ -63,6 +63,74 @@ async def before_transaction(ctx: AppContext, plan_id: str, transaction_id: str)
     return _slice(resp.data.transaction, TRANSACTION_FIELDS)
 
 
+# Reading N transactions one at a time is N requests against an hourly limit of
+# 200, which is how a 312-item reconciliation locked a token out for an hour.
+# One unfiltered list call costs a single request and answers for all of them,
+# so it wins from two ids upward and the batch cost stops depending on the batch
+# size — which is what the tool description promises.
+#
+# A single id is the one case that goes direct: one request either way, and
+# fetching the whole register to read one row is a large payload for nothing.
+_LIST_CAPTURE_THRESHOLD = 1
+
+# When the list does not account for some of the batch, those are fetched one by
+# one — but only so many. Falling back on three hundred ids would spend exactly
+# the hour this function exists to save, so past this point the entry records
+# that those before-states are missing and the caller is told, which is the
+# honest failure rather than an expensive one.
+_MAX_INDIVIDUAL_FALLBACK = 10
+
+
+async def before_transactions(ctx: AppContext, plan_id: str, transaction_ids: list[str]) -> list[dict[str, Any]]:
+    """Before-state for a batch, at one request rather than one per item.
+
+    The batch write itself is a single PATCH; capturing what preceded it used to
+    be the expensive half, and nothing in the tool description said so. One list
+    call covers the whole batch, so a batch of two costs what a batch of three
+    hundred costs.
+
+    Ids the list does not contain are fetched individually — a scheduled
+    transaction's materialised instance carries a compound id
+    (`<uuid>_2026-08-12`) that the register route does not return, and silently
+    recording no before-state for it would mean the revert quietly skipped it.
+    Those extra reads are the one way this exceeds a single request, and they
+    are capped; callers are told the real cost rather than a convenient one.
+    """
+    if not transaction_ids:
+        return []
+
+    if len(transaction_ids) <= _LIST_CAPTURE_THRESHOLD:
+        captured = [await before_transaction(ctx, plan_id, txn_id) for txn_id in transaction_ids]
+        return [state for state in captured if state]
+
+    wanted = set(transaction_ids)
+    found: dict[str, dict[str, Any]] = {}
+    try:
+        listing = await ctx.transactions.list(plan_id)
+    except Exception as exc:
+        logger.warning("Could not list transactions to capture before-state: %s", exc)
+    else:
+        found = {txn.id: _slice(txn, TRANSACTION_FIELDS) for txn in listing.data.transactions if txn.id in wanted}
+
+    missing = [txn_id for txn_id in transaction_ids if txn_id not in found]
+    if len(missing) > _MAX_INDIVIDUAL_FALLBACK:
+        logger.warning(
+            "Transaction list accounted for %d of %d ids; %d before-states not captured "
+            "(fetching them individually would exhaust the request budget).",
+            len(found),
+            len(transaction_ids),
+            len(missing),
+        )
+        missing = []
+
+    for txn_id in missing:
+        state = await before_transaction(ctx, plan_id, txn_id)
+        if state:
+            found[txn_id] = state
+
+    return [found[txn_id] for txn_id in transaction_ids if txn_id in found]
+
+
 async def before_scheduled(ctx: AppContext, plan_id: str, scheduled_id: str) -> dict[str, Any] | None:
     try:
         resp = await ctx.scheduled_transactions.get(plan_id, scheduled_id)

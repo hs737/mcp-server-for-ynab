@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from mcp_server_for_ynab.enriched.triage import (
+    pending_imports,
     reconciliation,
     triage_summary,
     triage_unapproved,
@@ -290,3 +291,70 @@ async def test_a_negative_cleared_balance_on_a_cash_account_is_flagged() -> None
     result = await reconciliation(ctx, "plan-1")
 
     assert any("overdraft" in warning for warning in result["accounts"][0]["warnings"])
+
+
+async def test_pending_imports_finds_holds_that_never_posted() -> None:
+    ctx = make_ctx(
+        accounts=accounts_response(account(id="card", type="creditCard")),
+        transactions=transactions_response(
+            transaction(
+                id="hold",
+                account_id="card",
+                date=days_from_today(-30),
+                amount=-7_900,
+                cleared="uncleared",
+                import_id="YNAB:P:abc",
+            )
+        ),
+    )
+
+    result = await pending_imports(ctx, "plan-1")
+
+    assert result["count"] == 1
+    assert result["net_amount"] == -7_900
+    assert result["by_account"][0]["account_name"] == "Checking"
+
+
+async def test_pending_imports_ignores_holds_that_cleared_or_are_still_recent() -> None:
+    ctx = make_ctx(
+        accounts=accounts_response(account(id="card", type="creditCard")),
+        transactions=transactions_response(
+            transaction(
+                id="posted",
+                account_id="card",
+                date=days_from_today(-30),
+                cleared="cleared",
+                import_id="YNAB:P:abc",
+            ),
+            transaction(
+                id="yesterday",
+                account_id="card",
+                date=days_from_today(-1),
+                cleared="uncleared",
+                import_id="YNAB:P:def",
+            ),
+        ),
+    )
+
+    result = await pending_imports(ctx, "plan-1", older_than_days=7)
+
+    assert result["count"] == 0
+
+
+async def test_pending_imports_are_not_the_same_queue_as_unmatched_manual() -> None:
+    """One has an import id and the other does not; neither tool sees the other's."""
+    ctx = make_ctx(
+        accounts=accounts_response(account(id="card", direct_import_linked=True)),
+        transactions=transactions_response(
+            transaction(
+                id="byhand",
+                account_id="card",
+                date=days_from_today(-60),
+                cleared="uncleared",
+                import_id=None,
+            )
+        ),
+    )
+
+    assert (await pending_imports(ctx, "plan-1"))["count"] == 0
+    assert (await unmatched_manual(ctx, "plan-1"))["count"] == 1

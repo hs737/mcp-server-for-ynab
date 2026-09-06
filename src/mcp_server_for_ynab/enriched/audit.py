@@ -156,6 +156,10 @@ async def overspent_history(
         )
 
     repeat: dict[str, dict[str, Any]] = {}
+    # Where the absorbed money went, per group. A plan-wide total says a number
+    # was lost; the group breakdown says which part of the budget lost it, and
+    # that is the sentence a person can act on.
+    by_group: dict[str, dict[str, Any]] = {}
     for entry in by_month:
         for row in entry["categories"]:
             seen = repeat.setdefault(
@@ -164,6 +168,28 @@ async def overspent_history(
             )
             seen["months"] += 1
             seen["total_overspent"] += int(row["overspent"])
+
+            group = by_group.setdefault(
+                row["group"] or "(no group)",
+                {"group": row["group"] or "(no group)", "cash_overspend": 0, "credit_overspend": 0, "months": set()},
+            )
+            group["cash_overspend"] += int(row["cash_overspend"])
+            group["credit_overspend"] += int(row["credit_overspend"])
+            if row["cash_overspend"] or row["credit_overspend"]:
+                group["months"].add(entry["month"])
+
+    groups = [
+        {
+            "group": row["group"],
+            "absorbed_into_ready_to_assign": row["cash_overspend"],
+            "absorbed_into_ready_to_assign_display": milliunits_to_display(int(row["cash_overspend"])),
+            "credit_overspend": row["credit_overspend"],
+            "credit_overspend_display": milliunits_to_display(int(row["credit_overspend"])),
+            "month_count": len(row["months"]),
+        }
+        for row in by_group.values()
+    ]
+    groups.sort(key=lambda g: int(g["absorbed_into_ready_to_assign"]), reverse=True)
 
     worst = sorted(repeat.values(), key=lambda r: (-int(r["months"]), -int(r["total_overspent"])))[:15]
     for row in worst:
@@ -181,13 +207,15 @@ async def overspent_history(
         "total_credit_overspend_display": milliunits_to_display(total_credit),
         "absorbed_into_ready_to_assign": running_absorbed,
         "absorbed_into_ready_to_assign_display": milliunits_to_display(running_absorbed),
+        "by_group": groups,
         "most_repeatedly_overspent": worst,
         "months": by_month,
         "note": (
             "Cash overspending is deducted from the following month's Ready to Assign; credit "
             "overspending carries forward as a negative category balance and as debt the payment "
             "category has not covered. The split is inferred from which accounts the category was "
-            "spent on that month, because YNAB does not report it."
+            "spent on that month, because YNAB does not report it. by_group says which parts of the "
+            "budget the absorbed money came out of."
         ),
     }
 
@@ -543,5 +571,282 @@ async def balance_identity(ctx: AppContext, plan_id: str) -> dict[str, Any]:
             "because its 'Inflow: Ready to Assign' balance is cumulative income rather than available "
             "money. It is listed above so an unexpected balance there is still visible. A non-zero "
             "difference means the data is inconsistent, not that the budget is unhealthy."
+        ),
+    }
+
+
+async def unassigned_transfers(
+    ctx: AppContext,
+    plan_id: str,
+    from_month: str,
+    to_month: str | None = None,
+    *,
+    group_ids: list[str] | None = None,
+    account_ids: list[str] | None = None,
+) -> dict[str, Any]:
+    """Transfers between on-budget accounts, against what was assigned that month.
+
+    A transfer between two on-budget accounts moves no category money. YNAB is
+    right about that — the budget already accounts for both sides — but it means
+    a standing "move $1,500 to the joint account on the first" does nothing to
+    the plan, and reads in the register as though it did. Seven months of that
+    went unnoticed on the plan this was written for, because every month showed
+    a transfer and no month showed an assignment.
+
+    Naming `group_ids` is what turns a list of transfers into a finding: for
+    each month it reports what those groups were assigned, and flags the months
+    where money moved and nothing was assigned.
+    """
+    months = month_sequence(from_month, to_month)
+    wanted_groups = set(group_ids or [])
+
+    accounts_resp, txn_resp = await asyncio.gather(
+        ctx.accounts.list(plan_id),
+        ctx.transactions.list(plan_id, since_date=months[0]),
+    )
+    on_budget = {a.id: a for a in accounts_resp.data.accounts if a.on_budget and not a.deleted}
+    narrowed = set(account_ids or [])
+
+    in_range = set(months)
+    moves: dict[str, list[dict[str, Any]]] = {stamp: [] for stamp in months}
+    for txn in txn_resp.data.transactions:
+        # One transfer is two records, one on each account. Counting only the
+        # outflow side reports the movement once, at its real size.
+        if txn.deleted or txn.amount >= 0 or not txn.transfer_account_id:
+            continue
+        if txn.account_id not in on_budget or txn.transfer_account_id not in on_budget:
+            continue
+        if narrowed and txn.account_id not in narrowed and txn.transfer_account_id not in narrowed:
+            continue
+        month = _month_of(txn.date)
+        if month not in in_range:
+            continue
+        moves[month].append(
+            {
+                "transaction_id": txn.id,
+                "date": txn.date,
+                "amount": -txn.amount,
+                "amount_display": milliunits_to_display(-txn.amount),
+                "from_account": on_budget[txn.account_id].name,
+                "to_account": on_budget[txn.transfer_account_id].name,
+                "to_account_id": txn.transfer_account_id,
+            }
+        )
+
+    assigned_by_month: dict[str, dict[str, int]] = {}
+    if wanted_groups:
+        for fetched in await fetch_months(ctx, plan_id, months):
+            totals: dict[str, int] = dict.fromkeys(wanted_groups, 0)
+            for category in visible(fetched.categories, include_hidden=True):
+                if category.category_group_id in wanted_groups:
+                    totals[category.category_group_id] += category.budgeted
+            assigned_by_month[fetched.month] = totals
+
+    rows: list[dict[str, Any]] = []
+    flagged = 0
+    for stamp in months:
+        transfers = moves[stamp]
+        row: dict[str, Any] = {
+            "month": stamp,
+            "transfer_count": len(transfers),
+            "transferred": sum(int(t["amount"]) for t in transfers),
+            "transferred_display": milliunits_to_display(sum(int(t["amount"]) for t in transfers)),
+            "transfers": transfers,
+        }
+        if wanted_groups:
+            assigned = assigned_by_month.get(stamp, {})
+            row["assigned_by_group"] = assigned
+            row["assigned_total"] = sum(assigned.values())
+            row["assigned_total_display"] = milliunits_to_display(sum(assigned.values()))
+            row["moved_but_not_assigned"] = bool(transfers) and sum(assigned.values()) == 0
+            flagged += int(row["moved_but_not_assigned"])
+        rows.append(row)
+
+    total_moved = sum(int(r["transferred"]) for r in rows)
+    payload: dict[str, Any] = {
+        "scope": "analysis_unassigned_transfers",
+        "plan_id": plan_id,
+        "from_month": months[0],
+        "to_month": months[-1],
+        "month_count": len(months),
+        "group_ids": sorted(wanted_groups),
+        "amounts": "milliunits (1000 = $1.00)",
+        "transfer_count": sum(int(r["transfer_count"]) for r in rows),
+        "total_transferred": total_moved,
+        "total_transferred_display": milliunits_to_display(total_moved),
+        "months": rows,
+        "note": (
+            "A transfer between two on-budget accounts moves no category money: both accounts are "
+            "already inside the budget, so nothing is assigned, spent or made available by it. "
+            "Money reaches a category only by being assigned there."
+        ),
+    }
+    if wanted_groups:
+        payload["flagged_month_count"] = flagged
+        payload["flagged_months"] = [r["month"] for r in rows if r.get("moved_but_not_assigned")]
+        payload["finding"] = (
+            f"In {flagged} of {len(months)} months money moved between accounts and the named groups "
+            "were assigned nothing. Those transfers changed no category balance."
+            if flagged
+            else "Every month with a transfer also assigned money to the named groups."
+        )
+    else:
+        payload["next_step"] = (
+            "Pass group_ids to check whether the categories these transfers were meant to fund were "
+            "actually assigned in the same month. Get group ids from categories_list."
+        )
+    return payload
+
+
+# What separates "assigned a round figure" from "assigned a round figure plus
+# whatever landed in the category" is that the second one varies by exactly the
+# inflow. Both readings fit a single month; a repeat is what makes it a habit.
+_MIN_PATTERN_MONTHS = 2
+
+
+async def assignment_patterns(
+    ctx: AppContext,
+    plan_id: str,
+    from_month: str,
+    to_month: str | None = None,
+    *,
+    group_ids: list[str] | None = None,
+    category_ids: list[str] | None = None,
+    include_hidden: bool = False,
+) -> dict[str, Any]:
+    """Categories assigned a base amount plus the month's own inflow.
+
+    A savings category earns interest, the interest is categorised into it, and
+    then the monthly assignment is written as "the usual $1,500 plus the $12.40
+    of interest" — which funds the interest twice, because it was already in the
+    category. Sixteen months of that across two people came to about $841 on the
+    plan this was written for, and nobody noticed, because each month is
+    individually plausible.
+
+    A script sees it instantly: assigned minus inflow lands on the same round
+    number month after month while assigned itself never repeats. That is the
+    signal reported here — a reason to look, not a verdict, since a category can
+    legitimately be funded to a target that moves with its own activity.
+    """
+    months = month_sequence(from_month, to_month)
+    in_range = set(months)
+
+    fetched, txn_resp = await asyncio.gather(
+        fetch_months(ctx, plan_id, months),
+        ctx.transactions.list(plan_id, since_date=months[0]),
+    )
+
+    # Inflow means money arriving in the category, which for a split lives on the
+    # parts rather than the parent, and never on a transfer — a transfer between
+    # on-budget accounts is not income to anything.
+    inflow: dict[tuple[str, str], int] = {}
+    for txn in txn_resp.data.transactions:
+        if txn.deleted:
+            continue
+        month = _month_of(txn.date)
+        if month not in in_range:
+            continue
+        if txn.subtransactions:
+            for part in txn.subtransactions:
+                if not part.deleted and part.amount > 0 and part.category_id and not part.transfer_account_id:
+                    key = (month, part.category_id)
+                    inflow[key] = inflow.get(key, 0) + part.amount
+            continue
+        if txn.amount > 0 and txn.category_id and not txn.transfer_account_id:
+            key = (month, txn.category_id)
+            inflow[key] = inflow.get(key, 0) + txn.amount
+
+    wanted_categories = set(category_ids or [])
+    wanted_groups = set(group_ids or [])
+
+    series: dict[str, dict[str, Any]] = {}
+    for month_data in fetched:
+        for category in visible(month_data.categories, include_hidden=include_hidden):
+            if wanted_categories and category.id not in wanted_categories:
+                continue
+            if wanted_groups and category.category_group_id not in wanted_groups:
+                continue
+            row = series.setdefault(
+                category.id,
+                {
+                    "category_id": category.id,
+                    "name": category.name,
+                    "group": category.category_group_name,
+                    "months": [],
+                },
+            )
+            got = inflow.get((month_data.month, category.id), 0)
+            row["months"].append(
+                {
+                    "month": month_data.month,
+                    "budgeted": category.budgeted,
+                    "inflow": got,
+                    "base": category.budgeted - got,
+                }
+            )
+
+    findings: list[dict[str, Any]] = []
+    for row in series.values():
+        with_inflow = [m for m in row["months"] if m["inflow"] > 0 and m["budgeted"] > 0]
+        if len(with_inflow) < _MIN_PATTERN_MONTHS:
+            continue
+
+        bases: dict[int, int] = {}
+        for entry in with_inflow:
+            bases[entry["base"]] = bases.get(entry["base"], 0) + 1
+        base, hits = max(bases.items(), key=lambda item: (item[1], item[0]))
+        if hits < _MIN_PATTERN_MONTHS:
+            continue
+
+        matching = [m for m in with_inflow if m["base"] == base]
+        # If the assigned figure itself repeats, the base is just the plan and
+        # the inflow happens to be there. The pattern is only interesting when
+        # the assignment moved with the inflow.
+        if len({m["budgeted"] for m in matching}) < _MIN_PATTERN_MONTHS:
+            continue
+
+        added = sum(int(m["inflow"]) for m in matching)
+        findings.append(
+            {
+                "category_id": row["category_id"],
+                "name": row["name"],
+                "group": row["group"],
+                "base": base,
+                "base_display": milliunits_to_display(base),
+                "matching_month_count": len(matching),
+                "months_with_inflow": len(with_inflow),
+                "months_analyzed": len(row["months"]),
+                "double_counted_if_unintended": added,
+                "double_counted_if_unintended_display": milliunits_to_display(added),
+                "pattern": (
+                    f"assigned = {milliunits_to_display(base)} + that month's inflow in "
+                    f"{len(matching)} of {len(row['months'])} months"
+                ),
+                "months": matching,
+            }
+        )
+
+    findings.sort(key=lambda f: int(f["double_counted_if_unintended"]), reverse=True)
+    total = sum(int(f["double_counted_if_unintended"]) for f in findings)
+
+    return {
+        "scope": "analysis_assignment_patterns",
+        "plan_id": plan_id,
+        "from_month": months[0],
+        "to_month": months[-1],
+        "month_count": len(months),
+        "category_count": len(series),
+        "finding_count": len(findings),
+        "total_if_unintended": total,
+        "total_if_unintended_display": milliunits_to_display(total),
+        "amounts": "milliunits (1000 = $1.00)",
+        "findings": findings,
+        "note": (
+            "Each finding is a category whose assignment equals a fixed base plus the money that "
+            "arrived in it that month. Where the inflow is interest or a refund already sitting in "
+            "the category, assigning it again funds it twice, and total_if_unintended is how much. "
+            "Where the category is deliberately funded to cover its own activity, the pattern is "
+            "correct and this is a false positive — which is why it reports the months rather than "
+            "a verdict."
         ),
     }
