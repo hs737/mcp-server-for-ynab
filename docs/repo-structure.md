@@ -21,6 +21,7 @@ Adjacent docs:
 .
 ├── docs/            architecture, testing, security, structure, tool docs
 ├── .agents/         agent skills for contributors and AI assistants
+├── evals/           agent evals: does an assistant use the server correctly
 ├── postman/         generated collections, environments, generation sources
 ├── scripts/         Postman generation and live verification scripts
 ├── src/             product code
@@ -51,6 +52,7 @@ flowchart TD
     J --> L["contract"]
     J --> M["integration"]
     J --> N["qa sources"]
+    R2["evals/"] --> S2["cases and graders"]
     O["postman/"] --> P["generated collections"]
     O --> Q["environments"]
     O --> R["generation sources"]

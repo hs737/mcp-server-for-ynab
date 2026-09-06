@@ -422,6 +422,14 @@ make test-integration
 make test-postman-operator
 ```
 
+Those check that the server works. `evals/` asks a different question — whether
+an assistant *uses* it correctly, which is where this project's real failures
+have been: a rate-limit lockout from a loop that should have been one call, an
+account reported as reconciled that YNAB still showed as stale. Those cases are
+graded by a model rather than asserted, so they run on demand with
+`claude plugin eval` rather than in `make check`. See
+[evals/README.md](https://github.com/hs737/mcp-server-for-ynab/blob/master/evals/README.md).
+
 ### Where to read next
 
 If you are:
@@ -429,7 +437,7 @@ If you are:
 - **connecting a client**: [Client Setup](https://github.com/hs737/mcp-server-for-ynab/blob/master/docs/client-setup.md)
 - **new to the repo**: [Architecture](https://github.com/hs737/mcp-server-for-ynab/blob/master/docs/architecture.md)
 - **adding code**: [Contributing](https://github.com/hs737/mcp-server-for-ynab/blob/master/CONTRIBUTING.md), [Repo Structure](https://github.com/hs737/mcp-server-for-ynab/blob/master/docs/repo-structure.md), [Agent Guidance](https://github.com/hs737/mcp-server-for-ynab/blob/master/AGENTS.md)
-- **adding or changing tools**: [Tool Surface](https://github.com/hs737/mcp-server-for-ynab/blob/master/docs/tool-surface.md)
+- **adding or changing tools**: [Tool Surface](https://github.com/hs737/mcp-server-for-ynab/blob/master/docs/tool-surface.md), [Agent evals](https://github.com/hs737/mcp-server-for-ynab/blob/master/evals/README.md)
 - **verifying behavior**: [Testing](https://github.com/hs737/mcp-server-for-ynab/blob/master/docs/testing.md)
 - **working on auth, error handling, or logging**: [Security](https://github.com/hs737/mcp-server-for-ynab/blob/master/docs/security.md)
 - **publishing or adding a release channel**: [Distribution](https://github.com/hs737/mcp-server-for-ynab/blob/master/docs/distribution.md)

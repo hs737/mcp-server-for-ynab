@@ -56,3 +56,7 @@ Thumbs.db
 .agents/skills/writing-clearly-and-concisely/
 .agents/skills/requesting-code-review/
 .agents/skills/karpathy-guidelines/
+
+# Eval runs are output, not source: one timestamped directory per run, plus the
+# HTML report. The cases and graders under evals/ are the artefact worth keeping.
+evals/results/

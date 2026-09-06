@@ -64,6 +64,7 @@ make test-postman-operator
 The current suite verifies a meaningful portion of the codebase, but the coverage is uneven by layer.
 
 Implemented today:
+- agent eval cases under `evals/`, written but never yet run — see the layer note below
 - unit tests for config, HTTP client retry behavior, amount helpers, and shared errors
 - unit tests for the reconciliation workflow: statement comparison, bank-export matching,
   and the composed write that marks transactions reconciled and posts the adjustment
@@ -91,6 +92,8 @@ tests/
 ├── integration/   app assembly and MCP-facing behavior
 ├── qa/            feature and case sources for generated Postman collections
 └── unit/          isolated logic tests
+
+evals/             agent evals, outside tests/ because they are graded, not asserted
 ```
 
 ## Layer by Layer
@@ -238,6 +241,34 @@ A passing sweep proves a call was accepted and parsed. It does not prove the
 write took effect: YNAB accepts `budgeted` on the category update route and
 silently ignores it. After a write sweep, read the plan back and confirm the
 values changed.
+
+### Agent evals
+
+Location:
+- `evals/`
+
+Purpose:
+- verify that an assistant *uses* the server correctly, which is a different
+  question from whether the server works
+
+Every other layer here asserts what the server returns. None of them can catch
+an agent that loops forty single writes instead of one bulk call, posts a
+reconciliation adjustment over a difference it never investigated, or tells the
+user an account is reconciled when YNAB will still show it as stale. Those are
+properties of the model reading the tool descriptions, so they are graded rather
+than asserted.
+
+Each case is a directory holding the prompt an agent is given and the criteria
+it is scored against. They are run with `claude plugin eval`, which is in early
+access.
+
+Current state, stated plainly: **the cases are written and none has been run.**
+The pass criteria are reviewed intent, not observed results. `evals/README.md`
+records what has to be decided before a first run — chiefly where the data comes
+from, since these cases talk about real accounts and real money.
+
+Not part of `make check`: the runs are model-graded, so they are slow, cost
+money, and vary between runs. They belong on demand or nightly.
 
 ## Which Tests Are Fast vs End-to-End
 

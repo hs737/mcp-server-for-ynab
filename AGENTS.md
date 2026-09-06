@@ -356,6 +356,23 @@ Do not introduce:
 - duplicated sync entry paths
 - blocking network logic in tool handlers
 
+## Evals
+
+`evals/` holds agent evals: cases that check an assistant *uses* the server
+correctly, rather than that the server works. They exist because the two failures
+this project has actually suffered — an hour lost to a loop that should have
+been one call, and an account reported as reconciled that YNAB still showed as
+stale — are invisible to every test in `tests/`.
+
+They are graded by a model, so they are slow, cost money, and are not part of
+`make check`. Run them with `claude plugin eval` on demand.
+
+When a change's whole point is that an agent should behave differently — a cost
+stated in a description, a cheaper option offered, a caveat carried on a
+response — add or update a case. A description nothing measures is a hope. See
+`evals/README.md` for what makes a case worth adding, and note that no case has
+been run yet: the criteria are reviewed intent rather than observed results.
+
 ## Quality Gate
 
 A change is not done unless:

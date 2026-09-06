@@ -1,0 +1,1 @@
+For the last seven months I have moved $1,500 from Everyday Checking to the Joint account on the first of the month. The transfers are all there in the register, but the categories on the joint side are empty. What happened?
