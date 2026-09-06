@@ -373,6 +373,32 @@ response — add or update a case. A description nothing measures is a hope. See
 `evals/README.md` for what makes a case worth adding, and note that no case has
 been run yet: the criteria are reviewed intent rather than observed results.
 
+## Releasing
+
+Two rules here are load-bearing, and neither is guessable from the code.
+
+**The release notes are the tag's annotation.** `release.yml` creates the GitHub
+release with `--notes-from-tag`: the tag's subject line becomes the title and the
+rest of its message becomes the notes. A lightweight tag publishes a version
+whose release page is empty, and there is no second place to put that text. Write
+the notes first, then `git tag -a vx.y.z -F notes.md`. The workflow refuses an
+unannotated tag before it publishes anything, because a tag can be moved and a
+PyPI version cannot — PyPI allows a yank, never a replacement.
+
+**The version lives in `pyproject.toml` and nowhere else you may edit.**
+`scripts/sync_packaging.py`, via `make packaging-sync`, generates the five
+manifests that repeat it. The workflow refuses a tag that disagrees with
+`pyproject.toml`.
+
+The publish then waits on the `pypi` environment for a human. That gate is why a
+tagged version is not a released one: a run has sat waiting for days while every
+manifest pinned a version PyPI did not have, which is a one-click install that
+cannot resolve. Before assuming a version shipped, check
+`gh run list --workflow=release.yml`.
+
+Full sequence, including the live read sweep that runs before tagging:
+[Distribution](docs/distribution.md#cutting-a-release).
+
 ## Quality Gate
 
 A change is not done unless:

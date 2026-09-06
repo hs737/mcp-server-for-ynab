@@ -440,7 +440,7 @@ If you are:
 - **adding or changing tools**: [Tool Surface](https://github.com/hs737/mcp-server-for-ynab/blob/master/docs/tool-surface.md), [Agent evals](https://github.com/hs737/mcp-server-for-ynab/blob/master/evals/README.md)
 - **verifying behavior**: [Testing](https://github.com/hs737/mcp-server-for-ynab/blob/master/docs/testing.md)
 - **working on auth, error handling, or logging**: [Security](https://github.com/hs737/mcp-server-for-ynab/blob/master/docs/security.md)
-- **publishing or adding a release channel**: [Distribution](https://github.com/hs737/mcp-server-for-ynab/blob/master/docs/distribution.md)
+- **cutting a release, or adding a channel**: [Distribution](https://github.com/hs737/mcp-server-for-ynab/blob/master/docs/distribution.md#cutting-a-release) — the release notes are the tag annotation, so write them before tagging
 
 Full map: [Docs Index](https://github.com/hs737/mcp-server-for-ynab/blob/master/docs/README.md). Also: [Postman Notes](https://github.com/hs737/mcp-server-for-ynab/blob/master/postman/README.md),
 [Legal Notice](https://github.com/hs737/mcp-server-for-ynab/blob/master/NOTICE.md).

@@ -20,6 +20,57 @@ the plugin, its marketplace, `.mcp.json`, the MCPB manifest, and `server.json`.
 `make packaging-check` fails CI when a committed copy has drifted. Never edit
 those files by hand.
 
+## Cutting a release
+
+The version tag is the trigger for everything above, and it carries more than a
+version number: **the release notes are the tag's own annotation.** The workflow
+creates the GitHub release with `--notes-from-tag`, taking the title from the
+tag's subject line and the body from the rest. A lightweight tag therefore
+publishes a version whose release page is empty, and there is nowhere else for
+that text to come from. `.github/workflows/release.yml` refuses an unannotated
+tag, or one with a subject and no body, before anything is published.
+
+The sequence, from a merged `master`:
+
+```bash
+# 1. Bump the version. Every manifest that repeats it is generated.
+$EDITOR pyproject.toml          # version = "x.y.z"
+make packaging-sync
+make check                      # includes packaging-check, which fails on drift
+
+# 2. Prove the read tools still parse against the real API. Fixtures are ours;
+#    this is the only check that talks to YNAB.
+make verify-live
+
+# 3. Commit the bump on its own, in the repo's usual style.
+git commit -am "Release x.y.z"  # body: what changed, and any changed defaults
+git push origin master
+
+# 4. Tag it, annotated, with the release notes as the message.
+git tag -a vx.y.z -F notes.md   # first line is the title, the rest is the body
+git push origin vx.y.z
+
+# 5. Approve the `pypi` environment on the run that starts.
+```
+
+Four things that have gone wrong here before, in the order they bite:
+
+- **The publish waits for a human, and waits indefinitely.** The `pypi`
+  environment gates it. A run once sat waiting for eighty-three hours while
+  every manifest on `master` pinned a version that was not on PyPI, which is a
+  one-click install that cannot resolve. `gh run list --workflow=release.yml`
+  before assuming a version shipped, and cancel a parked run rather than leaving
+  it approvable — approving it later publishes an older tree under that version.
+- **A tag can be moved; a PyPI version cannot.** PyPI allows a yank, never a
+  replacement. That asymmetry is why every check that can run before the upload
+  does run before it.
+- **The tag must match `pyproject.toml`.** The workflow checks and stops. Bump
+  the version and run `make packaging-sync` in the same commit as the tag's
+  target, or the tag names a tree that disagrees with itself.
+- **Never hand-edit a generated manifest.** `scripts/sync_packaging.py` owns the
+  five files that repeat the version; `make packaging-check` fails CI when a
+  committed copy has drifted.
+
 ## Needs configuration once
 
 **Docker Hub.** The container workflow pushes there only when it is configured,

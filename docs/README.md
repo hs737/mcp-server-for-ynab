@@ -51,6 +51,7 @@ mindmap
       logging
       write safety
     distribution.md
+      cutting a release
       release channels
       directories
       adding a channel

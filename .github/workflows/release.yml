@@ -29,6 +29,28 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # so the annotated tag message is available to check
+
+      # The release notes are the tag's own annotation — the bundle job below
+      # creates the release with --notes-from-tag — so a lightweight tag
+      # publishes a version whose release page is empty, and the tag message is
+      # the only place that text can come from. Checked here, in the first job,
+      # because a tag can be moved and a PyPI version cannot: it can be yanked,
+      # never replaced.
+      - name: Check the tag is annotated and carries release notes
+        run: |
+          if [ "$(git cat-file -t "$GITHUB_REF_NAME")" != "tag" ]; then
+            echo "::error::$GITHUB_REF_NAME is a lightweight tag, so the release page would be empty."
+            echo "::error::Release notes come from the annotation: git tag -a $GITHUB_REF_NAME -F notes.md"
+            exit 1
+          fi
+          if [ -z "$(git tag -l --format='%(contents:body)' "$GITHUB_REF_NAME" | tr -d '[:space:]')" ]; then
+            echo "::error::$GITHUB_REF_NAME has a subject but no body, so the release page would carry only its title."
+            echo "::error::First line of the tag message is the release title; everything after it is the notes."
+            exit 1
+          fi
+          echo "Tag annotation: $(git tag -l --format='%(contents:subject)' "$GITHUB_REF_NAME")"
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v7

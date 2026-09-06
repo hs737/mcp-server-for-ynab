@@ -19,7 +19,7 @@ Adjacent docs:
 
 ```text
 .
-├── docs/            architecture, testing, security, structure, tool docs
+├── docs/            architecture, testing, security, structure, tool and release docs
 ├── .agents/         agent skills for contributors and AI assistants
 ├── evals/           agent evals: does an assistant use the server correctly
 ├── postman/         generated collections, environments, generation sources
